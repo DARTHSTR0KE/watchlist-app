@@ -1,14 +1,128 @@
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+}
+
 .app {
   display: flex;
+  flex: 1;
+  min-height: 0;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 1.75rem;
   width: 100%;
-  height: 100dvh;
   padding: 1.5rem;
   text-align: center;
   overflow: hidden;
+}
+
+.app-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.25rem;
+  padding-top: max(0.85rem, env(safe-area-inset-top));
+  border-bottom: 1px solid rgba(245, 245, 245, 0.1);
+}
+
+.app-header-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #f5f5f5;
+}
+
+.app-header-signout {
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 245, 245, 0.2);
+  background-color: transparent;
+  color: #f5f5f5;
+  cursor: pointer;
+}
+
+.app-header-signout:active {
+  transform: scale(0.97);
+}
+
+.signin-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  width: 100%;
+  height: 100dvh;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.signin-title {
+  font-size: clamp(1.5rem, 6vw, 2.25rem);
+  margin: 0;
+}
+
+.signin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 320px;
+  text-align: left;
+}
+
+.signin-label {
+  font-size: 0.85rem;
+  color: #9a9aa2;
+  margin-top: 0.5rem;
+}
+
+.signin-input {
+  font-size: 1rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid rgba(245, 245, 245, 0.2);
+  background-color: #1c1c24;
+  color: #f5f5f5;
+}
+
+.signin-input:focus {
+  outline: 2px solid #f5c451;
+  outline-offset: 1px;
+}
+
+.signin-error {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: #f26d6d;
+}
+
+.signin-button {
+  margin-top: 1.25rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  padding: 0.85rem 1.5rem;
+  border-radius: 999px;
+  border: none;
+  background-color: #f5c451;
+  color: #101014;
+  cursor: pointer;
+}
+
+.signin-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.signin-button:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .app-title {

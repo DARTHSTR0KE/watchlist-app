@@ -6,6 +6,9 @@ import { INITIAL_TITLES } from './wheel/titles'
 import type { WheelItem } from './wheel/titles'
 import { getSegmentIndexAtPointer } from './wheel/wheelMath'
 import { usePosterImages } from './wheel/usePosterImages'
+import { AuthProvider, useAuth } from './auth/AuthProvider'
+import { SignInScreen } from './auth/SignInScreen'
+import { Header } from './auth/Header'
 
 const MAX_REROLLS = 2
 const SPIN_DURATION_MS = 4000
@@ -26,7 +29,7 @@ function usePrefersReducedMotion(): boolean {
   return reduced
 }
 
-function App() {
+function WheelScreen() {
   const [items, setItems] = useState<WheelItem[]>(INITIAL_TITLES)
   const [rotation, setRotation] = useState(0)
   const [spinning, setSpinning] = useState(false)
@@ -133,6 +136,31 @@ function App() {
         />
       )}
     </div>
+  )
+}
+
+function Gate() {
+  const { session, loading } = useAuth()
+
+  // Still restoring the persisted session — show nothing rather than
+  // flashing the sign-in screen.
+  if (loading) return null
+
+  if (!session) return <SignInScreen />
+
+  return (
+    <div className="app-shell">
+      <Header />
+      <WheelScreen />
+    </div>
+  )
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <Gate />
+    </AuthProvider>
   )
 }
 
