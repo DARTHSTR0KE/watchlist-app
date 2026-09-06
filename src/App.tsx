@@ -5,7 +5,7 @@ import { ResultModal } from './wheel/ResultModal'
 import type { WheelItem } from './wheel/titles'
 import { getSegmentIndexAtPointer } from './wheel/wheelMath'
 import { usePosterImages } from './wheel/usePosterImages'
-import { loadWheelItems, setOnWheel } from './wheel/loadWheelItems'
+import { loadWheelItems } from './wheel/loadWheelItems'
 import { AuthProvider, useAuth } from './auth/AuthProvider'
 import { SignInScreen } from './auth/SignInScreen'
 import { Header } from './auth/Header'
@@ -17,6 +17,7 @@ import { Footer } from './Footer'
 const MAX_REROLLS = 2
 const SPIN_DURATION_MS = 4000
 const VIBRATE_PATTERN = [40, 30, 80]
+const MIN_WHEEL_SEGMENTS = 2
 
 function usePrefersReducedMotion(): boolean {
   const [reduced, setReduced] = useState(
@@ -113,15 +114,27 @@ function WheelScreen() {
   const handleWatchThis = resetToIdle
   const handleDismiss = resetToIdle
 
+  // Session-only: removals live in React state alone and reset on reload.
+  // The wheel shrinks by one segment rather than backfilling a replacement,
+  // and never drops below MIN_WHEEL_SEGMENTS — below that the result modal
+  // offers "Reshuffle" instead.
   const handleTakeOff = () => {
     const removedId = result?.id
-    setItems((current) => current.filter((item) => item.id !== removedId))
+    setItems((current) =>
+      current.length > MIN_WHEEL_SEGMENTS ? current.filter((item) => item.id !== removedId) : current,
+    )
     setResult(null)
     setRerollsUsed(0)
-    if (removedId) void setOnWheel(userId, Number(removedId), false)
+  }
+
+  const handleReshuffle = () => {
+    setItems(masterItems)
+    setResult(null)
+    setRerollsUsed(0)
   }
 
   const rerollsRemaining = MAX_REROLLS - rerollsUsed
+  const canRemoveFromWheel = items.length > MIN_WHEEL_SEGMENTS
 
   if (loadingItems) return null
 
@@ -140,14 +153,19 @@ function WheelScreen() {
       {items.length === 0 ? (
         <p className="empty-state">No titles left on the wheel.</p>
       ) : (
-        <button
-          className="spin-button"
-          type="button"
-          onClick={() => spin(false)}
-          disabled={spinning || !postersReady || result !== null}
-        >
-          {!postersReady ? 'Loading posters…' : spinning ? 'Spinning…' : 'Spin'}
-        </button>
+        <>
+          <button
+            className="spin-button"
+            type="button"
+            onClick={() => spin(false)}
+            disabled={spinning || !postersReady || result !== null}
+          >
+            {!postersReady ? 'Loading posters…' : spinning ? 'Spinning…' : 'Spin'}
+          </button>
+          <p className="wheel-remaining-count">
+            {items.length} title{items.length === 1 ? '' : 's'} on the wheel
+          </p>
+        </>
       )}
 
       {result && (
@@ -155,10 +173,12 @@ function WheelScreen() {
           item={result}
           rerollsRemaining={rerollsRemaining}
           canReroll={rerollsRemaining > 0}
+          canRemoveFromWheel={canRemoveFromWheel}
           reduceMotion={reduceMotion}
           onWatch={handleWatchThis}
           onSpinAgain={() => spin(true)}
           onTakeOff={handleTakeOff}
+          onReshuffle={handleReshuffle}
           onDismiss={handleDismiss}
         />
       )}

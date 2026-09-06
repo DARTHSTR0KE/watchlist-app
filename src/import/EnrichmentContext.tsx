@@ -148,16 +148,16 @@ const EnrichmentReactContext = createContext<EnrichmentContextValue | null>(null
 // watchlist.csv and the watched files (a rewatch), the second phase reuses
 // the first phase's resolved film_id instead of re-querying TMDB.
 async function resolveWithCache(
-  cache: Map<string, number>,
+  cache: Map<string, string>,
   name: string,
   year: number | null,
-): Promise<{ filmId: number | null; outcome: MatchOutcome | null }> {
+): Promise<{ filmId: string | null; outcome: MatchOutcome | null }> {
   const cacheKey = makeKey(name, year)
   const cached = cache.get(cacheKey)
   if (cached !== undefined) return { filmId: cached, outcome: null }
 
   const outcome = await resolveFilm(name, year)
-  let filmId: number | null = null
+  let filmId: string | null = null
   if (outcome.status === 'reused') {
     filmId = outcome.filmId
   } else if (outcome.status === 'matched') {
@@ -172,7 +172,7 @@ export function EnrichmentProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState)
 
   const runWatchedPhase = useCallback(
-    async (userId: string, watchedEntries: WatchedCandidate[], cache: Map<string, number>) => {
+    async (userId: string, watchedEntries: WatchedCandidate[], cache: Map<string, string>) => {
       if (watchedEntries.length === 0) return
       dispatch({ type: 'watched-start', total: watchedEntries.length })
 
@@ -252,7 +252,7 @@ export function EnrichmentProvider({ children }: { children: ReactNode }) {
         })
       }
 
-      const cache = new Map<string, number>()
+      const cache = new Map<string, string>()
 
       dispatch({ type: 'watchlist-progress', completed: 0, total: watchlistRows.length })
       const watchlistResults = await asyncPool(
@@ -269,7 +269,7 @@ export function EnrichmentProvider({ children }: { children: ReactNode }) {
 
       const newEntries: WatchlistCsvEntry[] = []
       const reviewItems: ReviewItem[] = []
-      const csvFilmIds = new Set<number>()
+      const csvFilmIds = new Set<string>()
 
       for (const result of watchlistResults) {
         if (!result) continue

@@ -7,10 +7,12 @@ interface ResultModalProps {
   item: WheelItem
   rerollsRemaining: number
   canReroll: boolean
+  canRemoveFromWheel: boolean
   reduceMotion: boolean
   onWatch: () => void
   onSpinAgain: () => void
   onTakeOff: () => void
+  onReshuffle: () => void
   onDismiss: () => void
 }
 
@@ -23,20 +25,32 @@ function formatRuntime(minutes: number): string {
   return `${hours}h ${mins}m`
 }
 
+// 6pm–4am local -> "Not tonight", 4am–6pm -> "Not today".
+function getTakeOffLabel(): string {
+  const hour = new Date().getHours()
+  return hour >= 18 || hour < 4 ? 'Not tonight' : 'Not today'
+}
+
 export function ResultModal({
   item,
   rerollsRemaining,
   canReroll,
+  canRemoveFromWheel,
   reduceMotion,
   onWatch,
   onSpinAgain,
   onTakeOff,
+  onReshuffle,
   onDismiss,
 }: ResultModalProps) {
   const [expanded, setExpanded] = useState(false)
   const [dragY, setDragY] = useState(0)
   const [dragging, setDragging] = useState(false)
   const dragStartRef = useRef<number | null>(null)
+  // Computed once per mount — the modal re-mounts fresh each time it opens
+  // (result goes null then non-null again), so this re-evaluates every open
+  // rather than staying fixed from whenever the app first started.
+  const [takeOffLabel] = useState(getTakeOffLabel)
 
   const backdropUrl = buildBackdropUrl(item.backdropPath)
   const posterUrl = buildPosterUrl(item.posterPath)
@@ -135,9 +149,15 @@ export function ResultModal({
           >
             Spin again
           </button>
-          <button type="button" className="action-button" onClick={onTakeOff}>
-            Take it off the wheel
-          </button>
+          {canRemoveFromWheel ? (
+            <button type="button" className="action-button" onClick={onTakeOff}>
+              {takeOffLabel}
+            </button>
+          ) : (
+            <button type="button" className="action-button" onClick={onReshuffle}>
+              Reshuffle
+            </button>
+          )}
           <p className="reroll-status">
             {canReroll
               ? `${rerollsRemaining} reroll${rerollsRemaining === 1 ? '' : 's'} remaining`

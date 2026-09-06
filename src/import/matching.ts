@@ -21,11 +21,14 @@ export interface Candidate {
 }
 
 export type MatchOutcome =
-  | { status: 'reused'; filmId: number }
+  | { status: 'reused'; filmId: string }
   | { status: 'matched'; film: NormalizedFilm }
   | { status: 'unmatched'; candidates: Candidate[] }
 
-async function findExistingFilm(title: string, year: number): Promise<{ id: number } | null> {
+// Keyed off the composite id already: two rows can share title+year only if
+// they're genuinely different films, since films.id itself disambiguates
+// movie vs tv (see buildFilmId) — this check doesn't need to know which.
+async function findExistingFilm(title: string, year: number): Promise<{ id: string } | null> {
   const { data } = await supabase
     .from('films')
     .select('id')

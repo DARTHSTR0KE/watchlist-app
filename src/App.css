@@ -211,6 +211,12 @@
   color: #9a9aa2;
 }
 
+.wheel-remaining-count {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #9a9aa2;
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;

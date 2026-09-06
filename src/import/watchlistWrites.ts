@@ -33,15 +33,15 @@ export async function hasWatchlistItems(userId: string): Promise<boolean> {
 }
 
 export interface WatchlistDiff {
-  newFilmIds: Set<number>
-  missingItems: { watchlistItemId: string; filmId: number; title: string; posterPath: string | null }[]
+  newFilmIds: Set<string>
+  missingItems: { watchlistItemId: string; filmId: string; title: string; posterPath: string | null }[]
   unchangedCount: number
 }
 
 // Compares the CSV's film set against this user's existing letterboxd-
 // sourced watchlist_items. Manual-source items are never inspected here —
 // they're not the file's business, per spec.
-export async function computeWatchlistDiff(userId: string, csvFilmIds: Set<number>): Promise<WatchlistDiff> {
+export async function computeWatchlistDiff(userId: string, csvFilmIds: Set<string>): Promise<WatchlistDiff> {
   const { data, error } = await supabase
     .from('watchlist_items')
     .select('id, film_id, source, films(title, poster_path)')
@@ -66,7 +66,7 @@ export async function computeWatchlistDiff(userId: string, csvFilmIds: Set<numbe
 }
 
 export interface WatchlistCsvEntry {
-  filmId: number
+  filmId: string
   addedAt: string
   letterboxdUri: string | null
 }
@@ -79,13 +79,12 @@ export async function insertNewWatchlistItems(userId: string, entries: Watchlist
     source: 'letterboxd',
     letterboxd_uri: entry.letterboxdUri,
     added_at: entry.addedAt,
-    on_wheel: true,
   }))
   const { error } = await supabase.from('watchlist_items').insert(rows)
   if (error) throw error
 }
 
-export async function markMissingAsWatched(userId: string, watchlistItemIds: string[], filmIds: number[]): Promise<void> {
+export async function markMissingAsWatched(userId: string, watchlistItemIds: string[], filmIds: string[]): Promise<void> {
   if (filmIds.length === 0) return
   const watchedRows = filmIds.map((filmId) => ({ user_id: userId, film_id: filmId, source: 'letterboxd' }))
   const { error: watchedError } = await supabase
@@ -110,7 +109,7 @@ export async function keepMissingItemsManually(watchlistItemIds: string[]): Prom
 }
 
 export interface WatchedCsvEntry {
-  filmId: number
+  filmId: string
   rating: number | null
   watchedOn: string | null
 }
@@ -124,7 +123,7 @@ export async function upsertWatchedEntries(userId: string, entries: WatchedCsvEn
   if (entries.length === 0) return
 
   const filmIds = entries.map((entry) => entry.filmId)
-  const nonLetterboxdFilmIds = new Set<number>()
+  const nonLetterboxdFilmIds = new Set<string>()
 
   for (let i = 0; i < filmIds.length; i += WATCHED_BATCH_SIZE) {
     const idBatch = filmIds.slice(i, i + WATCHED_BATCH_SIZE)
@@ -182,7 +181,7 @@ export async function getLastImportDate(userId: string): Promise<string | null> 
 
 export interface WatchlistGridItem {
   itemId: string
-  filmId: number
+  filmId: string
   title: string
   posterPath: string | null
   addedAt: string | null
@@ -211,7 +210,6 @@ export async function addManualWatchlistItem(userId: string, film: NormalizedFil
     film_id: film.id,
     source: 'manual',
     added_at: new Date().toISOString(),
-    on_wheel: true,
   })
   if (error) {
     if (error.code === '23505') return { error: 'Already on your watchlist.' }

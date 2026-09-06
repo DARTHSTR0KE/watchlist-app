@@ -29,7 +29,7 @@ export interface Database {
       }
       films: {
         Row: {
-          id: number
+          id: string
           media_type: 'movie' | 'tv'
           title: string
           year: number | null
@@ -46,7 +46,7 @@ export interface Database {
           enriched_at: string | null
         }
         Insert: {
-          id: number
+          id: string
           media_type: 'movie' | 'tv'
           title: string
           year?: number | null
@@ -63,7 +63,7 @@ export interface Database {
           enriched_at?: string | null
         }
         Update: {
-          id?: number
+          id?: string
           media_type?: 'movie' | 'tv'
           title?: string
           year?: number | null
@@ -85,29 +85,26 @@ export interface Database {
         Row: {
           id: string
           user_id: string
-          film_id: number
+          film_id: string
           source: string
           letterboxd_uri: string | null
           added_at: string | null
-          on_wheel: boolean
         }
         Insert: {
           id?: string
           user_id: string
-          film_id: number
+          film_id: string
           source?: string
           letterboxd_uri?: string | null
           added_at?: string | null
-          on_wheel?: boolean
         }
         Update: {
           id?: string
           user_id?: string
-          film_id?: number
+          film_id?: string
           source?: string
           letterboxd_uri?: string | null
           added_at?: string | null
-          on_wheel?: boolean
         }
         Relationships: [
           {
@@ -124,7 +121,7 @@ export interface Database {
           id: string
           from_user: string
           to_user: string
-          film_id: number
+          film_id: string
           note: string | null
           status: 'queued' | 'passed' | 'watched'
           seen: boolean
@@ -135,7 +132,7 @@ export interface Database {
           id?: string
           from_user: string
           to_user: string
-          film_id: number
+          film_id: string
           note?: string | null
           status?: 'queued' | 'passed' | 'watched'
           seen?: boolean
@@ -146,7 +143,7 @@ export interface Database {
           id?: string
           from_user?: string
           to_user?: string
-          film_id?: number
+          film_id?: string
           note?: string | null
           status?: 'queued' | 'passed' | 'watched'
           seen?: boolean
@@ -166,19 +163,19 @@ export interface Database {
       shared_list_items: {
         Row: {
           id: string
-          film_id: number
+          film_id: string
           added_by: string
           added_at: string | null
         }
         Insert: {
           id?: string
-          film_id: number
+          film_id: string
           added_by: string
           added_at?: string | null
         }
         Update: {
           id?: string
-          film_id?: number
+          film_id?: string
           added_by?: string
           added_at?: string | null
         }
@@ -196,7 +193,7 @@ export interface Database {
         Row: {
           id: string
           user_id: string
-          film_id: number | null
+          film_id: string | null
           filters: Json | null
           outcome: 'watched' | 'rerolled' | 'removed' | 'abandoned' | null
           created_at: string | null
@@ -204,7 +201,7 @@ export interface Database {
         Insert: {
           id?: string
           user_id: string
-          film_id?: number | null
+          film_id?: string | null
           filters?: Json | null
           outcome?: 'watched' | 'rerolled' | 'removed' | 'abandoned' | null
           created_at?: string | null
@@ -212,7 +209,7 @@ export interface Database {
         Update: {
           id?: string
           user_id?: string
-          film_id?: number | null
+          film_id?: string | null
           filters?: Json | null
           outcome?: 'watched' | 'rerolled' | 'removed' | 'abandoned' | null
           created_at?: string | null
@@ -231,7 +228,7 @@ export interface Database {
         Row: {
           id: string
           user_id: string
-          film_id: number
+          film_id: string
           rating: number | null
           watched_on: string | null
           together: boolean
@@ -241,7 +238,7 @@ export interface Database {
         Insert: {
           id?: string
           user_id: string
-          film_id: number
+          film_id: string
           rating?: number | null
           watched_on?: string | null
           together?: boolean
@@ -251,7 +248,7 @@ export interface Database {
         Update: {
           id?: string
           user_id?: string
-          film_id?: number
+          film_id?: string
           rating?: number | null
           watched_on?: string | null
           together?: boolean

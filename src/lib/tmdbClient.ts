@@ -116,8 +116,15 @@ export function yearFromDate(date: string | null | undefined): number | null {
   return Number.isNaN(year) ? null : year
 }
 
+// films.id is composite ("movie:550" / "tv:1399") because TMDB numbers
+// movies and TV separately — a bare numeric id would let a movie and a
+// show collide on the same row.
+export function buildFilmId(mediaType: 'movie' | 'tv', tmdbId: number): string {
+  return `${mediaType}:${tmdbId}`
+}
+
 export interface NormalizedFilm {
-  id: number
+  id: string
   media_type: 'movie' | 'tv'
   title: string
   year: number | null
@@ -133,7 +140,7 @@ export interface NormalizedFilm {
 
 export function normalizeMovieDetails(details: TmdbMovieDetails): NormalizedFilm {
   return {
-    id: details.id,
+    id: buildFilmId('movie', details.id),
     media_type: 'movie',
     title: details.title,
     year: yearFromDate(details.release_date),
@@ -150,7 +157,7 @@ export function normalizeMovieDetails(details: TmdbMovieDetails): NormalizedFilm
 
 export function normalizeTvDetails(details: TmdbTvDetails): NormalizedFilm {
   return {
-    id: details.id,
+    id: buildFilmId('tv', details.id),
     media_type: 'tv',
     title: details.name,
     year: yearFromDate(details.first_air_date),

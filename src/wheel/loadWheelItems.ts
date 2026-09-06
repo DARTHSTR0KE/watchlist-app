@@ -1,12 +1,13 @@
 import { supabase } from '../lib/supabaseClient'
 import type { WheelItem } from './titles'
 
+// Loads every watchlist item for the wheel — no on_wheel filter, since
+// removal is now session-only (in-memory) and never persisted.
 export async function loadWheelItems(userId: string): Promise<WheelItem[]> {
   const { data, error } = await supabase
     .from('watchlist_items')
     .select('film_id, films(title, poster_path, backdrop_path, year, runtime, genres, vote_average, overview)')
     .eq('user_id', userId)
-    .eq('on_wheel', true)
   if (error) throw error
 
   return (data ?? [])
@@ -14,7 +15,7 @@ export async function loadWheelItems(userId: string): Promise<WheelItem[]> {
     .map((row) => {
       const film = row.films!
       return {
-        id: String(row.film_id),
+        id: row.film_id,
         title: film.title,
         posterPath: film.poster_path,
         backdropPath: film.backdrop_path,
@@ -25,13 +26,4 @@ export async function loadWheelItems(userId: string): Promise<WheelItem[]> {
         synopsis: film.overview ?? '',
       } satisfies WheelItem
     })
-}
-
-export async function setOnWheel(userId: string, filmId: number, onWheel: boolean): Promise<void> {
-  const { error } = await supabase
-    .from('watchlist_items')
-    .update({ on_wheel: onWheel })
-    .eq('user_id', userId)
-    .eq('film_id', filmId)
-  if (error) throw error
 }
