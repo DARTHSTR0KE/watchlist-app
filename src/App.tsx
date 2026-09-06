@@ -2,13 +2,17 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
 import { SpinWheel } from './wheel/SpinWheel'
 import { ResultModal } from './wheel/ResultModal'
-import { INITIAL_TITLES } from './wheel/titles'
 import type { WheelItem } from './wheel/titles'
 import { getSegmentIndexAtPointer } from './wheel/wheelMath'
 import { usePosterImages } from './wheel/usePosterImages'
+import { loadWheelItems, setOnWheel } from './wheel/loadWheelItems'
 import { AuthProvider, useAuth } from './auth/AuthProvider'
 import { SignInScreen } from './auth/SignInScreen'
 import { Header } from './auth/Header'
+import { EnrichmentProvider } from './import/EnrichmentContext'
+import { ImportScreen } from './import/ImportScreen'
+import { hasWatchlistItems } from './import/watchlistWrites'
+import { Footer } from './Footer'
 
 const MAX_REROLLS = 2
 const SPIN_DURATION_MS = 4000
@@ -30,15 +34,34 @@ function usePrefersReducedMotion(): boolean {
 }
 
 function WheelScreen() {
-  const [items, setItems] = useState<WheelItem[]>(INITIAL_TITLES)
+  const { session } = useAuth()
+  const userId = session?.user.id ?? ''
+
+  const [masterItems, setMasterItems] = useState<WheelItem[]>([])
+  const [items, setItems] = useState<WheelItem[]>([])
+  const [loadingItems, setLoadingItems] = useState(true)
   const [rotation, setRotation] = useState(0)
   const [spinning, setSpinning] = useState(false)
   const [result, setResult] = useState<WheelItem | null>(null)
   const [rerollsUsed, setRerollsUsed] = useState(0)
   const reduceMotion = usePrefersReducedMotion()
+
+  useEffect(() => {
+    let cancelled = false
+    loadWheelItems(userId).then((loaded) => {
+      if (cancelled) return
+      setMasterItems(loaded)
+      setItems(loaded)
+      setLoadingItems(false)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [userId])
+
   // Preloaded against the fixed master list, not the mutable `items` state,
   // so removing a title later never re-triggers a loading gate.
-  const { statuses: imageStatuses, allSettled: postersReady } = usePosterImages(INITIAL_TITLES)
+  const { statuses: imageStatuses, allSettled: postersReady } = usePosterImages(masterItems)
 
   const pendingResultRef = useRef<WheelItem | null>(null)
   const fallbackTimerRef = useRef<number | undefined>(undefined)
@@ -91,12 +114,16 @@ function WheelScreen() {
   const handleDismiss = resetToIdle
 
   const handleTakeOff = () => {
-    setItems((current) => current.filter((item) => item.id !== result?.id))
+    const removedId = result?.id
+    setItems((current) => current.filter((item) => item.id !== removedId))
     setResult(null)
     setRerollsUsed(0)
+    if (removedId) void setOnWheel(userId, Number(removedId), false)
   }
 
   const rerollsRemaining = MAX_REROLLS - rerollsUsed
+
+  if (loadingItems) return null
 
   return (
     <div className="app">
@@ -139,6 +166,37 @@ function WheelScreen() {
   )
 }
 
+function AuthenticatedApp() {
+  const { session } = useAuth()
+  const userId = session?.user.id ?? ''
+  const [screen, setScreen] = useState<'wheel' | 'import'>('wheel')
+  const [checkingWatchlist, setCheckingWatchlist] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    hasWatchlistItems(userId).then((has) => {
+      if (cancelled) return
+      if (!has) setScreen('import')
+      setCheckingWatchlist(false)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [userId])
+
+  if (checkingWatchlist) return null
+
+  return (
+    <EnrichmentProvider>
+      <div className="app-shell">
+        <Header screen={screen} onToggleScreen={() => setScreen((s) => (s === 'wheel' ? 'import' : 'wheel'))} />
+        {screen === 'wheel' ? <WheelScreen /> : <ImportScreen onGoToWheel={() => setScreen('wheel')} />}
+        <Footer />
+      </div>
+    </EnrichmentProvider>
+  )
+}
+
 function Gate() {
   const { session, loading } = useAuth()
 
@@ -148,12 +206,7 @@ function Gate() {
 
   if (!session) return <SignInScreen />
 
-  return (
-    <div className="app-shell">
-      <Header />
-      <WheelScreen />
-    </div>
-  )
+  return <AuthenticatedApp />
 }
 
 function App() {
