@@ -90,7 +90,11 @@ function WheelScreen() {
 
       setResult(null)
       setSpinning(true)
-      setRerollsUsed((used) => (isReroll ? used + 1 : 0))
+      // A plain spin never touches the reroll budget — only a reroll spends
+      // it, and only "Watch this" resets it. This is the sole reset trigger
+      // (see handleWatchThis below); spin() deciding the budget here, on
+      // every non-reroll call, was the bug.
+      if (isReroll) setRerollsUsed((used) => used + 1)
       setRotation(nextRotation)
 
       window.clearTimeout(fallbackTimerRef.current)
@@ -103,16 +107,18 @@ function WheelScreen() {
     [spinning, items, rerollsUsed, rotation, reduceMotion, finishSpin, postersReady],
   )
 
-  // Shared by "Watch this" and dismissing the modal (tap-outside or swipe
-  // down) — both just return to an idle wheel ready for a fresh cycle.
-  // Dismissing never touches rerollsUsed, so it never consumes a reroll.
-  const resetToIdle = () => {
+  // The only reset trigger: committing to a film ends the round, so the
+  // next one starts with a fresh budget.
+  const handleWatchThis = () => {
     setResult(null)
     setRerollsUsed(0)
   }
 
-  const handleWatchThis = resetToIdle
-  const handleDismiss = resetToIdle
+  // Dismissing (tap-outside or swipe down) just returns to idle — it
+  // doesn't commit to anything, so it neither spends nor resets the budget.
+  const handleDismiss = () => {
+    setResult(null)
+  }
 
   // Session-only: removals live in React state alone and reset on reload.
   // The wheel shrinks by one segment rather than backfilling a replacement,
@@ -128,10 +134,11 @@ function WheelScreen() {
     setResult(null)
   }
 
+  // Restores the full pool at the floor — doesn't spend or reset the
+  // reroll budget either, same as Not today.
   const handleReshuffle = () => {
     setItems(masterItems)
     setResult(null)
-    setRerollsUsed(0)
   }
 
   const rerollsRemaining = MAX_REROLLS - rerollsUsed
