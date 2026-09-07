@@ -277,12 +277,18 @@
   display: flex;
   align-items: center;
   gap: 0.9rem;
+  /* Its own backing, like the header and footer bars, so the row holds
+     contrast over a bright film backdrop. */
+  padding: 0.3rem 0.5rem 0.3rem 0.85rem;
+  border-radius: 999px;
+  background-color: rgba(10, 12, 22, 0.55);
 }
 
 .wheel-remaining-count {
   margin: 0;
   font-size: 0.85rem;
-  color: #9a9aa2;
+  /* Was #9a9aa2, which measured about 2.8:1 against a bright backdrop. */
+  color: #d8d8dc;
 }
 
 .mute-toggle {

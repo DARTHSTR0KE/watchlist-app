@@ -6,7 +6,7 @@ import type { WheelItem } from './wheel/titles'
 import { getSegmentIndexAtPointer } from './wheel/wheelMath'
 import { usePosterImages } from './wheel/usePosterImages'
 import { loadWheelItems } from './wheel/loadWheelItems'
-import { useMuted } from './wheel/tickSound'
+import { ensureAudioContext, playTick, useMuted } from './wheel/tickSound'
 import { FilmBackdrop } from './wheel/FilmBackdrop'
 import { AuthProvider, useAuth } from './auth/AuthProvider'
 import { SignInScreen } from './auth/SignInScreen'
@@ -83,6 +83,10 @@ function WheelScreen() {
 
   const spin = useCallback(
     (isReroll: boolean) => {
+      // Every spin routes through here — the hub and "Spin again" alike — so
+      // this is the one place that reliably sits inside the starting tap.
+      void ensureAudioContext()
+
       if (spinning || items.length === 0 || !postersReady) return
       if (isReroll && rerollsUsed >= MAX_REROLLS) return
 
@@ -137,6 +141,17 @@ function WheelScreen() {
     setResult(null)
   }
 
+  // Unmuting plays one tick straight away, so the sound can be confirmed
+  // without spinning. Awaits the context so it isn't lost to a pending
+  // resume on the very first interaction of a session.
+  const handleToggleMute = () => {
+    const wasMuted = muted
+    toggleMuted()
+    if (wasMuted) {
+      void ensureAudioContext().then(playTick)
+    }
+  }
+
   // Restores the full pool at the floor — doesn't spend or reset the
   // reroll budget either, same as Not today.
   const handleReshuffle = () => {
@@ -184,7 +199,7 @@ function WheelScreen() {
           <p className="wheel-remaining-count">
             {items.length} title{items.length === 1 ? '' : 's'} on the wheel
           </p>
-          <button type="button" className="mute-toggle" onClick={toggleMuted}>
+          <button type="button" className="mute-toggle" onClick={handleToggleMute}>
             {muted ? 'Unmute' : 'Mute'}
           </button>
         </div>

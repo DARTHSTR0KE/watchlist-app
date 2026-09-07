@@ -9,7 +9,7 @@ import {
 import { truncateToWidth } from '../utils/truncateText'
 import { buildPosterUrl } from './posters'
 import type { ImageStatus } from './usePosterImages'
-import { ensureAudioContext, playTick } from './tickSound'
+import { playTick } from './tickSound'
 
 interface SpinWheelProps {
   items: WheelItem[]
@@ -367,11 +367,7 @@ export function SpinWheel({
         type="button"
         className="wheel-hub-button"
         style={{ width: `${(HUB_RADIUS * 2 * 100) / SIZE}%`, height: `${(HUB_RADIUS * 2 * 100) / SIZE}%` }}
-        onClick={() => {
-          // Created here, inside the tap, so it isn't born suspended.
-          ensureAudioContext()
-          onSpin()
-        }}
+        onClick={onSpin}
         disabled={spinDisabled}
         aria-label="Spin the wheel"
       >
