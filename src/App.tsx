@@ -117,14 +117,15 @@ function WheelScreen() {
   // Session-only: removals live in React state alone and reset on reload.
   // The wheel shrinks by one segment rather than backfilling a replacement,
   // and never drops below MIN_WHEEL_SEGMENTS — below that the result modal
-  // offers "Reshuffle" instead.
+  // offers "Reshuffle" instead. This has its own limit (the floor) and is a
+  // separate mechanic from rerolls, so it must never touch rerollsUsed —
+  // spending or resetting the reroll budget here was the bug.
   const handleTakeOff = () => {
     const removedId = result?.id
     setItems((current) =>
       current.length > MIN_WHEEL_SEGMENTS ? current.filter((item) => item.id !== removedId) : current,
     )
     setResult(null)
-    setRerollsUsed(0)
   }
 
   const handleReshuffle = () => {
@@ -135,6 +136,7 @@ function WheelScreen() {
 
   const rerollsRemaining = MAX_REROLLS - rerollsUsed
   const canRemoveFromWheel = items.length > MIN_WHEEL_SEGMENTS
+  const spinDisabled = spinning || !postersReady || result !== null || items.length === 0
 
   if (loadingItems) return null
 
@@ -148,24 +150,16 @@ function WheelScreen() {
         reduceMotion={reduceMotion}
         imageStatuses={imageStatuses}
         onSpinEnd={finishSpin}
+        onSpin={() => spin(false)}
+        spinDisabled={spinDisabled}
       />
 
       {items.length === 0 ? (
         <p className="empty-state">No titles left on the wheel.</p>
       ) : (
-        <>
-          <button
-            className="spin-button"
-            type="button"
-            onClick={() => spin(false)}
-            disabled={spinning || !postersReady || result !== null}
-          >
-            {!postersReady ? 'Loading posters…' : spinning ? 'Spinning…' : 'Spin'}
-          </button>
-          <p className="wheel-remaining-count">
-            {items.length} title{items.length === 1 ? '' : 's'} on the wheel
-          </p>
-        </>
+        <p className="wheel-remaining-count">
+          {items.length} title{items.length === 1 ? '' : 's'} on the wheel
+        </p>
       )}
 
       {result && (

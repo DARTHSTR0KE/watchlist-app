@@ -142,7 +142,7 @@
 
 .wheel-wrap {
   position: relative;
-  width: min(78vw, 320px);
+  width: min(90vw, 400px);
   flex-shrink: 0;
   aspect-ratio: 1;
 }
@@ -152,6 +152,33 @@
   height: 100%;
   display: block;
   overflow: visible;
+}
+
+.wheel-hub-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: 50%;
+  border: 2px solid #efe6d6;
+  background-color: #f5c451;
+  color: #101014;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  transition: transform 100ms ease-out;
+}
+
+.wheel-hub-button:active:not(:disabled) {
+  transform: translate(-50%, -50%) scale(0.95);
+}
+
+.wheel-hub-button:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .spin-button {

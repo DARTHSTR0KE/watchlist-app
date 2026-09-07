@@ -16,6 +16,8 @@ interface SpinWheelProps {
   reduceMotion: boolean
   imageStatuses: Record<string, ImageStatus>
   onSpinEnd: () => void
+  onSpin: () => void
+  spinDisabled: boolean
 }
 
 const SIZE = 320
@@ -34,11 +36,10 @@ const LABEL_RADIUS = WEDGE_INNER + (WEDGE_OUTER - WEDGE_INNER) * 0.55
 const FONT_SIZE = 13
 const LABEL_FONT = `600 ${FONT_SIZE}px system-ui, -apple-system, "Segoe UI", sans-serif`
 
+const STRUCTURE_COLOR = '#EFE6D6'
 const DIVIDER_WIDTH = 5
-const DIVIDER_COLOR = '#08080b'
+const DIVIDER_COLOR = STRUCTURE_COLOR
 const BEZEL_COLOR = '#0e0e12'
-const HUB_FILL = '#101014'
-const HUB_STROKE = '#3a3a42'
 const FLAPPER_FILL = '#0e0e12'
 const FLAPPER_STROKE = '#f5c451'
 
@@ -104,6 +105,8 @@ export function SpinWheel({
   reduceMotion,
   imageStatuses,
   onSpinEnd,
+  onSpin,
+  spinDisabled,
 }: SpinWheelProps) {
   const count = items.length
   const segmentAngle = count > 0 ? 360 / count : 0
@@ -188,8 +191,8 @@ export function SpinWheel({
           cy={CENTER}
           r={BEZEL_OUTER - 1}
           fill="none"
-          stroke="#000000"
-          strokeOpacity={0.4}
+          stroke={STRUCTURE_COLOR}
+          strokeOpacity={0.55}
           strokeWidth={2}
         />
 
@@ -310,27 +313,26 @@ export function SpinWheel({
           style={{ pointerEvents: 'none' }}
         />
 
-        {/* Hub: fixed, sits above the wedges, carries the app name. */}
-        <circle cx={CENTER} cy={CENTER} r={HUB_RADIUS} fill={HUB_FILL} stroke={HUB_STROKE} strokeWidth={2} />
-        <text
-          x={CENTER}
-          y={CENTER}
-          fill="#f5c451"
-          fontSize={14}
-          fontWeight={700}
-          letterSpacing="0.06em"
-          textAnchor="middle"
-          dominantBaseline="middle"
-        >
-          SPIN
-        </text>
-
         {/* Flapper: fixed pivot, deflects per divider via the effect above. */}
         <g ref={flapperRef} style={{ transformOrigin: `${FLAPPER_PIVOT.x}px ${FLAPPER_PIVOT.y}px` }}>
           <polygon points={FLAPPER_POINTS} fill={FLAPPER_FILL} stroke={FLAPPER_STROKE} strokeWidth={1.5} />
           <circle cx={FLAPPER_PIVOT.x} cy={FLAPPER_PIVOT.y} r={4} fill={FLAPPER_FILL} stroke={FLAPPER_STROKE} strokeWidth={1.5} />
         </g>
       </svg>
+
+      {/* Hub doubles as the spin button: a real element (not an SVG shape)
+          so it's a proper tap target, fixed above the wedges since it lives
+          outside the rotating group entirely. */}
+      <button
+        type="button"
+        className="wheel-hub-button"
+        style={{ width: `${(HUB_RADIUS * 2 * 100) / SIZE}%`, height: `${(HUB_RADIUS * 2 * 100) / SIZE}%` }}
+        onClick={onSpin}
+        disabled={spinDisabled}
+        aria-label="Spin the wheel"
+      >
+        SPIN
+      </button>
     </div>
   )
 }
