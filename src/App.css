@@ -238,10 +238,31 @@
   color: #9a9aa2;
 }
 
+.wheel-footer-row {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
 .wheel-remaining-count {
   margin: 0;
   font-size: 0.85rem;
   color: #9a9aa2;
+}
+
+.mute-toggle {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 245, 245, 0.2);
+  background-color: transparent;
+  color: #d8d8dc;
+  cursor: pointer;
+}
+
+.mute-toggle:active {
+  transform: scale(0.97);
 }
 
 .modal-overlay {

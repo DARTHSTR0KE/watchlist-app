@@ -6,6 +6,7 @@ import type { WheelItem } from './wheel/titles'
 import { getSegmentIndexAtPointer } from './wheel/wheelMath'
 import { usePosterImages } from './wheel/usePosterImages'
 import { loadWheelItems } from './wheel/loadWheelItems'
+import { useMuted } from './wheel/tickSound'
 import { AuthProvider, useAuth } from './auth/AuthProvider'
 import { SignInScreen } from './auth/SignInScreen'
 import { Header } from './auth/Header'
@@ -46,6 +47,7 @@ function WheelScreen() {
   const [result, setResult] = useState<WheelItem | null>(null)
   const [rerollsUsed, setRerollsUsed] = useState(0)
   const reduceMotion = usePrefersReducedMotion()
+  const [muted, toggleMuted] = useMuted()
 
   useEffect(() => {
     let cancelled = false
@@ -164,9 +166,14 @@ function WheelScreen() {
       {items.length === 0 ? (
         <p className="empty-state">No titles left on the wheel.</p>
       ) : (
-        <p className="wheel-remaining-count">
-          {items.length} title{items.length === 1 ? '' : 's'} on the wheel
-        </p>
+        <div className="wheel-footer-row">
+          <p className="wheel-remaining-count">
+            {items.length} title{items.length === 1 ? '' : 's'} on the wheel
+          </p>
+          <button type="button" className="mute-toggle" onClick={toggleMuted}>
+            {muted ? 'Unmute' : 'Mute'}
+          </button>
+        </div>
       )}
 
       {result && (

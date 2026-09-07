@@ -9,6 +9,7 @@ import {
 import { truncateToWidth } from '../utils/truncateText'
 import { buildPosterUrl } from './posters'
 import type { ImageStatus } from './usePosterImages'
+import { ensureAudioContext, playTick } from './tickSound'
 
 interface SpinWheelProps {
   items: WheelItem[]
@@ -23,30 +24,47 @@ interface SpinWheelProps {
 const SIZE = 320
 const CENTER = SIZE / 2
 
-// Physical-wheel geometry: a thick outer bezel, a ring of wedges running
-// from an inner radius out to the bezel's inner edge (nothing converges to
-// a point), and a hub capping the middle.
-const BEZEL_OUTER = 156
-const BEZEL_INNER = 136
-const WEDGE_OUTER = BEZEL_INNER
-const WEDGE_INNER = WEDGE_OUTER * 0.25
-const HUB_RADIUS = WEDGE_INNER + 2
+// "Bezel with pegs": a solid off-white band rings the wheel from 82% of the
+// radius out to 100%, carrying a dark peg at every divider angle. The wedges
+// run from 31% to 82%, flush against the band's inner edge, and a hub caps
+// the middle. Band, wedges and pegs all rotate together — only the flapper
+// and the hub stay fixed.
+const OUTER_RADIUS = 156
+const BAND_INNER_RADIUS = OUTER_RADIUS * 0.82
+const WEDGE_OUTER_RADIUS = BAND_INNER_RADIUS
+const WEDGE_INNER_RADIUS = OUTER_RADIUS * 0.31
+const HUB_RADIUS = WEDGE_INNER_RADIUS + 2
+const PEG_RING_RADIUS = (BAND_INNER_RADIUS + OUTER_RADIUS) / 2
+const BAND_HAIRLINE_RADIUS = OUTER_RADIUS * 0.97
 
-const LABEL_RADIUS = WEDGE_INNER + (WEDGE_OUTER - WEDGE_INNER) * 0.55
+const LABEL_RADIUS = WEDGE_INNER_RADIUS + (WEDGE_OUTER_RADIUS - WEDGE_INNER_RADIUS) * 0.55
 const FONT_SIZE = 13
 const LABEL_FONT = `600 ${FONT_SIZE}px system-ui, -apple-system, "Segoe UI", sans-serif`
 
 const STRUCTURE_COLOR = '#EFE6D6'
-const DIVIDER_WIDTH = 5
-const DIVIDER_COLOR = STRUCTURE_COLOR
-const BEZEL_COLOR = '#0e0e12'
+const PEG_COLOR = '#0b0b0e'
 const FLAPPER_FILL = '#0e0e12'
 const FLAPPER_STROKE = '#f5c451'
 
-// The flapper pivots at the top of the bezel and its tip overlaps a little
-// into the wedge ring, so it visibly rides over whatever's spinning under it.
-const FLAPPER_PIVOT = { x: CENTER, y: CENTER - BEZEL_OUTER }
-const FLAPPER_TIP_Y = FLAPPER_PIVOT.y + (BEZEL_OUTER - (WEDGE_OUTER - 14))
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max)
+}
+
+// The divider is an angular gap between wedges rather than a fixed-width
+// line, so it thins as the wheel fills up instead of swallowing the posters.
+function gapDegreesFor(count: number): number {
+  return clamp(20 / count, 0.9, 2.6)
+}
+
+// ~2px at 8 segments, shrinking as the count climbs.
+function pegRadiusFor(count: number): number {
+  return clamp(16 / count, 0.75, 2)
+}
+
+// The flapper pivots at the wheel's outer edge and reaches down to the middle
+// of the band, so its tip sits exactly where the pegs pass under it.
+const FLAPPER_PIVOT = { x: CENTER, y: CENTER - OUTER_RADIUS }
+const FLAPPER_TIP_Y = FLAPPER_PIVOT.y + (OUTER_RADIUS - PEG_RING_RADIUS)
 const FLAPPER_HALF_WIDTH = 10
 const FLAPPER_POINTS = `${FLAPPER_PIVOT.x - FLAPPER_HALF_WIDTH},${FLAPPER_PIVOT.y} ${
   FLAPPER_PIVOT.x + FLAPPER_HALF_WIDTH
@@ -110,6 +128,8 @@ export function SpinWheel({
 }: SpinWheelProps) {
   const count = items.length
   const segmentAngle = count > 0 ? 360 / count : 0
+  const halfGap = gapDegreesFor(count || 1) / 2
+  const pegRadius = pegRadiusFor(count || 1)
 
   const flapperRef = useRef<SVGGElement>(null)
   // Tracks the rotation the wheel was AT before the current `rotation` prop
@@ -117,11 +137,13 @@ export function SpinWheel({
   // the range the easing curve is interpolating across.
   const previousRotationRef = useRef(0)
 
-  // Drives the flapper's per-divider deflection + tick vibration by predicting
-  // the wheel's progress through the same cubic-bezier curve as the CSS
-  // transition, from elapsed time alone — not by reading the live rendered
-  // transform back out, which proved unreliable. Purely cosmetic/haptic: it
-  // never touches the spin state machine in App.tsx.
+  // Drives the flapper's per-divider deflection, the tick sound and the tick
+  // vibration by predicting the wheel's progress through the same
+  // cubic-bezier curve as the CSS transition, from elapsed time alone — not
+  // by reading the live rendered transform back out, which proved
+  // unreliable. All three fire off the same peg-crossing event so they stay
+  // in sync as the wheel slows. Purely cosmetic/haptic: it never touches the
+  // spin state machine in App.tsx.
   useEffect(() => {
     const startRotation = previousRotationRef.current
     const endRotation = rotation
@@ -145,6 +167,7 @@ export function SpinWheel({
       if (currentDividerCount > lastDividerCount) {
         lastDividerCount = currentDividerCount
         deflectFlapper(flapper)
+        playTick()
       }
 
       if (tFraction < 1) rafId = requestAnimationFrame(step)
@@ -168,14 +191,17 @@ export function SpinWheel({
             <stop offset="60%" stopColor="#000000" stopOpacity="0.35" />
             <stop offset="100%" stopColor="#000000" stopOpacity="0.78" />
           </radialGradient>
-          <radialGradient id="wedge-recess" cx="50%" cy="50%" r="50%">
-            <stop offset="80%" stopColor="#000000" stopOpacity="0" />
-            <stop offset="100%" stopColor="#000000" stopOpacity="0.55" />
-          </radialGradient>
           {items.map((item, i) => {
-            const start = i * segmentAngle
-            const end = start + segmentAngle
-            const path = describeRingSlicePath(CENTER, CENTER, WEDGE_INNER, WEDGE_OUTER, start, end)
+            const start = i * segmentAngle + halfGap
+            const end = (i + 1) * segmentAngle - halfGap
+            const path = describeRingSlicePath(
+              CENTER,
+              CENTER,
+              WEDGE_INNER_RADIUS,
+              WEDGE_OUTER_RADIUS,
+              start,
+              end,
+            )
             return (
               <clipPath id={`wedge-clip-${item.id}`} key={item.id}>
                 <path d={path} />
@@ -183,18 +209,6 @@ export function SpinWheel({
             )
           })}
         </defs>
-
-        {/* Bezel: a thick, flat, dark ring the wedges sit inside. */}
-        <circle cx={CENTER} cy={CENTER} r={BEZEL_OUTER} fill={BEZEL_COLOR} />
-        <circle
-          cx={CENTER}
-          cy={CENTER}
-          r={BEZEL_OUTER - 1}
-          fill="none"
-          stroke={STRUCTURE_COLOR}
-          strokeOpacity={0.55}
-          strokeWidth={2}
-        />
 
         <g
           style={{
@@ -206,11 +220,35 @@ export function SpinWheel({
             if (event.propertyName === 'transform') onSpinEnd()
           }}
         >
+          {/* The band: a solid off-white disc whose outer 18% is all that
+              stays visible once the wedge backing paints over the middle. */}
+          <circle cx={CENTER} cy={CENTER} r={OUTER_RADIUS} fill={STRUCTURE_COLOR} />
+          <circle
+            cx={CENTER}
+            cy={CENTER}
+            r={BAND_HAIRLINE_RADIUS}
+            fill="none"
+            stroke={PEG_COLOR}
+            strokeOpacity={0.25}
+            strokeWidth={1.5}
+          />
+
+          {/* Backing under the wedges, in the same off-white — this is what
+              shows through the angular gaps between them. */}
+          <circle cx={CENTER} cy={CENTER} r={WEDGE_OUTER_RADIUS} fill={STRUCTURE_COLOR} />
+
           {items.map((item, i) => {
-            const start = i * segmentAngle
-            const end = start + segmentAngle
-            const mid = start + segmentAngle / 2
-            const path = describeRingSlicePath(CENTER, CENTER, WEDGE_INNER, WEDGE_OUTER, start, end)
+            const start = i * segmentAngle + halfGap
+            const end = (i + 1) * segmentAngle - halfGap
+            const mid = i * segmentAngle + segmentAngle / 2
+            const path = describeRingSlicePath(
+              CENTER,
+              CENTER,
+              WEDGE_INNER_RADIUS,
+              WEDGE_OUTER_RADIUS,
+              start,
+              end,
+            )
             const labelPos = polarToCartesian(CENTER, CENTER, LABEL_RADIUS, mid)
             const maxLabelWidth =
               2 * LABEL_RADIUS * Math.sin((segmentAngle / 2) * (Math.PI / 180)) * 0.82
@@ -227,25 +265,25 @@ export function SpinWheel({
             // mid-angle — always inside the wedge, which is where the
             // poster's own middle gets pinned. The box is sized so it fully
             // covers the wedge (inner to outer corners) at any segment count.
-            const centroidRadius = (WEDGE_INNER + WEDGE_OUTER) / 2
+            const centroidRadius = (WEDGE_INNER_RADIUS + WEDGE_OUTER_RADIUS) / 2
             const centroid = polarToCartesian(CENTER, CENTER, centroidRadius, mid)
             const halfSegRad = ((segmentAngle / 2) * Math.PI) / 180
             const outerCornerDistance = Math.sqrt(
-              WEDGE_OUTER * WEDGE_OUTER +
+              WEDGE_OUTER_RADIUS * WEDGE_OUTER_RADIUS +
                 centroidRadius * centroidRadius -
-                2 * WEDGE_OUTER * centroidRadius * Math.cos(halfSegRad),
+                2 * WEDGE_OUTER_RADIUS * centroidRadius * Math.cos(halfSegRad),
             )
             const innerCornerDistance = Math.sqrt(
-              WEDGE_INNER * WEDGE_INNER +
+              WEDGE_INNER_RADIUS * WEDGE_INNER_RADIUS +
                 centroidRadius * centroidRadius -
-                2 * WEDGE_INNER * centroidRadius * Math.cos(halfSegRad),
+                2 * WEDGE_INNER_RADIUS * centroidRadius * Math.cos(halfSegRad),
             )
             const coverHalfSize = Math.max(outerCornerDistance, innerCornerDistance) * 1.08
             const clipUrl = `url(#wedge-clip-${item.id})`
 
             return (
               <g key={item.id}>
-                <path d={path} fill={fill} stroke="#0b0b0e" strokeWidth={1} />
+                <path d={path} fill={fill} />
                 {showPoster && (
                   <>
                     <image
@@ -283,37 +321,16 @@ export function SpinWheel({
             )
           })}
 
-          {/* Dividers on top of every wedge's poster/scrim, so each panel
-              reads as separate rather than bleeding into its neighbour. */}
+          {/* Pegs: one per divider angle, centred in the band, where the
+              flapper strikes as the wheel turns. */}
           {items.map((_, i) => {
             const angle = i * segmentAngle
-            const innerPt = polarToCartesian(CENTER, CENTER, WEDGE_INNER, angle)
-            const outerPt = polarToCartesian(CENTER, CENTER, WEDGE_OUTER, angle)
-            return (
-              <line
-                key={`divider-${angle}`}
-                x1={innerPt.x}
-                y1={innerPt.y}
-                x2={outerPt.x}
-                y2={outerPt.y}
-                stroke={DIVIDER_COLOR}
-                strokeWidth={DIVIDER_WIDTH}
-                strokeLinecap="round"
-              />
-            )
+            const pos = polarToCartesian(CENTER, CENTER, PEG_RING_RADIUS, angle)
+            return <circle key={`peg-${angle}`} cx={pos.x} cy={pos.y} r={pegRadius} fill={PEG_COLOR} />
           })}
         </g>
 
-        {/* Static shadow ring: makes the wedges look recessed under the bezel. */}
-        <circle
-          cx={CENTER}
-          cy={CENTER}
-          r={WEDGE_OUTER}
-          fill="url(#wedge-recess)"
-          style={{ pointerEvents: 'none' }}
-        />
-
-        {/* Flapper: fixed pivot, deflects per divider via the effect above. */}
+        {/* Flapper: fixed pivot, deflects per peg via the effect above. */}
         <g ref={flapperRef} style={{ transformOrigin: `${FLAPPER_PIVOT.x}px ${FLAPPER_PIVOT.y}px` }}>
           <polygon points={FLAPPER_POINTS} fill={FLAPPER_FILL} stroke={FLAPPER_STROKE} strokeWidth={1.5} />
           <circle cx={FLAPPER_PIVOT.x} cy={FLAPPER_PIVOT.y} r={4} fill={FLAPPER_FILL} stroke={FLAPPER_STROKE} strokeWidth={1.5} />
@@ -327,7 +344,11 @@ export function SpinWheel({
         type="button"
         className="wheel-hub-button"
         style={{ width: `${(HUB_RADIUS * 2 * 100) / SIZE}%`, height: `${(HUB_RADIUS * 2 * 100) / SIZE}%` }}
-        onClick={onSpin}
+        onClick={() => {
+          // Created here, inside the tap, so it isn't born suspended.
+          ensureAudioContext()
+          onSpin()
+        }}
         disabled={spinDisabled}
         aria-label="Spin the wheel"
       >
