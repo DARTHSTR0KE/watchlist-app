@@ -33,7 +33,11 @@ const OUTER_RADIUS = 156
 const BAND_INNER_RADIUS = OUTER_RADIUS * 0.82
 const WEDGE_OUTER_RADIUS = BAND_INNER_RADIUS
 const WEDGE_INNER_RADIUS = OUTER_RADIUS * 0.31
-const HUB_RADIUS = WEDGE_INNER_RADIUS + 2
+const HUB_RADIUS = OUTER_RADIUS * 0.14
+// Amber glow behind the hub, holding it apart from whatever backdrop shows
+// through the wheel's open centre.
+const HUB_HALO_RADIUS = HUB_RADIUS * 1.8
+const HUB_EDGE_OFFSET = `${(HUB_RADIUS / HUB_HALO_RADIUS) * 100}%`
 const PEG_RING_RADIUS = (BAND_INNER_RADIUS + OUTER_RADIUS) / 2
 const BAND_HAIRLINE_RADIUS = OUTER_RADIUS * 0.97
 
@@ -191,6 +195,11 @@ export function SpinWheel({
             <stop offset="60%" stopColor="#000000" stopOpacity="0.35" />
             <stop offset="100%" stopColor="#000000" stopOpacity="0.78" />
           </radialGradient>
+          <radialGradient id="hub-halo" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#f5c451" stopOpacity="0.55" />
+            <stop offset={HUB_EDGE_OFFSET} stopColor="#f5c451" stopOpacity="0.55" />
+            <stop offset="100%" stopColor="#f5c451" stopOpacity="0" />
+          </radialGradient>
           {items.map((item, i) => {
             const start = i * segmentAngle + halfGap
             const end = (i + 1) * segmentAngle - halfGap
@@ -220,9 +229,18 @@ export function SpinWheel({
             if (event.propertyName === 'transform') onSpinEnd()
           }}
         >
-          {/* The band: a solid off-white disc whose outer 18% is all that
-              stays visible once the wedge backing paints over the middle. */}
-          <circle cx={CENTER} cy={CENTER} r={OUTER_RADIUS} fill={STRUCTURE_COLOR} />
+          {/* One off-white ring from the wedges' inner edge to the rim: its
+              outer 18% is the band, and the rest shows through the angular
+              gaps between wedges. Drawn as a ring rather than a disc so the
+              centre stays open to the page backdrop behind the wheel. */}
+          <circle
+            cx={CENTER}
+            cy={CENTER}
+            r={(WEDGE_INNER_RADIUS + OUTER_RADIUS) / 2}
+            fill="none"
+            stroke={STRUCTURE_COLOR}
+            strokeWidth={OUTER_RADIUS - WEDGE_INNER_RADIUS}
+          />
           <circle
             cx={CENTER}
             cy={CENTER}
@@ -232,10 +250,6 @@ export function SpinWheel({
             strokeOpacity={0.25}
             strokeWidth={1.5}
           />
-
-          {/* Backing under the wedges, in the same off-white — this is what
-              shows through the angular gaps between them. */}
-          <circle cx={CENTER} cy={CENTER} r={WEDGE_OUTER_RADIUS} fill={STRUCTURE_COLOR} />
 
           {items.map((item, i) => {
             const start = i * segmentAngle + halfGap
@@ -329,6 +343,15 @@ export function SpinWheel({
             return <circle key={`peg-${angle}`} cx={pos.x} cy={pos.y} r={pegRadius} fill={PEG_COLOR} />
           })}
         </g>
+
+        {/* Halo behind the hub button, which sits over this as real HTML. */}
+        <circle
+          cx={CENTER}
+          cy={CENTER}
+          r={HUB_HALO_RADIUS}
+          fill="url(#hub-halo)"
+          style={{ pointerEvents: 'none' }}
+        />
 
         {/* Flapper: fixed pivot, deflects per peg via the effect above. */}
         <g ref={flapperRef} style={{ transformOrigin: `${FLAPPER_PIVOT.x}px ${FLAPPER_PIVOT.y}px` }}>

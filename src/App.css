@@ -28,6 +28,8 @@
   gap: 1rem;
   padding: 0.85rem 1.25rem;
   padding-top: max(0.85rem, env(safe-area-inset-top));
+  /* Own bar, so the header holds its contrast over any film backdrop. */
+  background-color: rgba(10, 12, 22, 0.55);
   border-bottom: 1px solid rgba(245, 245, 245, 0.1);
 }
 
@@ -142,7 +144,9 @@
 
 .wheel-wrap {
   position: relative;
-  width: min(90vw, 400px);
+  /* The vh term only bites on short viewports, where the wheel would
+     otherwise be clipped rather than shrink. */
+  width: min(96vw, 460px, 58vh);
   flex-shrink: 0;
   aspect-ratio: 1;
 }
@@ -164,9 +168,10 @@
   border: 2px solid #efe6d6;
   background-color: #f5c451;
   color: #101014;
-  font-size: 0.9rem;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   cursor: pointer;
   transform: translate(-50%, -50%);
   transition: transform 100ms ease-out;
@@ -236,6 +241,36 @@
 .empty-state {
   font-size: 1rem;
   color: #9a9aa2;
+}
+
+/* Page backdrop: the current film, blurred past recognition behind
+   everything. Negative z-index puts it above the page's own background but
+   below all content. */
+.film-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.film-backdrop-layer {
+  position: absolute;
+  /* Bled well past the viewport so the blur doesn't feather in at the edges. */
+  inset: -60px;
+  background-size: cover;
+  background-position: center;
+  filter: blur(27px);
+  opacity: 0;
+  transition: opacity 400ms ease-in-out;
+}
+
+.film-backdrop-scrim {
+  position: absolute;
+  inset: 0;
+  /* Not pure black — a faint cool cast pulls warm posters toward the
+     palette without reading as a blue filter. */
+  background-color: rgba(10, 12, 22, 0.62);
 }
 
 .wheel-footer-row {
@@ -850,7 +885,10 @@
   padding: 0.6rem 1.25rem;
   padding-bottom: max(0.6rem, env(safe-area-inset-bottom));
   font-size: 0.68rem;
-  color: #6d6d75;
+  /* Lightened, and backed by its own bar: against a bright film backdrop the
+     old #6d6d75 dropped to roughly 1.5:1 and vanished. */
+  color: #a8a8b0;
+  background-color: rgba(10, 12, 22, 0.55);
   text-align: center;
   border-top: 1px solid rgba(245, 245, 245, 0.08);
 }

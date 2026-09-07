@@ -7,6 +7,7 @@ import { getSegmentIndexAtPointer } from './wheel/wheelMath'
 import { usePosterImages } from './wheel/usePosterImages'
 import { loadWheelItems } from './wheel/loadWheelItems'
 import { useMuted } from './wheel/tickSound'
+import { FilmBackdrop } from './wheel/FilmBackdrop'
 import { AuthProvider, useAuth } from './auth/AuthProvider'
 import { SignInScreen } from './auth/SignInScreen'
 import { Header } from './auth/Header'
@@ -147,10 +148,23 @@ function WheelScreen() {
   const canRemoveFromWheel = items.length > MIN_WHEEL_SEGMENTS
   const spinDisabled = spinning || !postersReady || result !== null || items.length === 0
 
+  // The page backdrop follows whichever film the pointer is resting on —
+  // derived from rotation, so it also follows along when a removal reshapes
+  // the wheel underneath a stationary pointer. It's held while spinning:
+  // rotation jumps to its target the moment a spin starts, and cross-fading
+  // a full-screen image at every peg would stutter.
+  const pointerItem = items[getSegmentIndexAtPointer(rotation, items.length)] ?? null
+  const pointerBackdrop = pointerItem?.backdropPath ?? null
+  const [displayedBackdrop, setDisplayedBackdrop] = useState<string | null>(pointerBackdrop)
+  if (!spinning && displayedBackdrop !== pointerBackdrop) {
+    setDisplayedBackdrop(pointerBackdrop)
+  }
+
   if (loadingItems) return null
 
   return (
     <div className="app">
+      <FilmBackdrop backdropPath={displayedBackdrop} />
       <h1 className="app-title">Spin the Watchlist</h1>
 
       <SpinWheel
