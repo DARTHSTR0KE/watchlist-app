@@ -59,33 +59,45 @@ export async function loadWatchedFilmIds(userId: string): Promise<Set<string>> {
 }
 
 // The same film columns the wheel needs, shared by every source.
-const FILM_COLUMNS =
+export const FILM_COLUMNS =
   'title, poster_path, backdrop_path, year, runtime, genres, vote_average, overview, media_type, original_language, trailer_key, top_cast'
+
+export interface FilmColumns {
+  title: string
+  poster_path: string | null
+  backdrop_path: string | null
+  year: number | null
+  runtime: number | null
+  genres: string[] | null
+  vote_average: number | null
+  overview: string | null
+  media_type: 'movie' | 'tv'
+  original_language: string | null
+  trailer_key: string | null
+  top_cast: unknown
+}
 
 interface WatchedRow {
   film_id: string
   rating: number | null
   watched_on: string | null
-  films: {
-    title: string
-    poster_path: string | null
-    backdrop_path: string | null
-    year: number | null
-    runtime: number | null
-    genres: string[] | null
-    vote_average: number | null
-    overview: string | null
-    media_type: 'movie' | 'tv'
-    original_language: string | null
-    trailer_key: string | null
-    top_cast: unknown
-  } | null
+  films: FilmColumns | null
 }
 
-function toWheelItem(row: WatchedRow, partnerRating: number | null): WheelItem {
-  const film = row.films!
+// The film half of a WheelItem, shared by every source. What differs
+// between them — when it entered the pool, and any ratings — is passed in.
+export function toWheelItemFromFilm(
+  filmId: string,
+  film: FilmColumns,
+  context: {
+    addedAt: string | null
+    watchedOn: string | null
+    myRating: number | null
+    partnerRating: number | null
+  },
+): WheelItem {
   return {
-    id: row.film_id,
+    id: filmId,
     title: film.title,
     posterPath: film.poster_path,
     backdropPath: film.backdrop_path,
@@ -96,15 +108,24 @@ function toWheelItem(row: WatchedRow, partnerRating: number | null): WheelItem {
     synopsis: film.overview ?? '',
     mediaType: film.media_type,
     originalLanguage: film.original_language,
+    addedAt: context.addedAt,
+    trailerKey: film.trailer_key,
+    topCast: toTopCast(film.top_cast),
+    watchedOn: context.watchedOn,
+    myRating: context.myRating,
+    partnerRating: context.partnerRating,
+  }
+}
+
+function toWheelItem(row: WatchedRow, partnerRating: number | null): WheelItem {
+  return toWheelItemFromFilm(row.film_id, row.films!, {
     // Age-weighting works off this, so a watched film's "age" is how long
     // ago it was seen rather than when it joined a list.
     addedAt: row.watched_on,
-    trailerKey: film.trailer_key,
-    topCast: toTopCast(film.top_cast),
     watchedOn: row.watched_on,
     myRating: row.rating,
     partnerRating,
-  }
+  })
 }
 
 // The rewatch pool: everything this user has already seen.
@@ -120,15 +141,30 @@ export async function loadRewatchItems(userId: string): Promise<WheelItem[]> {
     .map((row) => toWheelItem(row as WatchedRow, null))
 }
 
+export interface Partner {
+  id: string
+  displayName: string
+}
+
 // Whoever this user is paired with, or null if the profile has no partner.
-export async function loadPartnerId(userId: string): Promise<string | null> {
+// The name is looked up too, so screens can say whose history they mean.
+export async function loadPartner(userId: string): Promise<Partner | null> {
   const { data, error } = await supabase
     .from('profiles')
     .select('partner_id')
     .eq('id', userId)
     .maybeSingle()
   if (error) throw error
-  return data?.partner_id ?? null
+
+  const partnerId = data?.partner_id ?? null
+  if (!partnerId) return null
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('display_name')
+    .eq('id', partnerId)
+    .maybeSingle()
+  return { id: partnerId, displayName: profile?.display_name ?? 'Your partner' }
 }
 
 // Films both people have rated at all, each carrying both scores. The

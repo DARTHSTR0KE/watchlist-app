@@ -7,14 +7,29 @@ import { getSegmentIndexAtPointer } from './wheel/wheelMath'
 import { usePosterImages } from './wheel/usePosterImages'
 import {
   loadBothRatedItems,
-  loadPartnerId,
+  loadPartner,
   loadRewatchItems,
   loadWatchedFilmIds,
   loadWheelItems,
 } from './wheel/loadWheelItems'
+import type { Partner } from './wheel/loadWheelItems'
 import { SourceToggle } from './wheel/SourceToggle'
+import {
+  CUSTOM_WHEEL_MAX,
+  addFilmToWheel,
+  createCustomWheel,
+  deleteCustomWheel,
+  loadCustomWheelItems,
+  loadCustomWheels,
+  removeFilmFromWheel,
+  renameCustomWheel,
+  setCustomWheelShared,
+} from './wheel/customWheels'
+import type { CustomWheel } from './wheel/customWheels'
+import { CustomWheelsScreen } from './wheel/CustomWheelsScreen'
+import { CustomWheelEditor } from './wheel/CustomWheelEditor'
 import { FilterSheet } from './wheel/FilterSheet'
-import { DEFAULT_FILTERS, applyFilters, mostRestrictiveFilter } from './wheel/filters'
+import { DEFAULT_FILTERS, applyFilters, isCustomSource, mostRestrictiveFilter } from './wheel/filters'
 import type { WheelFilters, WheelSource } from './wheel/filters'
 import { WHEEL_DRAW_SIZE, weightedSample } from './wheel/weightedDraw'
 import {
@@ -61,9 +76,20 @@ function visiblePool(
   setAside: Set<string>,
   watchedThisSession: Set<string>,
 ): WheelItem[] {
-  return applyFilters(pool, filters, watchedIds).filter(
-    (item) => !setAside.has(item.id) && !watchedThisSession.has(item.id),
-  )
+  // A hand-built wheel is spun as assembled — no filter touches it. Only
+  // the session-only exclusions still apply.
+  const filtered = isCustomSource(filters.source)
+    ? pool
+    : applyFilters(pool, filters, watchedIds)
+  return filtered.filter((item) => !setAside.has(item.id) && !watchedThisSession.has(item.id))
+}
+
+// The watchlist and watched sources sample eight from a large pool; a
+// hand-built wheel shows everything on it, in order, up to its cap.
+function drawFor(source: WheelSource, pool: WheelItem[]): WheelItem[] {
+  return isCustomSource(source)
+    ? pool.slice(0, CUSTOM_WHEEL_MAX)
+    : weightedSample(pool, WHEEL_DRAW_SIZE)
 }
 
 function usePrefersReducedMotion(): boolean {
@@ -103,12 +129,15 @@ function WheelScreen() {
   const [filters, setFilters] = useState<WheelFilters>(DEFAULT_FILTERS)
   // Both forms are needed: the id drives the toggle's disabled state, the
   // ref lets the pool loader read it without reloading when it resolves.
-  const [partnerId, setPartnerId] = useState<string | null>(null)
-  const partnerIdRef = useRef<string | null>(null)
+  const [partner, setPartner] = useState<Partner | null>(null)
+  const partnerRef = useRef<Partner | null>(null)
+  const [customWheels, setCustomWheels] = useState<CustomWheel[]>([])
+  const [editorWheel, setEditorWheel] = useState<CustomWheel | null>(null)
+  const [editorFilms, setEditorFilms] = useState<WheelItem[]>([])
   // A source switch keeps the old wheel on screen rather than blanking the
   // app, so it needs its own flag to hold the spin until the pool lands.
   const [switchingSource, setSwitchingSource] = useState(false)
-  const [sheet, setSheet] = useState<'none' | 'filters' | 'presets'>('none')
+  const [sheet, setSheet] = useState<'none' | 'filters' | 'presets' | 'wheels' | 'editor'>('none')
   const [presets, setPresets] = useState<FilterPreset[]>([])
   const [deletedPreset, setDeletedPreset] = useState<FilterPreset | null>(null)
   const presetUndoTimerRef = useRef<number | undefined>(undefined)
@@ -128,17 +157,23 @@ function WheelScreen() {
     Promise.all([
       loadWatchedFilmIds(userId).catch(() => new Set<string>()),
       loadPresets(userId).catch(() => [] as FilterPreset[]),
-      loadPartnerId(userId).catch(() => null),
+      loadPartner(userId).catch(() => null),
       // Only asked so an untouched account can be told apart from one
       // that's been worked all the way through.
       hasWatchedItems(userId).catch(() => false),
-    ]).then(([watched, savedPresets, partner, watchedBefore]) => {
+    ]).then(async ([watched, savedPresets, loadedPartner, watchedBefore]) => {
       if (cancelled) return
       setWatchedIds(watched)
       setPresets(savedPresets)
-      partnerIdRef.current = partner
-      setPartnerId(partner)
+      partnerRef.current = loadedPartner
+      setPartner(loadedPartner)
       setHasWatchedEver(watchedBefore)
+
+      // Needs the partner first, to pick up any wheel they've shared.
+      const wheels = await loadCustomWheels(userId, loadedPartner?.id ?? null).catch(
+        () => [] as CustomWheel[],
+      )
+      if (!cancelled) setCustomWheels(wheels)
     })
     return () => {
       cancelled = true
@@ -162,14 +197,18 @@ function WheelScreen() {
   // Each source is a different table, so switching means reloading rather
   // than filtering what's already in hand.
   const source = filters.source
+  const customWheelId = filters.customWheelId
   useEffect(() => {
     let cancelled = false
 
     const load = (): Promise<WheelItem[]> => {
       if (source === 'rewatch') return loadRewatchItems(userId)
       if (source === 'both-loved') {
-        const partner = partnerIdRef.current
-        return partner ? loadBothRatedItems(userId, partner) : Promise.resolve([])
+        const linked = partnerRef.current
+        return linked ? loadBothRatedItems(userId, linked.id) : Promise.resolve([])
+      }
+      if (source === 'custom') {
+        return customWheelId ? loadCustomWheelItems(customWheelId) : Promise.resolve([])
       }
       return loadWheelItems(userId)
     }
@@ -180,7 +219,8 @@ function WheelScreen() {
         if (cancelled) return
         setMasterItems(loaded)
         setItems(
-          weightedSample(
+          drawFor(
+            source,
             visiblePool(
               loaded,
               filtersRef.current,
@@ -188,7 +228,6 @@ function WheelScreen() {
               setAsideRef.current,
               watchedThisSessionRef.current,
             ),
-            WHEEL_DRAW_SIZE,
           ),
         )
         setResult(null)
@@ -200,7 +239,7 @@ function WheelScreen() {
     return () => {
       cancelled = true
     }
-  }, [userId, source])
+  }, [userId, source, customWheelId])
 
   // Only the drawn titles are preloaded now — the pool behind them can run
   // to hundreds, and gating the spin on all of those would be a long wait.
@@ -208,14 +247,11 @@ function WheelScreen() {
 
   const matchingPool = visiblePool(masterItems, filters, watchedIds, setAside, watchedThisSession)
 
-  const drawFromPool = useCallback(
-    (pool: WheelItem[]) => {
-      setItems(weightedSample(pool, WHEEL_DRAW_SIZE))
-      setResult(null)
-      setRerollsUsed(0)
-    },
-    [],
-  )
+  const drawFromPool = useCallback((pool: WheelItem[], forSource: WheelSource) => {
+    setItems(drawFor(forSource, pool))
+    setResult(null)
+    setRerollsUsed(0)
+  }, [])
 
   const pendingResultRef = useRef<WheelItem | null>(null)
   const fallbackTimerRef = useRef<number | undefined>(undefined)
@@ -379,7 +415,7 @@ function WheelScreen() {
   // bring it back.
   const handleReshuffle = () => {
     closeSpin('abandoned')
-    drawFromPool(matchingPool)
+    drawFromPool(matchingPool, filters.source)
   }
 
   const handleFiltersChange = (next: WheelFilters) => {
@@ -389,12 +425,81 @@ function WheelScreen() {
     // and drawing from the outgoing pool here would only flash the wrong
     // films first.
     if (next.source === filters.source) {
-      drawFromPool(visiblePool(masterItems, next, watchedIds, setAside, watchedThisSession))
+      drawFromPool(visiblePool(masterItems, next, watchedIds, setAside, watchedThisSession), next.source)
     }
+  }
+
+  // Editing a wheel that is currently on screen has to move the wheel too.
+  const refreshWheelFilms = async (wheelId: string) => {
+    const films = await loadCustomWheelItems(wheelId).catch(() => [] as WheelItem[])
+    setEditorFilms(films)
+    if (filters.customWheelId === wheelId) {
+      setMasterItems(films)
+      setItems(drawFor('custom', films.filter((f) => !setAside.has(f.id) && !watchedThisSession.has(f.id))))
+      setResult(null)
+    }
+    setCustomWheels((current) =>
+      current.map((w) => (w.id === wheelId ? { ...w, filmCount: films.length } : w)),
+    )
+  }
+
+  const handleCreateWheel = (name: string) => {
+    void createCustomWheel(userId, name)
+      .then((wheel) => setCustomWheels((current) => [wheel, ...current]))
+      .catch(() => {})
+  }
+
+  const handleRenameWheel = (wheel: CustomWheel, name: string) => {
+    setCustomWheels((current) => current.map((w) => (w.id === wheel.id ? { ...w, name } : w)))
+    void renameCustomWheel(wheel.id, name).catch(() => {
+      setCustomWheels((current) =>
+        current.map((w) => (w.id === wheel.id ? { ...w, name: wheel.name } : w)),
+      )
+    })
+  }
+
+  const handleToggleShared = (wheel: CustomWheel) => {
+    const shared = !wheel.shared
+    setCustomWheels((current) => current.map((w) => (w.id === wheel.id ? { ...w, shared } : w)))
+    void setCustomWheelShared(wheel.id, shared).catch(() => {
+      setCustomWheels((current) =>
+        current.map((w) => (w.id === wheel.id ? { ...w, shared: wheel.shared } : w)),
+      )
+    })
+  }
+
+  const handleDeleteWheel = (wheel: CustomWheel) => {
+    setCustomWheels((current) => current.filter((w) => w.id !== wheel.id))
+    // Deleting the wheel being spun leaves nothing selected rather than a
+    // wheel pointing at a row that no longer exists.
+    if (filters.customWheelId === wheel.id) {
+      setFilters((current) => ({ ...current, customWheelId: null }))
+    }
+    void deleteCustomWheel(wheel.id).catch(() => {
+      setCustomWheels((current) => (current.some((w) => w.id === wheel.id) ? current : [wheel, ...current]))
+    })
+  }
+
+  const handleSpinWheel = (wheel: CustomWheel) => {
+    closeSpin('abandoned')
+    setSwitchingSource(true)
+    setFilters((current) => ({ ...current, source: 'custom', customWheelId: wheel.id }))
+    setSheet('none')
+  }
+
+  const handleEditWheel = (wheel: CustomWheel) => {
+    setEditorWheel(wheel)
+    setEditorFilms([])
+    setSheet('editor')
+    void refreshWheelFilms(wheel.id)
   }
 
   const handleSourceChange = (next: WheelSource) => {
     if (next === filters.source) return
+    if (next === 'custom' && filters.customWheelId === null) {
+      setSheet('wheels')
+      return
+    }
     setSwitchingSource(true)
     handleFiltersChange({ ...filters, source: next })
   }
@@ -463,6 +568,9 @@ function WheelScreen() {
     })
   }
 
+  const selectedWheel =
+    customWheels.find((wheel) => wheel.id === filters.customWheelId) ?? null
+
   const rerollsRemaining = MAX_REROLLS - rerollsUsed
   const canRemoveFromWheel = items.length > MIN_WHEEL_SEGMENTS
   // Nothing to decide at one film, so the hub stops being a spin action.
@@ -477,16 +585,26 @@ function WheelScreen() {
   // which the wheel gives up and explains itself.
   const tooFewMatches = matchingPool.length < 2
   const emptyReason = (): string => {
+    if (filters.source === 'custom') {
+      if (filters.customWheelId === null) return 'Choose one of your wheels to spin.'
+      const chosen = customWheels.find((wheel) => wheel.id === filters.customWheelId)
+      const name = chosen ? `"${chosen.name}"` : 'This wheel'
+      if (masterItems.length === 0) return `${name} is empty. Add films to it.`
+      if (matchingPool.length < 2) {
+        return `${name} has ${matchingPool.length} film${matchingPool.length === 1 ? '' : 's'} left this session. Add more, or reload to bring back anything set aside.`
+      }
+    }
+
     if (masterItems.length === 0) {
       if (filters.source === 'both-loved') {
-        return partnerId === null
+        return partner === null
           ? 'No partner is linked to this account yet, so there are no shared ratings to draw from.'
           : "Neither of you has rated anything you've both seen yet."
       }
       if (filters.source === 'rewatch') {
         return hasWatchedEver
           ? 'Your watched history is still being enriched. Give it a moment, or import your Letterboxd export.'
-          : "You haven't logged anything as watched yet. Import your Letterboxd export to fill the rewatch wheel."
+          : "You haven't logged anything as watched yet. Import your Letterboxd export to fill the Watch again wheel."
       }
       return hasWatchedEver
         ? "You've watched everything on your watchlist. Import a fresh export to add more."
@@ -530,16 +648,24 @@ function WheelScreen() {
       <div className="wheel-controls">
         <SourceToggle
           source={filters.source}
-          partnerAvailable={partnerId !== null}
+          partnerAvailable={partner !== null}
           onChange={handleSourceChange}
         />
         <div className="wheel-controls-row">
-          <button type="button" className="mute-toggle" onClick={() => setSheet('filters')}>
-            Filters
-          </button>
+          {isCustomSource(filters.source) ? (
+            <button type="button" className="mute-toggle" onClick={() => setSheet('wheels')}>
+              My wheels
+            </button>
+          ) : (
+            <button type="button" className="mute-toggle" onClick={() => setSheet('filters')}>
+              Filters
+            </button>
+          )}
           <p className="wheel-match-count">
             {switchingSource ? (
               'Loading…'
+            ) : isCustomSource(filters.source) ? (
+              selectedWheel ? `${selectedWheel.name} · ${items.length}` : 'No wheel selected'
             ) : (
               <>
                 {items.length} of {matchingPool.length} matching title
@@ -547,11 +673,23 @@ function WheelScreen() {
               </>
             )}
           </p>
-          <button type="button" className="mute-toggle" onClick={handleReshuffle}>
-            Reshuffle
-          </button>
+          {isCustomSource(filters.source) ? (
+            <button
+              type="button"
+              className="mute-toggle"
+              disabled={selectedWheel === null || !selectedWheel.isMine}
+              onClick={() => selectedWheel && handleEditWheel(selectedWheel)}
+            >
+              Edit
+            </button>
+          ) : (
+            <button type="button" className="mute-toggle" onClick={handleReshuffle}>
+              Reshuffle
+            </button>
+          )}
         </div>
-        {starredPresets.length > 0 && (
+        {/* Presets describe filters, which a hand-built wheel ignores. */}
+        {!isCustomSource(filters.source) && starredPresets.length > 0 && (
           <div className="preset-chips">
             {starredPresets.map((preset) => (
               <button
@@ -600,6 +738,40 @@ function WheelScreen() {
           onSavePreset={handleSavePreset}
           onManagePresets={() => setSheet('presets')}
           onClose={() => setSheet('none')}
+        />
+      )}
+
+      {sheet === 'wheels' && (
+        <CustomWheelsScreen
+          wheels={customWheels}
+          selectedId={filters.customWheelId}
+          onCreate={handleCreateWheel}
+          onRename={handleRenameWheel}
+          onDelete={handleDeleteWheel}
+          onToggleShared={handleToggleShared}
+          onSpin={handleSpinWheel}
+          onEdit={handleEditWheel}
+          onBack={() => setSheet('none')}
+        />
+      )}
+
+      {sheet === 'editor' && editorWheel && (
+        <CustomWheelEditor
+          wheel={editorWheel}
+          films={editorFilms}
+          userId={userId}
+          partnerId={partner?.id ?? null}
+          partnerName={partner?.displayName ?? 'Your partner'}
+          onAddFilmId={async (filmId) => {
+            await addFilmToWheel(editorWheel.id, filmId)
+            await refreshWheelFilms(editorWheel.id)
+          }}
+          onRemoveFilmId={(filmId) => {
+            void removeFilmFromWheel(editorWheel.id, filmId)
+              .then(() => refreshWheelFilms(editorWheel.id))
+              .catch(() => {})
+          }}
+          onBack={() => setSheet('wheels')}
         />
       )}
 

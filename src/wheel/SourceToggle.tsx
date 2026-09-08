@@ -1,7 +1,7 @@
 import { SOURCE_LABELS } from './filters'
 import type { WheelSource } from './filters'
 
-const SOURCES: WheelSource[] = ['watchlist', 'rewatch', 'both-loved']
+const SOURCES: WheelSource[] = ['watchlist', 'rewatch', 'both-loved', 'custom']
 
 interface SourceToggleProps {
   source: WheelSource

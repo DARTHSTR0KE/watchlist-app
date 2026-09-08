@@ -1,17 +1,10 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { searchMovies, searchTv, yearFromDate } from '../lib/tmdbClient'
+import { searchTmdb } from './tmdbSearch'
+import type { ManualResult } from './tmdbSearch'
 import { resolveCandidate } from './matching'
 import { addManualWatchlistItem } from './watchlistWrites'
 import { buildPosterUrl } from '../wheel/posters'
-
-interface ManualResult {
-  id: number
-  mediaType: 'movie' | 'tv'
-  title: string
-  year: number | null
-  posterPath: string | null
-}
 
 interface ManualSearchProps {
   userId: string
@@ -31,23 +24,7 @@ export function ManualSearch({ userId, onAdded }: ManualSearchProps) {
     setSearching(true)
     setMessage(null)
 
-    const [movies, tv] = await Promise.all([searchMovies(query), searchTv(query)])
-    const movieResults: ManualResult[] = movies.slice(0, 10).map((r) => ({
-      id: r.id,
-      mediaType: 'movie',
-      title: r.title,
-      year: yearFromDate(r.release_date),
-      posterPath: r.poster_path,
-    }))
-    const tvResults: ManualResult[] = tv.slice(0, 10).map((r) => ({
-      id: r.id,
-      mediaType: 'tv',
-      title: r.name,
-      year: yearFromDate(r.first_air_date),
-      posterPath: r.poster_path,
-    }))
-
-    setResults([...movieResults, ...tvResults])
+    setResults(await searchTmdb(query))
     setSearching(false)
   }
 

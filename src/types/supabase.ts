@@ -268,6 +268,51 @@ export interface Database {
           },
         ]
       }
+      custom_wheels: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          shared: boolean
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          shared?: boolean
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          shared?: boolean
+          created_at?: string | null
+        }
+        Relationships: []
+      }
+      custom_wheel_items: {
+        Row: {
+          id: string
+          wheel_id: string
+          film_id: string
+          added_at: string | null
+        }
+        Insert: {
+          id?: string
+          wheel_id: string
+          film_id: string
+          added_at?: string | null
+        }
+        Update: {
+          id?: string
+          wheel_id?: string
+          film_id?: string
+          added_at?: string | null
+        }
+        Relationships: []
+      }
       filter_presets: {
         Row: {
           id: string

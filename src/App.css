@@ -280,6 +280,15 @@
   border-radius: 999px;
   border: 1px solid rgba(239, 230, 214, 0.16);
   background-color: rgba(10, 12, 22, 0.55);
+  /* Four options overflow a narrow phone, so the row scrolls rather than
+     shrinking the labels to nothing. */
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.source-toggle::-webkit-scrollbar {
+  display: none;
 }
 
 .source-option {
@@ -1536,4 +1545,103 @@
   margin: 0.5rem 0 0;
   font-size: 0.78rem;
   color: #9a9aa4;
+}
+
+/* Custom wheels -------------------------------------------------------- */
+
+.wheel-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.7rem 0.75rem;
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.wheel-row-selected {
+  box-shadow: inset 0 0 0 1px rgba(239, 230, 214, 0.45);
+}
+
+.wheel-row-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.wheel-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.3rem;
+  max-width: 55%;
+}
+
+.wheel-row-action {
+  padding: 0.28rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 245, 245, 0.2);
+  background: none;
+  color: #d8d8dc;
+  font-family: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.wheel-row-action-on {
+  border-color: rgba(239, 230, 214, 0.6);
+  color: #efe6d6;
+}
+
+.wheel-row-action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Film pickers --------------------------------------------------------- */
+
+.picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The add-from lists can run to hundreds, so they get their own scroll
+   rather than stretching the sheet. */
+.picker-list-tall {
+  max-height: 15rem;
+  overflow-y: auto;
+}
+
+.picker-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.3rem 0;
+}
+
+.picker-poster {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 48px;
+  border-radius: 4px;
+  object-fit: cover;
+  background-color: #26262c;
+}
+
+.picker-poster-fallback {
+  display: block;
+}
+
+.picker-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.82rem;
+  color: #e8e8ec;
+}
+
+.picker-year {
+  color: #9a9aa4;
+  font-size: 0.74rem;
 }

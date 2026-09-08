@@ -1,8 +1,9 @@
 import type { WheelItem } from './titles'
 
 // Which pool the wheel draws from. 'watchlist' is the films still to see;
-// the other two both come from the watched table.
-export type WheelSource = 'watchlist' | 'rewatch' | 'both-loved'
+// 'rewatch' and 'both-loved' come from the watched table; 'custom' is a
+// hand-built wheel, which no filter touches.
+export type WheelSource = 'watchlist' | 'rewatch' | 'both-loved' | 'custom'
 
 export type RatingMode = 'any' | 'min' | 'exact' | 'unrated'
 
@@ -24,6 +25,9 @@ export interface WheelFilters {
   watchedBeforeMonths: number | null
   // Both loved it: the score each of us must have given.
   bothLovedThreshold: number
+  // Which hand-built wheel is selected. Only meaningful when source is
+  // 'custom'; null there means one still has to be chosen.
+  customWheelId: string | null
 }
 
 export const DEFAULT_FILTERS: WheelFilters = {
@@ -41,6 +45,7 @@ export const DEFAULT_FILTERS: WheelFilters = {
   // switched on at two years rather than off.
   watchedBeforeMonths: 24,
   bothLovedThreshold: 4,
+  customWheelId: null,
 }
 
 export const RUNTIME_STEP = 15
@@ -59,15 +64,22 @@ export const WATCHED_BEFORE_OPTIONS: { months: number | null; label: string }[] 
   { months: null, label: 'no limit' },
 ]
 
-// Both watched sources read the watched table; only 'watchlist' doesn't.
+// The two sources backed by the watched table.
 export function isWatchedSource(source: WheelSource): boolean {
-  return source !== 'watchlist'
+  return source === 'rewatch' || source === 'both-loved'
+}
+
+// A hand-built wheel is spun exactly as assembled: no filtering, no
+// sampling, no weighting. The choosing was already done by hand.
+export function isCustomSource(source: WheelSource): boolean {
+  return source === 'custom'
 }
 
 export const SOURCE_LABELS: Record<WheelSource, string> = {
   watchlist: 'To watch',
-  rewatch: 'Watched again',
+  rewatch: 'Watch again',
   'both-loved': 'Both loved it',
+  custom: 'My wheels',
 }
 
 // Only the dimensions that actually narrow a pool. `source` chooses the
