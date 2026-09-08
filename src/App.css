@@ -168,6 +168,11 @@
   border: 2px solid #efe6d6;
   background-color: #f5c451;
   color: #101014;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.1;
   font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 0.7rem;
   font-weight: 700;
@@ -175,6 +180,18 @@
   cursor: pointer;
   transform: translate(-50%, -50%);
   transition: transform 100ms ease-out;
+}
+
+/* Two lines need to fit the same circle. */
+.wheel-hub-button-single {
+  font-size: 0.58rem;
+  letter-spacing: 0.03em;
+}
+
+.wheel-hub-button-single:disabled {
+  /* Not dimmed like a blocked action — it's a statement, not a button
+     that's temporarily unavailable. */
+  opacity: 1;
 }
 
 .wheel-hub-button:active:not(:disabled) {

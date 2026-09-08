@@ -25,6 +25,20 @@ export function describeSlicePath(
   return `M ${cx} ${cy} L ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} 1 ${end.x} ${end.y} Z`
 }
 
+// A complete ring, for the single-film case. A 360-degree arc can't be drawn
+// as one sector — its start and end points coincide — so this is two circles
+// with evenodd winding, the inner one punching the hole.
+export function describeAnnulusPath(
+  cx: number,
+  cy: number,
+  innerR: number,
+  outerR: number,
+): string {
+  const circle = (r: number) =>
+    `M ${cx - r} ${cy} A ${r} ${r} 0 1 0 ${cx + r} ${cy} A ${r} ${r} 0 1 0 ${cx - r} ${cy} Z`
+  return `${circle(outerR)} ${circle(innerR)}`
+}
+
 // Same idea as describeSlicePath, but for a "donut slice" (annular sector)
 // that runs from an inner radius to an outer radius instead of converging
 // on a point — used for the ring-style wheel wedges.

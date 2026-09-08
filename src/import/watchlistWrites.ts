@@ -32,6 +32,17 @@ export async function hasWatchlistItems(userId: string): Promise<boolean> {
   return (count ?? 0) > 0
 }
 
+// Distinguishes "nothing has ever been imported" from "the list has been
+// worked through", which look identical from watchlist_items alone.
+export async function hasWatchedItems(userId: string): Promise<boolean> {
+  const { count, error } = await supabase
+    .from('watched')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+  if (error) throw error
+  return (count ?? 0) > 0
+}
+
 export interface WatchlistDiff {
   newFilmIds: Set<string>
   missingItems: { watchlistItemId: string; filmId: string; title: string; posterPath: string | null }[]

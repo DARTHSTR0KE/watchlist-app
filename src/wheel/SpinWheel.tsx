@@ -3,6 +3,7 @@ import type { WheelItem } from './titles'
 import {
   SEGMENT_COLORS,
   SEGMENT_TEXT_COLORS,
+  describeAnnulusPath,
   describeRingSlicePath,
   polarToCartesian,
 } from './wheelMath'
@@ -133,6 +134,23 @@ export function SpinWheel({
   const count = items.length
   const segmentAngle = count > 0 ? 360 / count : 0
   const halfGap = gapDegreesFor(count || 1) / 2
+
+  // One film fills the ring whole: there's nothing to divide it from, and a
+  // full turn can't be drawn as a single sector anyway.
+  const isSingle = count === 1
+  const wedgePathFor = (index: number) =>
+    isSingle
+      ? describeAnnulusPath(CENTER, CENTER, WEDGE_INNER_RADIUS, WEDGE_OUTER_RADIUS)
+      : describeRingSlicePath(
+          CENTER,
+          CENTER,
+          WEDGE_INNER_RADIUS,
+          WEDGE_OUTER_RADIUS,
+          index * segmentAngle + halfGap,
+          (index + 1) * segmentAngle - halfGap,
+        )
+  // Upright under the pointer, rather than inverted at the bottom of the ring.
+  const midAngleFor = (index: number) => (isSingle ? 0 : index * segmentAngle + segmentAngle / 2)
   const pegRadius = pegRadiusFor(count || 1)
 
   const flapperRef = useRef<SVGGElement>(null)
@@ -201,19 +219,11 @@ export function SpinWheel({
             <stop offset="100%" stopColor="#f5c451" stopOpacity="0" />
           </radialGradient>
           {items.map((item, i) => {
-            const start = i * segmentAngle + halfGap
-            const end = (i + 1) * segmentAngle - halfGap
-            const path = describeRingSlicePath(
-              CENTER,
-              CENTER,
-              WEDGE_INNER_RADIUS,
-              WEDGE_OUTER_RADIUS,
-              start,
-              end,
-            )
+            const path = wedgePathFor(i)
             return (
               <clipPath id={`wedge-clip-${item.id}`} key={item.id}>
-                <path d={path} />
+                {/* evenodd so the single-film ring keeps its centre hole. */}
+                <path d={path} clipRule="evenodd" />
               </clipPath>
             )
           })}
@@ -252,20 +262,14 @@ export function SpinWheel({
           />
 
           {items.map((item, i) => {
-            const start = i * segmentAngle + halfGap
-            const end = (i + 1) * segmentAngle - halfGap
-            const mid = i * segmentAngle + segmentAngle / 2
-            const path = describeRingSlicePath(
-              CENTER,
-              CENTER,
-              WEDGE_INNER_RADIUS,
-              WEDGE_OUTER_RADIUS,
-              start,
-              end,
-            )
+            const mid = midAngleFor(i)
+            const path = wedgePathFor(i)
             const labelPos = polarToCartesian(CENTER, CENTER, LABEL_RADIUS, mid)
+            // Capped at a quarter turn: a lone film spans 180 degrees either
+            // side, and sin(180deg) is 0, which collapsed its title to "…".
+            const labelHalfAngle = Math.min(segmentAngle / 2, 90)
             const maxLabelWidth =
-              2 * LABEL_RADIUS * Math.sin((segmentAngle / 2) * (Math.PI / 180)) * 0.82
+              2 * LABEL_RADIUS * Math.sin(labelHalfAngle * (Math.PI / 180)) * 0.82
             const label = truncateToWidth(item.title, maxLabelWidth, LABEL_FONT)
             const fill = SEGMENT_COLORS[i % 2]
 
@@ -280,7 +284,11 @@ export function SpinWheel({
             // poster's own middle gets pinned. The box is sized so it fully
             // covers the wedge (inner to outer corners) at any segment count.
             const centroidRadius = (WEDGE_INNER_RADIUS + WEDGE_OUTER_RADIUS) / 2
-            const centroid = polarToCartesian(CENTER, CENTER, centroidRadius, mid)
+            // A lone film's ring is centred on the wheel, so the poster is
+            // too — pinning it to a mid-angle would zoom it in needlessly.
+            const centroid = isSingle
+              ? { x: CENTER, y: CENTER }
+              : polarToCartesian(CENTER, CENTER, centroidRadius, mid)
             const halfSegRad = ((segmentAngle / 2) * Math.PI) / 180
             const outerCornerDistance = Math.sqrt(
               WEDGE_OUTER_RADIUS * WEDGE_OUTER_RADIUS +
@@ -292,7 +300,9 @@ export function SpinWheel({
                 centroidRadius * centroidRadius -
                 2 * WEDGE_INNER_RADIUS * centroidRadius * Math.cos(halfSegRad),
             )
-            const coverHalfSize = Math.max(outerCornerDistance, innerCornerDistance) * 1.08
+            const coverHalfSize = isSingle
+              ? WEDGE_OUTER_RADIUS * 1.02
+              : Math.max(outerCornerDistance, innerCornerDistance) * 1.08
             const clipUrl = `url(#wedge-clip-${item.id})`
 
             return (
@@ -337,7 +347,8 @@ export function SpinWheel({
 
           {/* Pegs: one per divider angle, centred in the band, where the
               flapper strikes as the wheel turns. */}
-          {items.map((_, i) => {
+          {/* No pegs for a lone film — there are no divisions to strike. */}
+          {(isSingle ? [] : items).map((_, i) => {
             const angle = i * segmentAngle
             const pos = polarToCartesian(CENTER, CENTER, PEG_RING_RADIUS, angle)
             return <circle key={`peg-${angle}`} cx={pos.x} cy={pos.y} r={pegRadius} fill={PEG_COLOR} />
@@ -365,13 +376,20 @@ export function SpinWheel({
           outside the rotating group entirely. */}
       <button
         type="button"
-        className="wheel-hub-button"
+        className={`wheel-hub-button${isSingle ? ' wheel-hub-button-single' : ''}`}
         style={{ width: `${(HUB_RADIUS * 2 * 100) / SIZE}%`, height: `${(HUB_RADIUS * 2 * 100) / SIZE}%` }}
         onClick={onSpin}
         disabled={spinDisabled}
-        aria-label="Spin the wheel"
+        aria-label={isSingle ? 'One film left — it picks itself' : 'Spin the wheel'}
       >
-        SPIN
+        {isSingle ? (
+          <>
+            <span>THIS</span>
+            <span>ONE</span>
+          </>
+        ) : (
+          'SPIN'
+        )}
       </button>
     </div>
   )

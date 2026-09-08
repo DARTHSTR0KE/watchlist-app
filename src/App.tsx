@@ -13,7 +13,12 @@ import { SignInScreen } from './auth/SignInScreen'
 import { Header } from './auth/Header'
 import { EnrichmentProvider } from './import/EnrichmentContext'
 import { ImportScreen } from './import/ImportScreen'
-import { hasWatchlistItems, undoWatchFilm, watchFilmNow } from './import/watchlistWrites'
+import {
+  hasWatchedItems,
+  hasWatchlistItems,
+  undoWatchFilm,
+  watchFilmNow,
+} from './import/watchlistWrites'
 import type { WatchUndoSnapshot } from './import/watchlistWrites'
 import { Footer } from './Footer'
 
@@ -49,6 +54,10 @@ function WheelScreen() {
   const [spinning, setSpinning] = useState(false)
   const [result, setResult] = useState<WheelItem | null>(null)
   const [rerollsUsed, setRerollsUsed] = useState(0)
+  const [hasWatchedEver, setHasWatchedEver] = useState(false)
+  // Films watched in this session. Tracked so the empty state can say why
+  // the wheel is bare, and so Reshuffle doesn't resurrect them.
+  const [watchedThisSession, setWatchedThisSession] = useState<Set<string>>(new Set())
   const [undo, setUndo] = useState<{
     snapshot: WatchUndoSnapshot
     title: string
@@ -60,10 +69,17 @@ function WheelScreen() {
 
   useEffect(() => {
     let cancelled = false
-    loadWheelItems(userId).then((loaded) => {
+    loadWheelItems(userId).then(async (loaded) => {
       if (cancelled) return
       setMasterItems(loaded)
       setItems(loaded)
+      // Only asked when the list is empty, to tell an untouched account
+      // apart from one that's been worked all the way through.
+      if (loaded.length === 0) {
+        const watchedBefore = await hasWatchedItems(userId).catch(() => false)
+        if (cancelled) return
+        setHasWatchedEver(watchedBefore)
+      }
       setLoadingItems(false)
     })
     return () => {
@@ -136,6 +152,7 @@ function WheelScreen() {
     if (!watched) return
 
     setItems((current) => current.filter((item) => item.id !== watched.id))
+    setWatchedThisSession((current) => new Set(current).add(watched.id))
 
     void watchFilmNow(userId, watched.id)
       .then((snapshot) => {
@@ -149,6 +166,11 @@ function WheelScreen() {
         setItems((current) =>
           current.some((item) => item.id === watched.id) ? current : [...current, watched],
         )
+        setWatchedThisSession((current) => {
+          const next = new Set(current)
+          next.delete(watched.id)
+          return next
+        })
       })
   }
 
@@ -160,8 +182,14 @@ function WheelScreen() {
     setItems((current) =>
       current.some((item) => item.id === pending.item.id) ? current : [...current, pending.item],
     )
+    setWatchedThisSession((current) => {
+      const next = new Set(current)
+      next.delete(pending.item.id)
+      return next
+    })
     void undoWatchFilm(userId, pending.snapshot).catch(() => {
       setItems((current) => current.filter((item) => item.id !== pending.item.id))
+      setWatchedThisSession((current) => new Set(current).add(pending.item.id))
     })
   }
 
@@ -196,16 +224,37 @@ function WheelScreen() {
     }
   }
 
-  // Restores the full pool at the floor — doesn't spend or reset the
-  // reroll budget either, same as Not today.
+  // Restores the pool at the floor — doesn't spend or reset the reroll
+  // budget either, same as Not today. Films watched this session stay off:
+  // they're gone from the watchlist, so bringing them back would show the
+  // wheel a title the database no longer has.
   const handleReshuffle = () => {
-    setItems(masterItems)
+    setItems(masterItems.filter((item) => !watchedThisSession.has(item.id)))
     setResult(null)
   }
 
   const rerollsRemaining = MAX_REROLLS - rerollsUsed
   const canRemoveFromWheel = items.length > MIN_WHEEL_SEGMENTS
-  const spinDisabled = spinning || !postersReady || result !== null || items.length === 0
+  // Nothing to decide at one film, so the hub stops being a spin action.
+  const spinDisabled = spinning || !postersReady || result !== null || items.length <= 1
+
+  // Why the wheel is bare, in the user's terms. Films are dropped from
+  // `items` but kept in `masterItems`, so the difference between them —
+  // minus the ones watched — is what's merely set aside for the session.
+  const setAsideCount = Math.max(0, masterItems.length - items.length - watchedThisSession.size)
+  const emptyReason = (): string => {
+    if (masterItems.length === 0) {
+      return hasWatchedEver
+        ? "You've watched everything on your watchlist. Import a fresh export to add more."
+        : 'Your watchlist is empty. Import your Letterboxd export to fill the wheel.'
+    }
+    const parts: string[] = []
+    if (watchedThisSession.size > 0) parts.push(`${watchedThisSession.size} watched`)
+    if (setAsideCount > 0) parts.push(`${setAsideCount} set aside for now`)
+    if (parts.length === 0) return 'Nothing is on the wheel right now.'
+    const tail = setAsideCount > 0 ? ' Reload to bring the set-aside ones back.' : ''
+    return `Nothing left on the wheel — ${parts.join(' and ')}.${tail}`
+  }
 
   // The page backdrop follows whichever film the pointer is resting on —
   // derived from rotation, so it also follows along when a removal reshapes
@@ -237,7 +286,7 @@ function WheelScreen() {
       />
 
       {items.length === 0 ? (
-        <p className="empty-state">No titles left on the wheel.</p>
+        <p className="empty-state">{emptyReason()}</p>
       ) : (
         <div className="wheel-footer-row">
           <p className="wheel-remaining-count">
