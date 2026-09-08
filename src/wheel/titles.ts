@@ -1,3 +1,5 @@
+import type { TopCastMember } from '../lib/tmdbClient'
+
 export interface WheelItem {
   id: string
   title: string
@@ -8,6 +10,10 @@ export interface WheelItem {
   genres: string[]
   rating: number
   synopsis: string
+  trailerKey: string | null
+  // null means "never fetched" and triggers a lazy backfill when the modal
+  // opens; [] means TMDB genuinely lists nobody.
+  topCast: TopCastMember[] | null
   // Filterable properties, and how long the title has been waiting — the
   // draw weights by that.
   mediaType: 'movie' | 'tv'

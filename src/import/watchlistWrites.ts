@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabaseClient'
-import type { NormalizedFilm } from '../lib/tmdbClient'
+import type { NormalizedFilm, TopCastMember } from '../lib/tmdbClient'
 
 export async function upsertFilm(film: NormalizedFilm): Promise<void> {
   const { error } = await supabase.from('films').upsert(
@@ -16,10 +16,19 @@ export async function upsertFilm(film: NormalizedFilm): Promise<void> {
       genres: film.genres,
       vote_average: film.vote_average,
       trailer_key: film.trailer_key,
+      top_cast: film.top_cast,
       enriched_at: new Date().toISOString(),
     },
     { onConflict: 'id' },
   )
+  if (error) throw error
+}
+
+// Fills in top_cast for a film enriched before the column existed. Writes
+// an empty array when TMDB lists no cast, so a film with none isn't looked
+// up again on every open.
+export async function saveTopCast(filmId: string, cast: TopCastMember[]): Promise<void> {
+  const { error } = await supabase.from('films').update({ top_cast: cast }).eq('id', filmId)
   if (error) throw error
 }
 

@@ -23,3 +23,12 @@ export function buildPageBackdropUrl(backdropPath: string | null | undefined): s
   if (!backdropPath) return null
   return `${TMDB_PAGE_BACKDROP_BASE_URL}${backdropPath}`
 }
+
+// Cast portraits render at ~56px in a scrolling row, so the smallest
+// profile size TMDB offers is already more than enough.
+const TMDB_PROFILE_BASE_URL = 'https://image.tmdb.org/t/p/w185'
+
+export function buildProfileUrl(profilePath: string | null | undefined): string | null {
+  if (!profilePath) return null
+  return `${TMDB_PROFILE_BASE_URL}${profilePath}`
+}

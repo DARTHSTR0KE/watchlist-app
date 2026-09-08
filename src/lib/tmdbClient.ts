@@ -68,7 +68,21 @@ interface TmdbVideosBlock {
   videos?: { results: TmdbVideo[] }
 }
 
-export interface TmdbMovieDetails extends TmdbVideosBlock {
+interface TmdbCastMember {
+  name: string
+  profile_path: string | null
+  order?: number
+}
+
+export interface TmdbCredits {
+  cast?: TmdbCastMember[]
+}
+
+interface TmdbCreditsBlock {
+  credits?: TmdbCredits
+}
+
+export interface TmdbMovieDetails extends TmdbVideosBlock, TmdbCreditsBlock {
   id: number
   title: string
   release_date: string | null
@@ -81,7 +95,7 @@ export interface TmdbMovieDetails extends TmdbVideosBlock {
   vote_average: number | null
 }
 
-export interface TmdbTvDetails extends TmdbVideosBlock {
+export interface TmdbTvDetails extends TmdbVideosBlock, TmdbCreditsBlock {
   id: number
   name: string
   first_air_date: string | null
@@ -110,6 +124,24 @@ export function extractTrailerKey(videos: { results: TmdbVideo[] } | undefined):
   return anyYoutube?.key ?? null
 }
 
+// Top billed only — the modal shows a single row, and TMDB's cast array
+// runs to hundreds of entries for a big production.
+export const TOP_CAST_SIZE = 8
+
+// A type alias rather than an interface on purpose: only aliases get the
+// implicit index signature that assigning into a jsonb column requires.
+export type TopCastMember = {
+  name: string
+  profile_path: string | null
+}
+
+export function extractTopCast(credits: TmdbCredits | undefined): TopCastMember[] {
+  const cast = credits?.cast ?? []
+  return cast
+    .slice(0, TOP_CAST_SIZE)
+    .map((member) => ({ name: member.name, profile_path: member.profile_path }))
+}
+
 export function yearFromDate(date: string | null | undefined): number | null {
   if (!date) return null
   const year = Number.parseInt(date.slice(0, 4), 10)
@@ -121,6 +153,22 @@ export function yearFromDate(date: string | null | undefined): number | null {
 // show collide on the same row.
 export function buildFilmId(mediaType: 'movie' | 'tv', tmdbId: number): string {
   return `${mediaType}:${tmdbId}`
+}
+
+// The inverse, for the rare case where a stored row needs another TMDB call.
+export function parseFilmId(filmId: string): { mediaType: 'movie' | 'tv'; tmdbId: number } | null {
+  const [prefix, rest] = filmId.split(':')
+  if (prefix !== 'movie' && prefix !== 'tv') return null
+  const tmdbId = Number.parseInt(rest ?? '', 10)
+  if (Number.isNaN(tmdbId)) return null
+  return { mediaType: prefix, tmdbId }
+}
+
+// Credits on their own, for backfilling a film enriched before top_cast
+// existed. Much smaller than re-fetching the whole details payload.
+export async function getTopCast(mediaType: 'movie' | 'tv', tmdbId: number): Promise<TopCastMember[]> {
+  const credits = await tmdbFetch<TmdbCredits>(`/${mediaType}/${tmdbId}/credits`, {})
+  return extractTopCast(credits)
 }
 
 export interface NormalizedFilm {
@@ -136,6 +184,7 @@ export interface NormalizedFilm {
   genres: string[]
   vote_average: number | null
   trailer_key: string | null
+  top_cast: TopCastMember[]
 }
 
 export function normalizeMovieDetails(details: TmdbMovieDetails): NormalizedFilm {
@@ -152,6 +201,7 @@ export function normalizeMovieDetails(details: TmdbMovieDetails): NormalizedFilm
     genres: details.genres.map((g) => g.name),
     vote_average: details.vote_average,
     trailer_key: extractTrailerKey(details.videos),
+    top_cast: extractTopCast(details.credits),
   }
 }
 
@@ -169,5 +219,6 @@ export function normalizeTvDetails(details: TmdbTvDetails): NormalizedFilm {
     genres: details.genres.map((g) => g.name),
     vote_average: details.vote_average,
     trailer_key: extractTrailerKey(details.videos),
+    top_cast: extractTopCast(details.credits),
   }
 }

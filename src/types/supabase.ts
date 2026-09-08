@@ -41,6 +41,7 @@ export interface Database {
           genres: string[] | null
           vote_average: number | null
           trailer_key: string | null
+          top_cast: Json | null
           providers: Json | null
           providers_at: string | null
           enriched_at: string | null
@@ -58,6 +59,7 @@ export interface Database {
           genres?: string[] | null
           vote_average?: number | null
           trailer_key?: string | null
+          top_cast?: Json | null
           providers?: Json | null
           providers_at?: string | null
           enriched_at?: string | null
@@ -75,6 +77,7 @@ export interface Database {
           genres?: string[] | null
           vote_average?: number | null
           trailer_key?: string | null
+          top_cast?: Json | null
           providers?: Json | null
           providers_at?: string | null
           enriched_at?: string | null

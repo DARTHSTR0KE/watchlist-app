@@ -911,6 +911,140 @@
   cursor: pointer;
 }
 
+.modal-section-title {
+  margin: 0 0 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #9a9aa4;
+}
+
+/* Trailer ------------------------------------------------------------- */
+
+.modal-trailer {
+  margin-top: 1.25rem;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: #0b0b0e;
+}
+
+.modal-trailer-frame,
+.modal-trailer-facade {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* A still with a play button, so the YouTube player is only fetched when
+   someone asks for it. The image is the modal backdrop, already cached. */
+.modal-trailer-facade {
+  position: relative;
+  padding: 0;
+  cursor: pointer;
+  background-color: #0b0b0e;
+}
+
+.modal-trailer-facade img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.55;
+}
+
+.modal-trailer-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background-color: rgba(10, 12, 22, 0.72);
+  border: 1px solid rgba(239, 230, 214, 0.5);
+}
+
+/* The triangle, drawn rather than typed, so it sits optically centred. */
+.modal-trailer-play::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-42%, -50%);
+  border-style: solid;
+  border-width: 9px 0 9px 15px;
+  border-color: transparent transparent transparent #efe6d6;
+}
+
+.modal-trailer-label {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #efe6d6;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* Cast ---------------------------------------------------------------- */
+
+.modal-cast {
+  margin-top: 1.25rem;
+  text-align: left;
+}
+
+.cast-row {
+  display: flex;
+  gap: 0.85rem;
+  margin: 0;
+  padding: 0 20px 0.25rem 0;
+  list-style: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+  /* Bleed to the sheet edges so the row reads as scrollable. */
+  margin-inline: -20px;
+  padding-left: 20px;
+}
+
+.cast-row::-webkit-scrollbar {
+  display: none;
+}
+
+.cast-member {
+  flex: 0 0 auto;
+  width: 62px;
+  text-align: center;
+}
+
+.cast-photo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 0.35rem;
+  border-radius: 50%;
+  object-fit: cover;
+  background-color: #26262c;
+}
+
+.cast-photo-fallback {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #9a9aa4;
+}
+
+.cast-name {
+  display: block;
+  font-size: 0.68rem;
+  line-height: 1.25;
+  color: #c8c8ce;
+}
+
 .modal-actions {
   flex-shrink: 0;
   display: flex;

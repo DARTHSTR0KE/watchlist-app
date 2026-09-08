@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react'
 import type { PointerEvent } from 'react'
 import type { WheelItem } from './titles'
-import { buildBackdropUrl, buildPosterUrl } from './posters'
+import { buildBackdropUrl, buildPosterUrl, buildProfileUrl } from './posters'
+import { useTopCast } from './useTopCast'
 
 interface ResultModalProps {
   item: WheelItem
@@ -23,6 +24,14 @@ function formatRuntime(minutes: number): string {
   const hours = Math.floor(minutes / 60)
   const mins = minutes % 60
   return `${hours}h ${mins}m`
+}
+
+// Initials stand in when TMDB has no portrait for someone.
+function initialsOf(name: string): string {
+  const words = name.trim().split(/\s+/)
+  const first = words[0]?.[0] ?? ''
+  const last = words.length > 1 ? (words[words.length - 1]?.[0] ?? '') : ''
+  return (first + last).toUpperCase()
 }
 
 // 6pm–4am local -> "Not tonight", 4am–6pm -> "Not today".
@@ -51,6 +60,13 @@ export function ResultModal({
   // (result goes null then non-null again), so this re-evaluates every open
   // rather than staying fixed from whenever the app first started.
   const [takeOffLabel] = useState(getTakeOffLabel)
+  // The YouTube player is only loaded once someone actually asks for it —
+  // an embed per spin result would be a lot of weight on a phone.
+  const [trailerPlaying, setTrailerPlaying] = useState(false)
+  // A profile_path can go stale on TMDB's side; a 404 should read as "no
+  // portrait" rather than a broken-image glyph in a row of eight.
+  const [failedPhotos, setFailedPhotos] = useState<ReadonlySet<string>>(new Set())
+  const cast = useTopCast(item.id, item.topCast)
 
   const backdropUrl = buildBackdropUrl(item.backdropPath)
   const posterUrl = buildPosterUrl(item.posterPath)
@@ -135,6 +151,65 @@ export function ResultModal({
               </button>
             )}
           </div>
+
+          {item.trailerKey && (
+            <div className="modal-trailer">
+              {trailerPlaying ? (
+                <iframe
+                  className="modal-trailer-frame"
+                  src={`https://www.youtube-nocookie.com/embed/${item.trailerKey}?autoplay=1&rel=0`}
+                  title={`${item.title} trailer`}
+                  allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : (
+                <button
+                  type="button"
+                  className="modal-trailer-facade"
+                  onClick={() => setTrailerPlaying(true)}
+                  aria-label={`Play the ${item.title} trailer`}
+                >
+                  {backdropUrl && <img src={backdropUrl} alt="" aria-hidden="true" />}
+                  <span className="modal-trailer-play" aria-hidden="true" />
+                  <span className="modal-trailer-label">Trailer</span>
+                </button>
+              )}
+            </div>
+          )}
+
+          {cast !== null && cast.length > 0 && (
+            <div className="modal-cast">
+              <h3 className="modal-section-title">Cast</h3>
+              <ul className="cast-row">
+                {cast.map((member, index) => {
+                  const key = `${member.name}-${index}`
+                  const profileUrl = failedPhotos.has(key)
+                    ? null
+                    : buildProfileUrl(member.profile_path)
+                  return (
+                    <li className="cast-member" key={key}>
+                      {profileUrl ? (
+                        <img
+                          className="cast-photo"
+                          src={profileUrl}
+                          alt=""
+                          aria-hidden="true"
+                          onError={() =>
+                            setFailedPhotos((current) => new Set(current).add(key))
+                          }
+                        />
+                      ) : (
+                        <span className="cast-photo cast-photo-fallback" aria-hidden="true">
+                          {initialsOf(member.name)}
+                        </span>
+                      )}
+                      <span className="cast-name">{member.name}</span>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          )}
         </div>
 
         <div className="modal-actions">
