@@ -5,7 +5,13 @@ import { ResultModal } from './wheel/ResultModal'
 import type { WheelItem } from './wheel/titles'
 import { getSegmentIndexAtPointer } from './wheel/wheelMath'
 import { usePosterImages } from './wheel/usePosterImages'
-import { loadWheelItems } from './wheel/loadWheelItems'
+import { loadWatchedFilmIds, loadWheelItems } from './wheel/loadWheelItems'
+import { FilterSheet } from './wheel/FilterSheet'
+import { DEFAULT_FILTERS, applyFilters, mostRestrictiveFilter } from './wheel/filters'
+import type { WheelFilters } from './wheel/filters'
+import { WHEEL_DRAW_SIZE, weightedSample } from './wheel/weightedDraw'
+import { loadPresets, recordSpin, recordSpinOutcome, savePreset } from './wheel/wheelPersistence'
+import type { FilterPreset, SpinOutcome } from './wheel/wheelPersistence'
 import { ensureAudioContext, playTick, useMuted } from './wheel/tickSound'
 import { FilmBackdrop } from './wheel/FilmBackdrop'
 import { AuthProvider, useAuth } from './auth/AuthProvider'
@@ -58,6 +64,14 @@ function WheelScreen() {
   // Films watched in this session. Tracked so the empty state can say why
   // the wheel is bare, and so Reshuffle doesn't resurrect them.
   const [watchedThisSession, setWatchedThisSession] = useState<Set<string>>(new Set())
+  // Set aside with "Not tonight": excluded for the session, and stays
+  // excluded when the wheel is redrawn.
+  const [setAside, setSetAside] = useState<Set<string>>(new Set())
+  const [watchedIds, setWatchedIds] = useState<Set<string>>(new Set())
+  const [filters, setFilters] = useState<WheelFilters>(DEFAULT_FILTERS)
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [presets, setPresets] = useState<FilterPreset[]>([])
+  const spinIdRef = useRef<string | null>(null)
   const [undo, setUndo] = useState<{
     snapshot: WatchUndoSnapshot
     title: string
@@ -69,10 +83,16 @@ function WheelScreen() {
 
   useEffect(() => {
     let cancelled = false
-    loadWheelItems(userId).then(async (loaded) => {
+    Promise.all([
+      loadWheelItems(userId),
+      loadWatchedFilmIds(userId).catch(() => new Set<string>()),
+      loadPresets(userId).catch(() => [] as FilterPreset[]),
+    ]).then(async ([loaded, watched, savedPresets]) => {
       if (cancelled) return
       setMasterItems(loaded)
-      setItems(loaded)
+      setWatchedIds(watched)
+      setPresets(savedPresets)
+      setItems(weightedSample(loaded, WHEEL_DRAW_SIZE))
       // Only asked when the list is empty, to tell an untouched account
       // apart from one that's been worked all the way through.
       if (loaded.length === 0) {
@@ -87,9 +107,24 @@ function WheelScreen() {
     }
   }, [userId])
 
-  // Preloaded against the fixed master list, not the mutable `items` state,
-  // so removing a title later never re-triggers a loading gate.
-  const { statuses: imageStatuses, allSettled: postersReady } = usePosterImages(masterItems)
+  // Only the drawn titles are preloaded now — the pool behind them can run
+  // to hundreds, and gating the spin on all of those would be a long wait.
+  const { statuses: imageStatuses, allSettled: postersReady } = usePosterImages(items)
+
+  // What the filters leave, minus anything set aside or watched this
+  // session. The wheel draws its titles from this.
+  const matchingPool = applyFilters(masterItems, filters, watchedIds).filter(
+    (item) => !setAside.has(item.id) && !watchedThisSession.has(item.id),
+  )
+
+  const drawFromPool = useCallback(
+    (pool: WheelItem[]) => {
+      setItems(weightedSample(pool, WHEEL_DRAW_SIZE))
+      setResult(null)
+      setRerollsUsed(0)
+    },
+    [],
+  )
 
   const pendingResultRef = useRef<WheelItem | null>(null)
   const fallbackTimerRef = useRef<number | undefined>(undefined)
@@ -97,14 +132,27 @@ function WheelScreen() {
   useEffect(() => () => window.clearTimeout(fallbackTimerRef.current), [])
   useEffect(() => () => window.clearTimeout(undoTimerRef.current), [])
 
+  // Marks the landed spin's outcome. Every spin is logged when it lands;
+  // this is what closes it out.
+  const closeSpin = useCallback((outcome: SpinOutcome) => {
+    const spinId = spinIdRef.current
+    if (!spinId) return
+    spinIdRef.current = null
+    void recordSpinOutcome(spinId, outcome)
+  }, [])
+
   const finishSpin = useCallback(() => {
     if (pendingResultRef.current === null) return
     window.clearTimeout(fallbackTimerRef.current)
+    const landed = pendingResultRef.current
     setSpinning(false)
-    setResult(pendingResultRef.current)
+    setResult(landed)
     pendingResultRef.current = null
     navigator.vibrate?.(VIBRATE_PATTERN)
-  }, [])
+    void recordSpin(userId, landed?.id ?? null, filters).then((id) => {
+      spinIdRef.current = id
+    })
+  }, [userId, filters])
 
   const spin = useCallback(
     (isReroll: boolean) => {
@@ -114,6 +162,9 @@ function WheelScreen() {
 
       if (spinning || items.length === 0 || !postersReady) return
       if (isReroll && rerollsUsed >= MAX_REROLLS) return
+      // The spin being replaced is closed out as a reroll before the next
+      // one starts.
+      if (isReroll) closeSpin('rerolled')
 
       const extraSpins = 4 + Math.random() * 2 // 4-6 full rotations
       const nextRotation = rotation + 360 * extraSpins
@@ -136,7 +187,7 @@ function WheelScreen() {
         fallbackTimerRef.current = window.setTimeout(finishSpin, SPIN_DURATION_MS + 150)
       }
     },
-    [spinning, items, rerollsUsed, rotation, reduceMotion, finishSpin, postersReady],
+    [spinning, items, rerollsUsed, rotation, reduceMotion, finishSpin, postersReady, closeSpin],
   )
 
   // The only reset trigger: committing to a film ends the round, so the
@@ -147,6 +198,7 @@ function WheelScreen() {
   // stays in masterItems so its poster stays preloaded for an undo.
   const handleWatchThis = () => {
     const watched = result
+    closeSpin('watched')
     setResult(null)
     setRerollsUsed(0)
     if (!watched) return
@@ -196,6 +248,7 @@ function WheelScreen() {
   // Dismissing (tap-outside or swipe down) just returns to idle — it
   // doesn't commit to anything, so it neither spends nor resets the budget.
   const handleDismiss = () => {
+    closeSpin('abandoned')
     setResult(null)
   }
 
@@ -207,6 +260,8 @@ function WheelScreen() {
   // spending or resetting the reroll budget here was the bug.
   const handleTakeOff = () => {
     const removedId = result?.id
+    closeSpin('removed')
+    if (removedId) setSetAside((current) => new Set(current).add(removedId))
     setItems((current) =>
       current.length > MIN_WHEEL_SEGMENTS ? current.filter((item) => item.id !== removedId) : current,
     )
@@ -224,13 +279,28 @@ function WheelScreen() {
     }
   }
 
-  // Restores the pool at the floor — doesn't spend or reset the reroll
-  // budget either, same as Not today. Films watched this session stay off:
-  // they're gone from the watchlist, so bringing them back would show the
-  // wheel a title the database no longer has.
+  // Redraws the titles without touching the filters. Anything set aside or
+  // watched this session is already out of matchingPool, so a redraw won't
+  // bring it back.
   const handleReshuffle = () => {
-    setItems(masterItems.filter((item) => !watchedThisSession.has(item.id)))
-    setResult(null)
+    closeSpin('abandoned')
+    drawFromPool(matchingPool)
+  }
+
+  const handleFiltersChange = (next: WheelFilters) => {
+    closeSpin('abandoned')
+    setFilters(next)
+    drawFromPool(
+      applyFilters(masterItems, next, watchedIds).filter(
+        (item) => !setAside.has(item.id) && !watchedThisSession.has(item.id),
+      ),
+    )
+  }
+
+  const handleSavePreset = (name: string) => {
+    void savePreset(userId, name, filters)
+      .then((preset) => setPresets((current) => [...current, preset]))
+      .catch(() => {})
   }
 
   const rerollsRemaining = MAX_REROLLS - rerollsUsed
@@ -241,13 +311,24 @@ function WheelScreen() {
   // Why the wheel is bare, in the user's terms. Films are dropped from
   // `items` but kept in `masterItems`, so the difference between them —
   // minus the ones watched — is what's merely set aside for the session.
-  const setAsideCount = Math.max(0, masterItems.length - items.length - watchedThisSession.size)
+  const setAsideCount = setAside.size
+  // Fewer than two leaves nothing to decide between, so that's the point at
+  // which the wheel gives up and explains itself.
+  const tooFewMatches = matchingPool.length < 2
   const emptyReason = (): string => {
     if (masterItems.length === 0) {
       return hasWatchedEver
         ? "You've watched everything on your watchlist. Import a fresh export to add more."
         : 'Your watchlist is empty. Import your Letterboxd export to fill the wheel.'
     }
+
+    // Name the filter that's actually doing the damage, rather than saying
+    // "no matches" and leaving the user to guess.
+    const culprit = mostRestrictiveFilter(masterItems, filters, watchedIds)
+    if (culprit && culprit.wouldMatch > matchingPool.length) {
+      return `${matchingPool.length} of ${masterItems.length} titles match. Loosen the ${culprit.label} filter — that alone would bring it to ${culprit.wouldMatch}.`
+    }
+
     const parts: string[] = []
     if (watchedThisSession.size > 0) parts.push(`${watchedThisSession.size} watched`)
     if (setAsideCount > 0) parts.push(`${setAsideCount} set aside for now`)
@@ -275,6 +356,35 @@ function WheelScreen() {
       <FilmBackdrop backdropPath={displayedBackdrop} />
       <h1 className="app-title">Spin the Watchlist</h1>
 
+      <div className="wheel-controls">
+        <div className="wheel-controls-row">
+          <button type="button" className="mute-toggle" onClick={() => setFiltersOpen(true)}>
+            Filters
+          </button>
+          <p className="wheel-match-count">
+            {items.length} of {matchingPool.length} matching title
+            {matchingPool.length === 1 ? '' : 's'}
+          </p>
+          <button type="button" className="mute-toggle" onClick={handleReshuffle}>
+            Reshuffle
+          </button>
+        </div>
+        {presets.length > 0 && (
+          <div className="preset-chips">
+            {presets.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                className="preset-chip"
+                onClick={() => handleFiltersChange(preset.filters)}
+              >
+                {preset.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       <SpinWheel
         items={items}
         rotation={rotation}
@@ -285,7 +395,7 @@ function WheelScreen() {
         spinDisabled={spinDisabled}
       />
 
-      {items.length === 0 ? (
+      {tooFewMatches ? (
         <p className="empty-state">{emptyReason()}</p>
       ) : (
         <div className="wheel-footer-row">
@@ -296,6 +406,18 @@ function WheelScreen() {
             {muted ? 'Unmute' : 'Mute'}
           </button>
         </div>
+      )}
+
+      {filtersOpen && (
+        <FilterSheet
+          pool={masterItems}
+          filters={filters}
+          watchedIds={watchedIds}
+          matchCount={matchingPool.length}
+          onChange={handleFiltersChange}
+          onSavePreset={handleSavePreset}
+          onClose={() => setFiltersOpen(false)}
+        />
       )}
 
       {undo && (
