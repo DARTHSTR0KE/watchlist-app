@@ -13,13 +13,15 @@ import { SignInScreen } from './auth/SignInScreen'
 import { Header } from './auth/Header'
 import { EnrichmentProvider } from './import/EnrichmentContext'
 import { ImportScreen } from './import/ImportScreen'
-import { hasWatchlistItems } from './import/watchlistWrites'
+import { hasWatchlistItems, undoWatchFilm, watchFilmNow } from './import/watchlistWrites'
+import type { WatchUndoSnapshot } from './import/watchlistWrites'
 import { Footer } from './Footer'
 
 const MAX_REROLLS = 2
 const SPIN_DURATION_MS = 4000
 const VIBRATE_PATTERN = [40, 30, 80]
 const MIN_WHEEL_SEGMENTS = 2
+const UNDO_WINDOW_MS = 8000
 
 function usePrefersReducedMotion(): boolean {
   const [reduced, setReduced] = useState(
@@ -47,6 +49,12 @@ function WheelScreen() {
   const [spinning, setSpinning] = useState(false)
   const [result, setResult] = useState<WheelItem | null>(null)
   const [rerollsUsed, setRerollsUsed] = useState(0)
+  const [undo, setUndo] = useState<{
+    snapshot: WatchUndoSnapshot
+    title: string
+    item: WheelItem
+  } | null>(null)
+  const undoTimerRef = useRef<number | undefined>(undefined)
   const reduceMotion = usePrefersReducedMotion()
   const [muted, toggleMuted] = useMuted()
 
@@ -71,6 +79,7 @@ function WheelScreen() {
   const fallbackTimerRef = useRef<number | undefined>(undefined)
 
   useEffect(() => () => window.clearTimeout(fallbackTimerRef.current), [])
+  useEffect(() => () => window.clearTimeout(undoTimerRef.current), [])
 
   const finishSpin = useCallback(() => {
     if (pendingResultRef.current === null) return
@@ -116,9 +125,44 @@ function WheelScreen() {
 
   // The only reset trigger: committing to a film ends the round, so the
   // next one starts with a fresh budget.
+  // Committing to a film takes it off this user's watchlist and records it
+  // as watched today. Only ever touches this user's own rows — a partner
+  // logs their own watch. The film drops off the wheel immediately; it
+  // stays in masterItems so its poster stays preloaded for an undo.
   const handleWatchThis = () => {
+    const watched = result
     setResult(null)
     setRerollsUsed(0)
+    if (!watched) return
+
+    setItems((current) => current.filter((item) => item.id !== watched.id))
+
+    void watchFilmNow(userId, watched.id)
+      .then((snapshot) => {
+        window.clearTimeout(undoTimerRef.current)
+        setUndo({ snapshot, title: watched.title, item: watched })
+        undoTimerRef.current = window.setTimeout(() => setUndo(null), UNDO_WINDOW_MS)
+      })
+      .catch(() => {
+        // The write failed, so put it back rather than showing a wheel that
+        // disagrees with the database.
+        setItems((current) =>
+          current.some((item) => item.id === watched.id) ? current : [...current, watched],
+        )
+      })
+  }
+
+  const handleUndoWatch = () => {
+    const pending = undo
+    if (!pending) return
+    window.clearTimeout(undoTimerRef.current)
+    setUndo(null)
+    setItems((current) =>
+      current.some((item) => item.id === pending.item.id) ? current : [...current, pending.item],
+    )
+    void undoWatchFilm(userId, pending.snapshot).catch(() => {
+      setItems((current) => current.filter((item) => item.id !== pending.item.id))
+    })
   }
 
   // Dismissing (tap-outside or swipe down) just returns to idle — it
@@ -201,6 +245,15 @@ function WheelScreen() {
           </p>
           <button type="button" className="mute-toggle" onClick={handleToggleMute}>
             {muted ? 'Unmute' : 'Mute'}
+          </button>
+        </div>
+      )}
+
+      {undo && (
+        <div className="undo-banner" role="status">
+          <span className="undo-banner-text">Marked "{undo.title}" watched</span>
+          <button type="button" className="undo-banner-action" onClick={handleUndoWatch}>
+            Undo
           </button>
         </div>
       )}

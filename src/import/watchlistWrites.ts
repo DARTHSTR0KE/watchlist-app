@@ -36,6 +36,26 @@ export interface WatchlistDiff {
   newFilmIds: Set<string>
   missingItems: { watchlistItemId: string; filmId: string; title: string; posterPath: string | null }[]
   unchangedCount: number
+  // CSV films this user has already watched. Kept out of the watchlist so a
+  // re-import can't resurrect them, but surfaced rather than dropped.
+  alreadyWatchedFilmIds: Set<string>
+}
+
+const WATCHED_LOOKUP_BATCH = 200
+
+async function findWatchedFilmIds(userId: string, filmIds: string[]): Promise<Set<string>> {
+  const watched = new Set<string>()
+  for (let i = 0; i < filmIds.length; i += WATCHED_LOOKUP_BATCH) {
+    const batch = filmIds.slice(i, i + WATCHED_LOOKUP_BATCH)
+    const { data, error } = await supabase
+      .from('watched')
+      .select('film_id')
+      .eq('user_id', userId)
+      .in('film_id', batch)
+    if (error) throw error
+    for (const row of data ?? []) watched.add(row.film_id)
+  }
+  return watched
 }
 
 // Compares the CSV's film set against this user's existing letterboxd-
@@ -61,14 +81,19 @@ export async function computeWatchlistDiff(userId: string, csvFilmIds: Set<strin
       posterPath: row.films?.poster_path ?? null,
     }))
   const unchangedCount = existingLetterboxd.length - missingItems.length
+  const alreadyWatchedFilmIds = await findWatchedFilmIds(userId, [...newFilmIds])
 
-  return { newFilmIds, missingItems, unchangedCount }
+  return { newFilmIds, missingItems, unchangedCount, alreadyWatchedFilmIds }
 }
 
 export interface WatchlistCsvEntry {
   filmId: string
   addedAt: string
   letterboxdUri: string | null
+  // Carried from the CSV row so a blocked entry can be exported back to
+  // Letterboxd without another round trip for its title.
+  title: string
+  year: number | null
 }
 
 export async function insertNewWatchlistItems(userId: string, entries: WatchlistCsvEntry[]): Promise<void> {
@@ -81,6 +106,107 @@ export async function insertNewWatchlistItems(userId: string, entries: Watchlist
     added_at: entry.addedAt,
   }))
   const { error } = await supabase.from('watchlist_items').insert(rows)
+  if (error) throw error
+}
+
+// Built from local date parts on purpose: toISOString() is UTC, which
+// returns yesterday's date for anyone east of Greenwich in the early hours.
+function todayLocalDate(): string {
+  const now = new Date()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${now.getFullYear()}-${month}-${day}`
+}
+
+// Everything needed to put a film back exactly as it was, including the
+// original added_at — the wheel weights by how long a title has been on the
+// list, so restoring "today" would quietly corrupt that.
+export interface WatchUndoSnapshot {
+  filmId: string
+  watchlistRow: {
+    film_id: string
+    source: string
+    letterboxd_uri: string | null
+    added_at: string | null
+  } | null
+  previousWatchedRow: {
+    rating: number | null
+    watched_on: string | null
+    together: boolean
+    picked_by: string | null
+    source: string
+  } | null
+}
+
+// Marks a film watched by this user only: their watchlist row goes, a
+// watched row lands with source 'app' and today's date. Scoped to user_id
+// throughout, so a partner's watchlist is untouched. Nothing outside
+// watchlist_items and watched is read or written.
+export async function watchFilmNow(userId: string, filmId: string): Promise<WatchUndoSnapshot> {
+  const { data: existingWatchlist, error: watchlistReadError } = await supabase
+    .from('watchlist_items')
+    .select('film_id, source, letterboxd_uri, added_at')
+    .eq('user_id', userId)
+    .eq('film_id', filmId)
+    .maybeSingle()
+  if (watchlistReadError) throw watchlistReadError
+
+  // A watched row may already exist (an earlier Letterboxd import, say).
+  // Keep it so undo restores it rather than deleting someone's history.
+  const { data: existingWatched, error: watchedReadError } = await supabase
+    .from('watched')
+    .select('rating, watched_on, together, picked_by, source')
+    .eq('user_id', userId)
+    .eq('film_id', filmId)
+    .maybeSingle()
+  if (watchedReadError) throw watchedReadError
+
+  const { error: upsertError } = await supabase
+    .from('watched')
+    .upsert(
+      { user_id: userId, film_id: filmId, source: 'app', watched_on: todayLocalDate() },
+      { onConflict: 'user_id,film_id' },
+    )
+  if (upsertError) throw upsertError
+
+  const { error: deleteError } = await supabase
+    .from('watchlist_items')
+    .delete()
+    .eq('user_id', userId)
+    .eq('film_id', filmId)
+  if (deleteError) throw deleteError
+
+  return { filmId, watchlistRow: existingWatchlist, previousWatchedRow: existingWatched }
+}
+
+export async function undoWatchFilm(userId: string, snapshot: WatchUndoSnapshot): Promise<void> {
+  if (snapshot.watchlistRow) {
+    const { error } = await supabase.from('watchlist_items').insert({
+      user_id: userId,
+      film_id: snapshot.watchlistRow.film_id,
+      source: snapshot.watchlistRow.source,
+      letterboxd_uri: snapshot.watchlistRow.letterboxd_uri,
+      added_at: snapshot.watchlistRow.added_at,
+    })
+    if (error) throw error
+  }
+
+  if (snapshot.previousWatchedRow) {
+    const { error } = await supabase
+      .from('watched')
+      .upsert(
+        { user_id: userId, film_id: snapshot.filmId, ...snapshot.previousWatchedRow },
+        { onConflict: 'user_id,film_id' },
+      )
+    if (error) throw error
+    return
+  }
+
+  const { error } = await supabase
+    .from('watched')
+    .delete()
+    .eq('user_id', userId)
+    .eq('film_id', snapshot.filmId)
   if (error) throw error
 }
 

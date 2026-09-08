@@ -6,6 +6,7 @@ import { ManualSearch } from './ManualSearch'
 import { WatchlistGrid } from './WatchlistGrid'
 import { MissingItemsPanel } from './MissingItemsPanel'
 import { formatRelativeTime } from '../utils/relativeTime'
+import { downloadLetterboxdCsv } from './letterboxdExport'
 import {
   getLastImportDate,
   getWatchlistGrid,
@@ -142,6 +143,38 @@ export function ImportScreen({ onGoToWheel }: ImportScreenProps) {
             {pendingImport.newEntries.length} new · {remainingMissing.length} no longer in the file ·{' '}
             {pendingImport.diff.unchangedCount} unchanged
           </p>
+
+          {pendingImport.alreadyWatchedEntries.length > 0 && (
+            <div className="already-watched-panel">
+              <p className="already-watched-title">
+                {pendingImport.alreadyWatchedEntries.length} already watched here
+              </p>
+              <p className="already-watched-hint">
+                Still on your Letterboxd watchlist, but watched in the app — so they aren't being
+                added back. Export them to clear them there in one step.
+              </p>
+              <ul className="already-watched-list">
+                {pendingImport.alreadyWatchedEntries.map((entry) => (
+                  <li key={entry.filmId}>
+                    {entry.title}
+                    {entry.year ? ` (${entry.year})` : ''}
+                  </li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                className="action-button"
+                onClick={() =>
+                  downloadLetterboxdCsv(
+                    pendingImport.alreadyWatchedEntries,
+                    'already-watched-remove-from-letterboxd.csv',
+                  )
+                }
+              >
+                Export these as CSV
+              </button>
+            </div>
+          )}
           <MissingItemsPanel missingItems={remainingMissing} onApply={handleApplyMissing} />
           <button type="button" className="spin-button" onClick={handleConfirm} disabled={confirming}>
             {confirming ? 'Saving…' : 'Confirm import'}

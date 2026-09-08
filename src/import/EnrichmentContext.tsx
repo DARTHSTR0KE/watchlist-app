@@ -35,6 +35,10 @@ interface PendingImport {
   filename: string
   rowsInFile: number
   newEntries: WatchlistCsvEntry[]
+  // In the CSV and new to the watchlist, but already watched here — held
+  // back rather than re-added, and surfaced so they can be cleared from
+  // Letterboxd.
+  alreadyWatchedEntries: WatchlistCsvEntry[]
   diff: WatchlistDiff
 }
 
@@ -279,6 +283,8 @@ export function EnrichmentProvider({ children }: { children: ReactNode }) {
             filmId: result.filmId,
             addedAt: result.row.addedAt,
             letterboxdUri: result.row.letterboxdUri,
+            title: result.row.name,
+            year: result.row.year,
           })
         } else if (result.outcome?.status === 'unmatched') {
           reviewItems.push({
@@ -300,10 +306,24 @@ export function EnrichmentProvider({ children }: { children: ReactNode }) {
       // already-on-the-list titles are excluded (computeWatchlistDiff already
       // does this, but newEntries above hasn't been filtered against it yet).
       const filteredNewEntries = newEntries.filter((entry) => diff.newFilmIds.has(entry.filmId))
+      // Already watched here means the film was dealt with — a re-import
+      // must not put it back on the watchlist.
+      const insertableEntries = filteredNewEntries.filter(
+        (entry) => !diff.alreadyWatchedFilmIds.has(entry.filmId),
+      )
+      const alreadyWatchedEntries = filteredNewEntries.filter((entry) =>
+        diff.alreadyWatchedFilmIds.has(entry.filmId),
+      )
 
       dispatch({
         type: 'awaiting-confirmation',
-        pendingImport: { filename, rowsInFile: parsed.watchlist.length, newEntries: filteredNewEntries, diff },
+        pendingImport: {
+          filename,
+          rowsInFile: parsed.watchlist.length,
+          newEntries: insertableEntries,
+          alreadyWatchedEntries,
+          diff,
+        },
         reviewItems,
       })
 
@@ -338,7 +358,13 @@ export function EnrichmentProvider({ children }: { children: ReactNode }) {
       await upsertFilm(film)
       if (item.destination.type === 'watchlist') {
         await insertNewWatchlistItems(userId, [
-          { filmId: film.id, addedAt: item.destination.addedAt, letterboxdUri: item.destination.letterboxdUri },
+          {
+            filmId: film.id,
+            addedAt: item.destination.addedAt,
+            letterboxdUri: item.destination.letterboxdUri,
+            title: film.title,
+            year: film.year,
+          },
         ])
       } else {
         await upsertWatchedEntries(userId, [
