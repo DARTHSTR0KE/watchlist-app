@@ -10,8 +10,19 @@ import { FilterSheet } from './wheel/FilterSheet'
 import { DEFAULT_FILTERS, applyFilters, mostRestrictiveFilter } from './wheel/filters'
 import type { WheelFilters } from './wheel/filters'
 import { WHEEL_DRAW_SIZE, weightedSample } from './wheel/weightedDraw'
-import { loadPresets, recordSpin, recordSpinOutcome, savePreset } from './wheel/wheelPersistence'
+import {
+  MAX_STARRED_PRESETS,
+  deletePreset,
+  loadPresets,
+  recordSpin,
+  recordSpinOutcome,
+  renamePreset,
+  restorePreset,
+  savePreset,
+  setPresetStarred,
+} from './wheel/wheelPersistence'
 import type { FilterPreset, SpinOutcome } from './wheel/wheelPersistence'
+import { PresetsScreen } from './wheel/PresetsScreen'
 import { ensureAudioContext, playTick, useMuted } from './wheel/tickSound'
 import { FilmBackdrop } from './wheel/FilmBackdrop'
 import { AuthProvider, useAuth } from './auth/AuthProvider'
@@ -69,8 +80,10 @@ function WheelScreen() {
   const [setAside, setSetAside] = useState<Set<string>>(new Set())
   const [watchedIds, setWatchedIds] = useState<Set<string>>(new Set())
   const [filters, setFilters] = useState<WheelFilters>(DEFAULT_FILTERS)
-  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [sheet, setSheet] = useState<'none' | 'filters' | 'presets'>('none')
   const [presets, setPresets] = useState<FilterPreset[]>([])
+  const [deletedPreset, setDeletedPreset] = useState<FilterPreset | null>(null)
+  const presetUndoTimerRef = useRef<number | undefined>(undefined)
   const spinIdRef = useRef<string | null>(null)
   const [undo, setUndo] = useState<{
     snapshot: WatchUndoSnapshot
@@ -131,6 +144,7 @@ function WheelScreen() {
 
   useEffect(() => () => window.clearTimeout(fallbackTimerRef.current), [])
   useEffect(() => () => window.clearTimeout(undoTimerRef.current), [])
+  useEffect(() => () => window.clearTimeout(presetUndoTimerRef.current), [])
 
   // Marks the landed spin's outcome. Every spin is logged when it lands;
   // this is what closes it out.
@@ -209,6 +223,9 @@ function WheelScreen() {
     void watchFilmNow(userId, watched.id)
       .then((snapshot) => {
         window.clearTimeout(undoTimerRef.current)
+        // One undo banner at a time — they share a fixed position.
+        window.clearTimeout(presetUndoTimerRef.current)
+        setDeletedPreset(null)
         setUndo({ snapshot, title: watched.title, item: watched })
         undoTimerRef.current = window.setTimeout(() => setUndo(null), UNDO_WINDOW_MS)
       })
@@ -298,9 +315,67 @@ function WheelScreen() {
   }
 
   const handleSavePreset = (name: string) => {
+    // Newest first, matching how the presets screen lists them.
     void savePreset(userId, name, filters)
-      .then((preset) => setPresets((current) => [...current, preset]))
+      .then((preset) => setPresets((current) => [preset, ...current]))
       .catch(() => {})
+  }
+
+  // Only starred presets become chips, ordered by when they were starred so
+  // they hold a stable position as others come and go.
+  const starredPresets = presets
+    .filter((preset) => preset.starredAt !== null)
+    .sort((a, b) => (a.starredAt ?? '').localeCompare(b.starredAt ?? ''))
+
+  const handleToggleStar = (preset: FilterPreset) => {
+    const starring = preset.starredAt === null
+    // The cap is enforced here rather than by quietly unstarring the oldest.
+    if (starring && starredPresets.length >= MAX_STARRED_PRESETS) return
+
+    void setPresetStarred(preset.id, starring)
+      .then((starredAt) => {
+        setPresets((current) =>
+          current.map((entry) => (entry.id === preset.id ? { ...entry, starredAt } : entry)),
+        )
+      })
+      .catch(() => {})
+  }
+
+  const handleRenamePreset = (preset: FilterPreset, name: string) => {
+    setPresets((current) =>
+      current.map((entry) => (entry.id === preset.id ? { ...entry, name } : entry)),
+    )
+    void renamePreset(preset.id, name).catch(() => {
+      setPresets((current) =>
+        current.map((entry) => (entry.id === preset.id ? { ...entry, name: preset.name } : entry)),
+      )
+    })
+  }
+
+  const handleDeletePreset = (preset: FilterPreset) => {
+    setPresets((current) => current.filter((entry) => entry.id !== preset.id))
+    void deletePreset(preset.id)
+      .then(() => {
+        window.clearTimeout(presetUndoTimerRef.current)
+        window.clearTimeout(undoTimerRef.current)
+        setUndo(null)
+        setDeletedPreset(preset)
+        presetUndoTimerRef.current = window.setTimeout(() => setDeletedPreset(null), UNDO_WINDOW_MS)
+      })
+      .catch(() => {
+        setPresets((current) => (current.some((e) => e.id === preset.id) ? current : [preset, ...current]))
+      })
+  }
+
+  const handleUndoDeletePreset = () => {
+    const preset = deletedPreset
+    if (!preset) return
+    window.clearTimeout(presetUndoTimerRef.current)
+    setDeletedPreset(null)
+    setPresets((current) => (current.some((e) => e.id === preset.id) ? current : [preset, ...current]))
+    void restorePreset(userId, preset).catch(() => {
+      setPresets((current) => current.filter((entry) => entry.id !== preset.id))
+    })
   }
 
   const rerollsRemaining = MAX_REROLLS - rerollsUsed
@@ -358,7 +433,7 @@ function WheelScreen() {
 
       <div className="wheel-controls">
         <div className="wheel-controls-row">
-          <button type="button" className="mute-toggle" onClick={() => setFiltersOpen(true)}>
+          <button type="button" className="mute-toggle" onClick={() => setSheet('filters')}>
             Filters
           </button>
           <p className="wheel-match-count">
@@ -369,9 +444,9 @@ function WheelScreen() {
             Reshuffle
           </button>
         </div>
-        {presets.length > 0 && (
+        {starredPresets.length > 0 && (
           <div className="preset-chips">
-            {presets.map((preset) => (
+            {starredPresets.map((preset) => (
               <button
                 key={preset.id}
                 type="button"
@@ -408,7 +483,7 @@ function WheelScreen() {
         </div>
       )}
 
-      {filtersOpen && (
+      {sheet === 'filters' && (
         <FilterSheet
           pool={masterItems}
           filters={filters}
@@ -416,8 +491,28 @@ function WheelScreen() {
           matchCount={matchingPool.length}
           onChange={handleFiltersChange}
           onSavePreset={handleSavePreset}
-          onClose={() => setFiltersOpen(false)}
+          onManagePresets={() => setSheet('presets')}
+          onClose={() => setSheet('none')}
         />
+      )}
+
+      {sheet === 'presets' && (
+        <PresetsScreen
+          presets={presets}
+          onToggleStar={handleToggleStar}
+          onRename={handleRenamePreset}
+          onDelete={handleDeletePreset}
+          onBack={() => setSheet('filters')}
+        />
+      )}
+
+      {deletedPreset && (
+        <div className="undo-banner" role="status">
+          <span className="undo-banner-text">Deleted "{deletedPreset.name}"</span>
+          <button type="button" className="undo-banner-action" onClick={handleUndoDeletePreset}>
+            Undo
+          </button>
+        </div>
       )}
 
       {undo && (

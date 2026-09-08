@@ -6,6 +6,7 @@ import {
   decadesPresent,
   genreFacets,
   languageFacets,
+  languageLabel,
   runtimeCeiling,
 } from './filters'
 import type { WheelFilters } from './filters'
@@ -18,17 +19,8 @@ interface FilterSheetProps {
   matchCount: number
   onChange: (filters: WheelFilters) => void
   onSavePreset: (name: string) => void
+  onManagePresets: () => void
   onClose: () => void
-}
-
-const LANGUAGE_NAMES = new Intl.DisplayNames(['en'], { type: 'language' })
-
-function languageLabel(code: string): string {
-  try {
-    return LANGUAGE_NAMES.of(code) ?? code
-  } catch {
-    return code
-  }
 }
 
 function Chip({
@@ -61,6 +53,7 @@ export function FilterSheet({
   matchCount,
   onChange,
   onSavePreset,
+  onManagePresets,
   onClose,
 }: FilterSheetProps) {
   const [presetName, setPresetName] = useState('')
@@ -243,6 +236,10 @@ export function FilterSheet({
             </button>
           </div>
         </section>
+
+        <button type="button" className="preset-manage-link" onClick={onManagePresets}>
+          Manage presets
+        </button>
 
         <div className="filter-sheet-actions">
           <button type="button" className="action-button" onClick={() => onChange(DEFAULT_FILTERS)}>

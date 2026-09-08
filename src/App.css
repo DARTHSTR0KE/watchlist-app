@@ -495,6 +495,125 @@
   cursor: default;
 }
 
+.preset-manage-link {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #f5c451;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Presets screen */
+
+.preset-help {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #a8a8b0;
+}
+
+.preset-empty {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #9a9aa2;
+}
+
+.preset-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.preset-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.preset-star {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  font-size: 1.15rem;
+  line-height: 1;
+  color: #6d6d75;
+  cursor: pointer;
+}
+
+.preset-star-on {
+  color: #f5c451;
+}
+
+.preset-star:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.preset-row-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  text-align: left;
+}
+
+.preset-name {
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #f5f5f5;
+  text-align: left;
+  cursor: text;
+}
+
+.preset-name-input {
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 0.2rem 0.4rem;
+  border-radius: 8px;
+  border: 1px solid rgba(245, 196, 81, 0.6);
+  background-color: #1c1c24;
+  color: #f5f5f5;
+  width: 100%;
+}
+
+.preset-summary {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: #a8a8b0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.preset-delete {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 245, 245, 0.2);
+  background: none;
+  color: #d8d8dc;
+  cursor: pointer;
+}
+
 .filter-sheet-actions {
   display: flex;
   gap: 0.6rem;

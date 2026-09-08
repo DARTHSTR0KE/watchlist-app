@@ -272,6 +272,7 @@ export interface Database {
           name: string
           filters: Json
           created_at: string | null
+          starred_at: string | null
         }
         Insert: {
           id?: string
@@ -279,6 +280,7 @@ export interface Database {
           name: string
           filters: Json
           created_at?: string | null
+          starred_at?: string | null
         }
         Update: {
           id?: string
@@ -286,6 +288,7 @@ export interface Database {
           name?: string
           filters?: Json
           created_at?: string | null
+          starred_at?: string | null
         }
         Relationships: []
       }

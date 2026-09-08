@@ -36,6 +36,18 @@ export const FILTER_LABELS: Record<FilterKey, string> = {
   excludeWatched: 'already watched',
 }
 
+const LANGUAGE_NAMES = new Intl.DisplayNames(['en'], { type: 'language' })
+
+// TMDB gives ISO codes; show them as names, falling back to the raw code
+// for anything Intl doesn't recognise.
+export function languageLabel(code: string): string {
+  try {
+    return LANGUAGE_NAMES.of(code) ?? code
+  } catch {
+    return code
+  }
+}
+
 export function decadeOf(year: number): number {
   return Math.floor(year / 10) * 10
 }
