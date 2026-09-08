@@ -1,6 +1,13 @@
 import type { WheelItem } from './titles'
 
+// Which pool the wheel draws from. 'watchlist' is the films still to see;
+// the other two both come from the watched table.
+export type WheelSource = 'watchlist' | 'rewatch' | 'both-loved'
+
+export type RatingMode = 'any' | 'min' | 'exact' | 'unrated'
+
 export interface WheelFilters {
+  source: WheelSource
   mediaType: 'movie' | 'tv' | 'both'
   // Empty means "no restriction", not "nothing matches".
   languages: string[]
@@ -9,9 +16,18 @@ export interface WheelFilters {
   decadeFrom: number | null
   decadeTo: number | null
   excludeWatched: boolean
+  // Rewatch only. 'unrated' is for films seen but never scored.
+  ratingMode: RatingMode
+  ratingValue: number
+  // Both watched sources. Excludes anything seen more recently than this
+  // many months ago; null lifts the restriction entirely.
+  watchedBeforeMonths: number | null
+  // Both loved it: the score each of us must have given.
+  bothLovedThreshold: number
 }
 
 export const DEFAULT_FILTERS: WheelFilters = {
+  source: 'watchlist',
   mediaType: 'both',
   languages: [],
   genres: [],
@@ -19,12 +35,54 @@ export const DEFAULT_FILTERS: WheelFilters = {
   decadeFrom: null,
   decadeTo: null,
   excludeWatched: false,
+  ratingMode: 'any',
+  ratingValue: 4,
+  // A rewatch wheel offering last month's films is useless, so this starts
+  // switched on at two years rather than off.
+  watchedBeforeMonths: 24,
+  bothLovedThreshold: 4,
 }
 
 export const RUNTIME_STEP = 15
 export const RUNTIME_MIN = 60
 
-export type FilterKey = keyof WheelFilters
+// Letterboxd's scale, which is what the watched table stores.
+export const RATING_STEP = 0.5
+export const RATING_MIN = 0.5
+export const RATING_MAX = 5
+
+export const WATCHED_BEFORE_OPTIONS: { months: number | null; label: string }[] = [
+  { months: 6, label: '6 months' },
+  { months: 12, label: 'a year' },
+  { months: 24, label: '2 years' },
+  { months: 60, label: '5 years' },
+  { months: null, label: 'no limit' },
+]
+
+// Both watched sources read the watched table; only 'watchlist' doesn't.
+export function isWatchedSource(source: WheelSource): boolean {
+  return source !== 'watchlist'
+}
+
+export const SOURCE_LABELS: Record<WheelSource, string> = {
+  watchlist: 'To watch',
+  rewatch: 'Watched again',
+  'both-loved': 'Both loved it',
+}
+
+// Only the dimensions that actually narrow a pool. `source` chooses the
+// pool itself, so it is deliberately not one of these.
+export type FilterKey =
+  | 'mediaType'
+  | 'languages'
+  | 'genres'
+  | 'maxRuntime'
+  | 'decadeFrom'
+  | 'decadeTo'
+  | 'excludeWatched'
+  | 'rating'
+  | 'watchedBefore'
+  | 'bothLoved'
 
 export const FILTER_LABELS: Record<FilterKey, string> = {
   mediaType: 'media type',
@@ -34,6 +92,30 @@ export const FILTER_LABELS: Record<FilterKey, string> = {
   decadeFrom: 'release decade',
   decadeTo: 'release decade',
   excludeWatched: 'already watched',
+  rating: 'rating',
+  watchedBefore: 'how long ago',
+  bothLoved: 'both loved it',
+}
+
+const MS_PER_MONTH = 1000 * 60 * 60 * 24 * 30.44
+
+function monthsSince(date: string): number {
+  const then = new Date(date).getTime()
+  if (Number.isNaN(then)) return Number.POSITIVE_INFINITY
+  return (Date.now() - then) / MS_PER_MONTH
+}
+
+function matchesRating(rating: number | null, mode: RatingMode, value: number): boolean {
+  switch (mode) {
+    case 'any':
+      return true
+    case 'min':
+      return rating !== null && rating >= value
+    case 'exact':
+      return rating !== null && rating === value
+    case 'unrated':
+      return rating === null
+  }
 }
 
 const LANGUAGE_NAMES = new Intl.DisplayNames(['en'], { type: 'language' })
@@ -71,7 +153,26 @@ function predicates(
       filters.decadeFrom === null || (item.year > 0 && decadeOf(item.year) >= filters.decadeFrom),
     decadeTo: (item) =>
       filters.decadeTo === null || (item.year > 0 && decadeOf(item.year) <= filters.decadeTo),
-    excludeWatched: (item) => !filters.excludeWatched || !watchedIds.has(item.id),
+    // Meaningless outside the watchlist, where everything is watched by
+    // definition — leaving it live there would empty the wheel.
+    excludeWatched: (item) =>
+      filters.source !== 'watchlist' || !filters.excludeWatched || !watchedIds.has(item.id),
+    rating: (item) =>
+      filters.source !== 'rewatch' ||
+      matchesRating(item.myRating, filters.ratingMode, filters.ratingValue),
+    watchedBefore: (item) =>
+      !isWatchedSource(filters.source) ||
+      filters.watchedBeforeMonths === null ||
+      // Letterboxd doesn't always record a date. Without one there's no
+      // evidence the film is recent, so it stays in.
+      item.watchedOn === null ||
+      monthsSince(item.watchedOn) >= filters.watchedBeforeMonths,
+    bothLoved: (item) =>
+      filters.source !== 'both-loved' ||
+      (item.myRating !== null &&
+        item.partnerRating !== null &&
+        item.myRating >= filters.bothLovedThreshold &&
+        item.partnerRating >= filters.bothLovedThreshold),
   }
 }
 
@@ -176,7 +277,13 @@ function isActive(filters: WheelFilters, key: FilterKey): boolean {
     case 'decadeTo':
       return filters.decadeTo !== null
     case 'excludeWatched':
-      return filters.excludeWatched
+      return filters.source === 'watchlist' && filters.excludeWatched
+    case 'rating':
+      return filters.source === 'rewatch' && filters.ratingMode !== 'any'
+    case 'watchedBefore':
+      return isWatchedSource(filters.source) && filters.watchedBeforeMonths !== null
+    case 'bothLoved':
+      return filters.source === 'both-loved' && filters.bothLovedThreshold > RATING_MIN
   }
 }
 

@@ -271,6 +271,40 @@
   width: 100%;
 }
 
+/* Source toggle ------------------------------------------------------- */
+
+.source-toggle {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  border: 1px solid rgba(239, 230, 214, 0.16);
+  background-color: rgba(10, 12, 22, 0.55);
+}
+
+.source-option {
+  padding: 0.32rem 0.85rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: #c8c8ce;
+  font-family: inherit;
+  font-size: 0.76rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.source-option-on {
+  background-color: rgba(239, 230, 214, 0.92);
+  color: #14141a;
+  font-weight: 600;
+}
+
+.source-option:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .wheel-controls-row {
   display: flex;
   align-items: center;
@@ -1485,4 +1519,21 @@
   background-color: rgba(10, 12, 22, 0.55);
   text-align: center;
   border-top: 1px solid rgba(245, 245, 245, 0.08);
+}
+
+/* Rewatch filter controls --------------------------------------------- */
+
+.filter-chips-tight {
+  margin-top: 0.45rem;
+}
+
+.filter-value {
+  color: #efe6d6;
+  font-weight: 600;
+}
+
+.filter-hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.78rem;
+  color: #9a9aa4;
 }

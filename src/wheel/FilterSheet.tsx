@@ -1,15 +1,20 @@
 import { useState } from 'react'
 import {
   DEFAULT_FILTERS,
+  RATING_MAX,
+  RATING_MIN,
+  RATING_STEP,
   RUNTIME_MIN,
   RUNTIME_STEP,
+  WATCHED_BEFORE_OPTIONS,
   decadesPresent,
   genreFacets,
+  isWatchedSource,
   languageFacets,
   languageLabel,
   runtimeCeiling,
 } from './filters'
-import type { WheelFilters } from './filters'
+import type { RatingMode, WheelFilters } from './filters'
 import type { WheelItem } from './titles'
 
 interface FilterSheetProps {
@@ -21,6 +26,22 @@ interface FilterSheetProps {
   onSavePreset: (name: string) => void
   onManagePresets: () => void
   onClose: () => void
+}
+
+const RATING_STEPS = Array.from(
+  { length: Math.round((RATING_MAX - RATING_MIN) / RATING_STEP) + 1 },
+  (_, i) => RATING_MIN + i * RATING_STEP,
+)
+
+const RATING_MODES: { value: RatingMode; label: string }[] = [
+  { value: 'any', label: 'Any' },
+  { value: 'min', label: 'At least' },
+  { value: 'exact', label: 'Exactly' },
+  { value: 'unrated', label: 'Never rated' },
+]
+
+function starLabel(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1)
 }
 
 function Chip({
@@ -202,16 +223,97 @@ export function FilterSheet({
           </section>
         )}
 
-        <section className="filter-group">
-          <label className="filter-toggle">
-            <input
-              type="checkbox"
-              checked={filters.excludeWatched}
-              onChange={(event) => onChange({ ...filters, excludeWatched: event.target.checked })}
-            />
-            Exclude anything I've already watched
-          </label>
-        </section>
+        {/* Everything in the watched sources is watched, so this would only
+            ever empty the wheel there. */}
+        {filters.source === 'watchlist' && (
+          <section className="filter-group">
+            <label className="filter-toggle">
+              <input
+                type="checkbox"
+                checked={filters.excludeWatched}
+                onChange={(event) => onChange({ ...filters, excludeWatched: event.target.checked })}
+              />
+              Exclude anything I've already watched
+            </label>
+          </section>
+        )}
+
+        {filters.source === 'rewatch' && (
+          <section className="filter-group">
+            <p className="filter-group-title">My rating</p>
+            <div className="filter-chips">
+              {RATING_MODES.map((mode) => (
+                <button
+                  key={mode.value}
+                  type="button"
+                  className={`filter-chip${filters.ratingMode === mode.value ? ' filter-chip-selected' : ''}`}
+                  aria-pressed={filters.ratingMode === mode.value}
+                  onClick={() => onChange({ ...filters, ratingMode: mode.value })}
+                >
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+            {(filters.ratingMode === 'min' || filters.ratingMode === 'exact') && (
+              <div className="filter-chips filter-chips-tight">
+                {RATING_STEPS.map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={`filter-chip${filters.ratingValue === value ? ' filter-chip-selected' : ''}`}
+                    aria-pressed={filters.ratingValue === value}
+                    onClick={() => onChange({ ...filters, ratingValue: value })}
+                  >
+                    {starLabel(value)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {filters.source === 'both-loved' && (
+          <section className="filter-group">
+            <p className="filter-group-title">
+              We both rated it at least <span className="filter-value">{starLabel(filters.bothLovedThreshold)}</span>
+            </p>
+            <div className="filter-chips filter-chips-tight">
+              {RATING_STEPS.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={`filter-chip${filters.bothLovedThreshold === value ? ' filter-chip-selected' : ''}`}
+                  aria-pressed={filters.bothLovedThreshold === value}
+                  onClick={() => onChange({ ...filters, bothLovedThreshold: value })}
+                >
+                  {starLabel(value)}
+                </button>
+              ))}
+            </div>
+            <p className="filter-hint">
+              {matchCount} film{matchCount === 1 ? '' : 's'} you both rated that highly.
+            </p>
+          </section>
+        )}
+
+        {isWatchedSource(filters.source) && (
+          <section className="filter-group">
+            <p className="filter-group-title">Skip anything seen in the last</p>
+            <div className="filter-chips">
+              {WATCHED_BEFORE_OPTIONS.map((option) => (
+                <button
+                  key={option.label}
+                  type="button"
+                  className={`filter-chip${filters.watchedBeforeMonths === option.months ? ' filter-chip-selected' : ''}`}
+                  aria-pressed={filters.watchedBeforeMonths === option.months}
+                  onClick={() => onChange({ ...filters, watchedBeforeMonths: option.months })}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="filter-group">
           <p className="filter-group-title">Save these filters</p>
@@ -242,7 +344,14 @@ export function FilterSheet({
         </button>
 
         <div className="filter-sheet-actions">
-          <button type="button" className="action-button" onClick={() => onChange(DEFAULT_FILTERS)}>
+          {/* Reset clears the filters, not the source — you asked for the
+              rewatch wheel, so resetting shouldn't drop you back to the
+              watchlist. */}
+          <button
+            type="button"
+            className="action-button"
+            onClick={() => onChange({ ...DEFAULT_FILTERS, source: filters.source })}
+          >
             Clear all
           </button>
           <button type="button" className="action-button primary" onClick={onClose}>

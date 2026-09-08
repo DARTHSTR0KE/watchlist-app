@@ -5,10 +5,17 @@ import { ResultModal } from './wheel/ResultModal'
 import type { WheelItem } from './wheel/titles'
 import { getSegmentIndexAtPointer } from './wheel/wheelMath'
 import { usePosterImages } from './wheel/usePosterImages'
-import { loadWatchedFilmIds, loadWheelItems } from './wheel/loadWheelItems'
+import {
+  loadBothRatedItems,
+  loadPartnerId,
+  loadRewatchItems,
+  loadWatchedFilmIds,
+  loadWheelItems,
+} from './wheel/loadWheelItems'
+import { SourceToggle } from './wheel/SourceToggle'
 import { FilterSheet } from './wheel/FilterSheet'
 import { DEFAULT_FILTERS, applyFilters, mostRestrictiveFilter } from './wheel/filters'
-import type { WheelFilters } from './wheel/filters'
+import type { WheelFilters, WheelSource } from './wheel/filters'
 import { WHEEL_DRAW_SIZE, weightedSample } from './wheel/weightedDraw'
 import {
   MAX_STARRED_PRESETS,
@@ -45,6 +52,20 @@ const VIBRATE_PATTERN = [40, 30, 80]
 const MIN_WHEEL_SEGMENTS = 2
 const UNDO_WINDOW_MS = 8000
 
+// What the wheel may draw from: the filters applied, minus anything set
+// aside or watched during this session.
+function visiblePool(
+  pool: WheelItem[],
+  filters: WheelFilters,
+  watchedIds: Set<string>,
+  setAside: Set<string>,
+  watchedThisSession: Set<string>,
+): WheelItem[] {
+  return applyFilters(pool, filters, watchedIds).filter(
+    (item) => !setAside.has(item.id) && !watchedThisSession.has(item.id),
+  )
+}
+
 function usePrefersReducedMotion(): boolean {
   const [reduced, setReduced] = useState(
     () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -80,6 +101,13 @@ function WheelScreen() {
   const [setAside, setSetAside] = useState<Set<string>>(new Set())
   const [watchedIds, setWatchedIds] = useState<Set<string>>(new Set())
   const [filters, setFilters] = useState<WheelFilters>(DEFAULT_FILTERS)
+  // Both forms are needed: the id drives the toggle's disabled state, the
+  // ref lets the pool loader read it without reloading when it resolves.
+  const [partnerId, setPartnerId] = useState<string | null>(null)
+  const partnerIdRef = useRef<string | null>(null)
+  // A source switch keeps the old wheel on screen rather than blanking the
+  // app, so it needs its own flag to hold the spin until the pool lands.
+  const [switchingSource, setSwitchingSource] = useState(false)
   const [sheet, setSheet] = useState<'none' | 'filters' | 'presets'>('none')
   const [presets, setPresets] = useState<FilterPreset[]>([])
   const [deletedPreset, setDeletedPreset] = useState<FilterPreset | null>(null)
@@ -94,41 +122,91 @@ function WheelScreen() {
   const reduceMotion = usePrefersReducedMotion()
   const [muted, toggleMuted] = useMuted()
 
+  // Everything that doesn't depend on which source is selected.
   useEffect(() => {
     let cancelled = false
     Promise.all([
-      loadWheelItems(userId),
       loadWatchedFilmIds(userId).catch(() => new Set<string>()),
       loadPresets(userId).catch(() => [] as FilterPreset[]),
-    ]).then(async ([loaded, watched, savedPresets]) => {
+      loadPartnerId(userId).catch(() => null),
+      // Only asked so an untouched account can be told apart from one
+      // that's been worked all the way through.
+      hasWatchedItems(userId).catch(() => false),
+    ]).then(([watched, savedPresets, partner, watchedBefore]) => {
       if (cancelled) return
-      setMasterItems(loaded)
       setWatchedIds(watched)
       setPresets(savedPresets)
-      setItems(weightedSample(loaded, WHEEL_DRAW_SIZE))
-      // Only asked when the list is empty, to tell an untouched account
-      // apart from one that's been worked all the way through.
-      if (loaded.length === 0) {
-        const watchedBefore = await hasWatchedItems(userId).catch(() => false)
-        if (cancelled) return
-        setHasWatchedEver(watchedBefore)
-      }
-      setLoadingItems(false)
+      partnerIdRef.current = partner
+      setPartnerId(partner)
+      setHasWatchedEver(watchedBefore)
     })
     return () => {
       cancelled = true
     }
   }, [userId])
 
+  // The pool loader needs the current filters and session sets, but must
+  // not re-run when they change — only when the source does. Declared
+  // before that effect so it has always synced by the time it runs.
+  const filtersRef = useRef(filters)
+  const setAsideRef = useRef(setAside)
+  const watchedThisSessionRef = useRef(watchedThisSession)
+  const watchedIdsRef = useRef(watchedIds)
+  useEffect(() => {
+    filtersRef.current = filters
+    setAsideRef.current = setAside
+    watchedThisSessionRef.current = watchedThisSession
+    watchedIdsRef.current = watchedIds
+  })
+
+  // Each source is a different table, so switching means reloading rather
+  // than filtering what's already in hand.
+  const source = filters.source
+  useEffect(() => {
+    let cancelled = false
+
+    const load = (): Promise<WheelItem[]> => {
+      if (source === 'rewatch') return loadRewatchItems(userId)
+      if (source === 'both-loved') {
+        const partner = partnerIdRef.current
+        return partner ? loadBothRatedItems(userId, partner) : Promise.resolve([])
+      }
+      return loadWheelItems(userId)
+    }
+
+    void load()
+      .catch(() => [] as WheelItem[])
+      .then((loaded) => {
+        if (cancelled) return
+        setMasterItems(loaded)
+        setItems(
+          weightedSample(
+            visiblePool(
+              loaded,
+              filtersRef.current,
+              watchedIdsRef.current,
+              setAsideRef.current,
+              watchedThisSessionRef.current,
+            ),
+            WHEEL_DRAW_SIZE,
+          ),
+        )
+        setResult(null)
+        setRerollsUsed(0)
+        setLoadingItems(false)
+        setSwitchingSource(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [userId, source])
+
   // Only the drawn titles are preloaded now — the pool behind them can run
   // to hundreds, and gating the spin on all of those would be a long wait.
   const { statuses: imageStatuses, allSettled: postersReady } = usePosterImages(items)
 
-  // What the filters leave, minus anything set aside or watched this
-  // session. The wheel draws its titles from this.
-  const matchingPool = applyFilters(masterItems, filters, watchedIds).filter(
-    (item) => !setAside.has(item.id) && !watchedThisSession.has(item.id),
-  )
+  const matchingPool = visiblePool(masterItems, filters, watchedIds, setAside, watchedThisSession)
 
   const drawFromPool = useCallback(
     (pool: WheelItem[]) => {
@@ -307,11 +385,18 @@ function WheelScreen() {
   const handleFiltersChange = (next: WheelFilters) => {
     closeSpin('abandoned')
     setFilters(next)
-    drawFromPool(
-      applyFilters(masterItems, next, watchedIds).filter(
-        (item) => !setAside.has(item.id) && !watchedThisSession.has(item.id),
-      ),
-    )
+    // A new source means a different table; the loader draws once it lands,
+    // and drawing from the outgoing pool here would only flash the wrong
+    // films first.
+    if (next.source === filters.source) {
+      drawFromPool(visiblePool(masterItems, next, watchedIds, setAside, watchedThisSession))
+    }
+  }
+
+  const handleSourceChange = (next: WheelSource) => {
+    if (next === filters.source) return
+    setSwitchingSource(true)
+    handleFiltersChange({ ...filters, source: next })
   }
 
   const handleSavePreset = (name: string) => {
@@ -381,7 +466,8 @@ function WheelScreen() {
   const rerollsRemaining = MAX_REROLLS - rerollsUsed
   const canRemoveFromWheel = items.length > MIN_WHEEL_SEGMENTS
   // Nothing to decide at one film, so the hub stops being a spin action.
-  const spinDisabled = spinning || !postersReady || result !== null || items.length <= 1
+  const spinDisabled =
+    spinning || switchingSource || !postersReady || result !== null || items.length <= 1
 
   // Why the wheel is bare, in the user's terms. Films are dropped from
   // `items` but kept in `masterItems`, so the difference between them —
@@ -392,6 +478,16 @@ function WheelScreen() {
   const tooFewMatches = matchingPool.length < 2
   const emptyReason = (): string => {
     if (masterItems.length === 0) {
+      if (filters.source === 'both-loved') {
+        return partnerId === null
+          ? 'No partner is linked to this account yet, so there are no shared ratings to draw from.'
+          : "Neither of you has rated anything you've both seen yet."
+      }
+      if (filters.source === 'rewatch') {
+        return hasWatchedEver
+          ? 'Your watched history is still being enriched. Give it a moment, or import your Letterboxd export.'
+          : "You haven't logged anything as watched yet. Import your Letterboxd export to fill the rewatch wheel."
+      }
       return hasWatchedEver
         ? "You've watched everything on your watchlist. Import a fresh export to add more."
         : 'Your watchlist is empty. Import your Letterboxd export to fill the wheel.'
@@ -432,13 +528,24 @@ function WheelScreen() {
       <h1 className="app-title">Spin the Watchlist</h1>
 
       <div className="wheel-controls">
+        <SourceToggle
+          source={filters.source}
+          partnerAvailable={partnerId !== null}
+          onChange={handleSourceChange}
+        />
         <div className="wheel-controls-row">
           <button type="button" className="mute-toggle" onClick={() => setSheet('filters')}>
             Filters
           </button>
           <p className="wheel-match-count">
-            {items.length} of {matchingPool.length} matching title
-            {matchingPool.length === 1 ? '' : 's'}
+            {switchingSource ? (
+              'Loading…'
+            ) : (
+              <>
+                {items.length} of {matchingPool.length} matching title
+                {matchingPool.length === 1 ? '' : 's'}
+              </>
+            )}
           </p>
           <button type="button" className="mute-toggle" onClick={handleReshuffle}>
             Reshuffle
