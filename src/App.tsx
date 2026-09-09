@@ -870,6 +870,9 @@ function AuthenticatedApp() {
   // My own name lives here, not in the header, so settings can change it
   // and every screen showing it updates at once.
   const [myName, setMyName] = useState<string | null>(null)
+  // Three states, not one null: still loading, read, or unreadable. A
+  // missing row is a real condition to report, not an empty name.
+  const [profileStatus, setProfileStatus] = useState<'loading' | 'ready' | 'unreadable'>('loading')
   const [needsOnboarding, setNeedsOnboarding] = useState(false)
   const [partnerId, setPartnerId] = useState<string | null>(null)
   // Set only by "Spin this list"; cleared by any ordinary navigation, so
@@ -891,6 +894,7 @@ function AuthenticatedApp() {
     ]).then(async ([has, profile, unseen, partner]) => {
       if (cancelled) return
       setMyName(profile?.displayName ?? null)
+      setProfileStatus(profile ? 'ready' : 'unreadable')
       // A profile that can't be read is not evidence the walkthrough is
       // due, so it stays out of the way rather than showing on every open.
       if (profile && profile.onboardedAt === null) setNeedsOnboarding(true)
@@ -968,8 +972,10 @@ function AuthenticatedApp() {
           <SettingsScreen
             userId={userId}
             displayName={myName}
+            profileStatus={profileStatus}
             onDisplayNameChange={setMyName}
             onReplayWalkthrough={() => setNeedsOnboarding(true)}
+            onGoToImport={() => setScreen('import')}
           />
         )}
         {screen === 'recommended' && (

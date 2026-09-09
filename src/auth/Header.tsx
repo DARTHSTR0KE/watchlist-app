@@ -22,7 +22,6 @@ const NAV: { value: Screen; label: string }[] = [
   { value: 'together', label: 'Together' },
   { value: 'watched-together', label: 'Watched' },
   { value: 'stats', label: 'Stats' },
-  { value: 'import', label: 'Import' },
 ]
 
 export function Header({ screen, displayName, unseenRecommendations, onNavigate }: HeaderProps) {

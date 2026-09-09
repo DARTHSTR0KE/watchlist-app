@@ -3,6 +3,10 @@ import { buildPageBackdropUrl } from './posters'
 
 interface FilmBackdropProps {
   backdropPath: string | null
+  // The page backdrop is pinned behind everything at z-index -1, which is
+  // invisible inside an opaque overlay. 'contained' fills its positioned
+  // parent instead, for a screen that brings its own background.
+  variant?: 'page' | 'contained'
 }
 
 interface BackdropState {
@@ -14,7 +18,7 @@ interface BackdropState {
 // before the swap, so the fade never runs against a half-loaded image — and
 // a film with no backdrop fades out to the flat page background rather than
 // stranding the previous film's image on screen.
-export function FilmBackdrop({ backdropPath }: FilmBackdropProps) {
+export function FilmBackdrop({ backdropPath, variant = 'page' }: FilmBackdropProps) {
   const targetUrl = buildPageBackdropUrl(backdropPath)
   const [state, setState] = useState<BackdropState>({ slots: [null, null], active: 0 })
   const shownUrlRef = useRef<string | null>(null)
@@ -53,7 +57,10 @@ export function FilmBackdrop({ backdropPath }: FilmBackdropProps) {
   }, [targetUrl])
 
   return (
-    <div className="film-backdrop" aria-hidden="true">
+    <div
+      className={`film-backdrop${variant === 'contained' ? ' film-backdrop-contained' : ''}`}
+      aria-hidden="true"
+    >
       {state.slots.map((url, index) => (
         <div
           key={index}

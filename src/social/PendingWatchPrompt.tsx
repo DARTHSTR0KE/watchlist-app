@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { buildPosterUrl } from '../wheel/posters'
+import { FilmBackdrop } from '../wheel/FilmBackdrop'
 import type { PendingWatch } from './pendingWatches'
 
 export type WatchAnswer = 'together' | 'alone' | 'not-watched'
@@ -35,31 +36,33 @@ export function PendingWatchPrompt({
   }
 
   return (
-    <div className="filter-sheet-overlay" onClick={onDismiss}>
-      <div className="filter-sheet pending-sheet" onClick={(event) => event.stopPropagation()}>
-        <div className="filter-sheet-header">
-          <h2 className="filter-sheet-title">Did you watch it?</h2>
-          {pending.length > 1 && (
-            <span className="filter-sheet-count">{pending.length} to answer</span>
-          )}
-        </div>
+    <div className="pending-screen">
+      {/* The film's own backdrop, blurred and darkened by the same
+          component the wheel uses. No backdrop_path leaves the flat
+          background showing through. */}
+      <FilmBackdrop backdropPath={watch.backdropPath} variant="contained" />
 
-        <div className="pending-film">
-          {posterUrl ? (
-            <img className="pending-poster" src={posterUrl} alt="" aria-hidden="true" />
-          ) : (
-            <span className="pending-poster picker-poster-fallback" aria-hidden="true" />
-          )}
-          <p className="pending-title">
-            {watch.title}
-            <span className="picker-year">{watch.year ? ` ${watch.year}` : ''}</span>
-          </p>
-        </div>
+      <div className="pending-content">
+        <p className="pending-question">Did you watch it?</p>
 
-        <div className="filter-sheet-actions">
+        {posterUrl ? (
+          <img className="pending-poster" src={posterUrl} alt="" aria-hidden="true" />
+        ) : (
+          <span className="pending-poster pending-poster-fallback" aria-hidden="true" />
+        )}
+
+        <p className="pending-title">
+          {watch.title}
+          {watch.year ? <span className="pending-year"> {watch.year}</span> : null}
+        </p>
+        {pending.length > 1 && <p className="pending-count">1 of {pending.length}</p>}
+
+        {/* Full-width rows in order of likelihood. Never circles: these
+            labels carry a name of unknown length. */}
+        <div className="pending-actions">
           <button
             type="button"
-            className="action-button primary"
+            className="pending-action pending-action-primary"
             disabled={busy}
             onClick={() => answer('together')}
           >
@@ -67,22 +70,24 @@ export function PendingWatchPrompt({
           </button>
           <button
             type="button"
-            className="action-button"
+            className="pending-action pending-action-neutral"
             disabled={busy}
             onClick={() => answer('alone')}
           >
             Watched it on my own
           </button>
+          {/* Named for what the app will do, not for how the evening went —
+              that is the part worth knowing before tapping it. */}
           <button
             type="button"
-            className="action-button"
+            className="pending-action pending-action-undo"
             disabled={busy}
             onClick={() => answer('not-watched')}
           >
-            Didn't watch it after all
+            Put it back on my watchlist
           </button>
-          <button type="button" className="preset-delete pending-later" onClick={onDismiss}>
-            Not now
+          <button type="button" className="pending-later" onClick={onDismiss}>
+            Ask me later
           </button>
         </div>
       </div>

@@ -14,6 +14,7 @@ export interface PendingWatch {
   title: string
   year: number | null
   posterPath: string | null
+  backdropPath: string | null
   watchedOn: string | null
   // The added_at the film had on the watchlist before it was watched, kept
   // so "didn't watch it" can put it back with the age it really had.
@@ -24,14 +25,19 @@ interface PendingRow {
   film_id: string
   watched_on: string | null
   prev_added_at: string | null
-  films: { title: string; year: number | null; poster_path: string | null } | null
+  films: {
+    title: string
+    year: number | null
+    poster_path: string | null
+    backdrop_path: string | null
+  } | null
 }
 
 // Oldest first, so the queue works through in the order things happened.
 export async function loadPendingWatches(userId: string): Promise<PendingWatch[]> {
   const { data, error } = await supabase
     .from('watched')
-    .select('film_id, watched_on, prev_added_at, films(title, year, poster_path)')
+    .select('film_id, watched_on, prev_added_at, films(title, year, poster_path, backdrop_path)')
     .eq('user_id', userId)
     .is('together', null)
     .order('watched_on', { ascending: true })
@@ -44,6 +50,7 @@ export async function loadPendingWatches(userId: string): Promise<PendingWatch[]
       title: row.films!.title,
       year: row.films!.year,
       posterPath: row.films!.poster_path,
+      backdropPath: row.films!.backdrop_path,
       watchedOn: row.watched_on,
       prevAddedAt: row.prev_added_at,
     }))
