@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
 import { SpinWheel } from './wheel/SpinWheel'
 import { ResultModal } from './wheel/ResultModal'
@@ -63,6 +63,10 @@ import { RecommendedScreen } from './social/RecommendedScreen'
 import { countUnseenRecommendations, sendRecommendation } from './social/recommendations'
 import { SharedListScreen } from './social/SharedListScreen'
 import { HistoryScreen } from './social/HistoryScreen'
+// Split out on its own: recharts is large, and it is only needed here.
+const StatsScreen = lazy(() =>
+  import('./stats/StatsScreen').then((m) => ({ default: m.StatsScreen })),
+)
 import { WatchLogSheet } from './social/WatchLogSheet'
 import { PartnerRatingPrompt } from './social/PartnerRatingPrompt'
 import {
@@ -1059,6 +1063,11 @@ function AuthenticatedApp() {
           }}
         />
         {screen === 'wheel' && <WheelScreen startSource={wheelSource} />}
+        {screen === 'stats' && (
+          <Suspense fallback={null}>
+            <StatsScreen userId={userId} partnerId={partnerId} partnerName={partnerName} />
+          </Suspense>
+        )}
         {screen === 'history' && (
           <HistoryScreen userId={userId} partnerId={partnerId} partnerName={partnerName} />
         )}
