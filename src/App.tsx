@@ -50,6 +50,9 @@ import { FilmBackdrop } from './wheel/FilmBackdrop'
 import { AuthProvider, useAuth } from './auth/AuthProvider'
 import { SignInScreen } from './auth/SignInScreen'
 import { Header } from './auth/Header'
+import type { Screen } from './auth/Header'
+import { RecommendedScreen } from './social/RecommendedScreen'
+import { countUnseenRecommendations, sendRecommendation } from './social/recommendations'
 import { EnrichmentProvider } from './import/EnrichmentContext'
 import { ImportScreen } from './import/ImportScreen'
 import {
@@ -806,6 +809,11 @@ function WheelScreen() {
       {result && (
         <ResultModal
           item={result}
+          partnerName={partner?.displayName ?? null}
+          onRecommend={async (note) => {
+            if (!partner) return
+            await sendRecommendation(userId, partner.id, result.id, note)
+          }}
           rerollsRemaining={rerollsRemaining}
           canReroll={rerollsRemaining > 0}
           canRemoveFromWheel={canRemoveFromWheel}
@@ -824,14 +832,22 @@ function WheelScreen() {
 function AuthenticatedApp() {
   const { session } = useAuth()
   const userId = session?.user.id ?? ''
-  const [screen, setScreen] = useState<'wheel' | 'import'>('wheel')
+  const [screen, setScreen] = useState<Screen>('wheel')
   const [checkingWatchlist, setCheckingWatchlist] = useState(true)
+  const [unseenRecommendations, setUnseenRecommendations] = useState(0)
+  const [partnerName, setPartnerName] = useState('your partner')
 
   useEffect(() => {
     let cancelled = false
-    hasWatchlistItems(userId).then((has) => {
+    Promise.all([
+      hasWatchlistItems(userId).catch(() => true),
+      countUnseenRecommendations(userId).catch(() => 0),
+      loadPartner(userId).catch(() => null),
+    ]).then(([has, unseen, partner]) => {
       if (cancelled) return
       if (!has) setScreen('import')
+      setUnseenRecommendations(unseen)
+      if (partner) setPartnerName(partner.displayName)
       setCheckingWatchlist(false)
     })
     return () => {
@@ -844,8 +860,20 @@ function AuthenticatedApp() {
   return (
     <EnrichmentProvider>
       <div className="app-shell">
-        <Header screen={screen} onToggleScreen={() => setScreen((s) => (s === 'wheel' ? 'import' : 'wheel'))} />
-        {screen === 'wheel' ? <WheelScreen /> : <ImportScreen onGoToWheel={() => setScreen('wheel')} />}
+        <Header
+          screen={screen}
+          unseenRecommendations={unseenRecommendations}
+          onNavigate={setScreen}
+        />
+        {screen === 'wheel' && <WheelScreen />}
+        {screen === 'import' && <ImportScreen onGoToWheel={() => setScreen('wheel')} />}
+        {screen === 'recommended' && (
+          <RecommendedScreen
+            userId={userId}
+            partnerName={partnerName}
+            onSeen={() => setUnseenRecommendations(0)}
+          />
+        )}
         <Footer />
       </div>
     </EnrichmentProvider>

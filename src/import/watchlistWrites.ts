@@ -32,6 +32,25 @@ export async function saveTopCast(filmId: string, cast: TopCastMember[]): Promis
   if (error) throw error
 }
 
+// For a film already in the films table — accepting a recommendation, say.
+// Source is 'manual' so a later Letterboxd re-import doesn't ask about it.
+export async function addExistingFilmToWatchlist(
+  userId: string,
+  filmId: string,
+): Promise<{ error: string | null }> {
+  const { error } = await supabase.from('watchlist_items').insert({
+    user_id: userId,
+    film_id: filmId,
+    source: 'manual',
+    added_at: new Date().toISOString(),
+  })
+  if (error) {
+    if (error.code === '23505') return { error: 'Already on your watchlist.' }
+    return { error: error.message }
+  }
+  return { error: null }
+}
+
 export async function hasWatchlistItems(userId: string): Promise<boolean> {
   const { count, error } = await supabase
     .from('watchlist_items')
