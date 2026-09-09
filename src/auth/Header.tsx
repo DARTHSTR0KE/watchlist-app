@@ -1,11 +1,17 @@
-import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabaseClient'
-import { useAuth } from './AuthProvider'
-
-export type Screen = 'wheel' | 'recommended' | 'together' | 'history' | 'stats' | 'import'
+export type Screen =
+  | 'wheel'
+  | 'recommended'
+  | 'together'
+  | 'watched-together'
+  | 'stats'
+  | 'import'
+  | 'settings'
 
 interface HeaderProps {
   screen: Screen
+  // Owned by the shell so a rename in settings shows here immediately,
+  // rather than each screen fetching its own copy.
+  displayName: string | null
   unseenRecommendations: number
   onNavigate: (screen: Screen) => void
 }
@@ -14,40 +20,24 @@ const NAV: { value: Screen; label: string }[] = [
   { value: 'wheel', label: 'Wheel' },
   { value: 'recommended', label: 'For me' },
   { value: 'together', label: 'Together' },
-  { value: 'history', label: 'History' },
+  { value: 'watched-together', label: 'Watched' },
   { value: 'stats', label: 'Stats' },
   { value: 'import', label: 'Import' },
 ]
 
-export function Header({ screen, unseenRecommendations, onNavigate }: HeaderProps) {
-  const { session, signOut } = useAuth()
-  const [displayName, setDisplayName] = useState<string | null>(null)
-  const userId = session?.user.id
-
-  useEffect(() => {
-    if (!userId) return
-    let cancelled = false
-
-    supabase
-      .from('profiles')
-      .select('display_name')
-      .eq('id', userId)
-      .single()
-      .then(({ data }) => {
-        if (!cancelled) setDisplayName(data?.display_name ?? null)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [userId])
+export function Header({ screen, displayName, unseenRecommendations, onNavigate }: HeaderProps) {
 
   return (
     <header className="app-header">
       <div className="app-header-top">
         <span className="app-header-name">{displayName ?? '…'}</span>
-        <button type="button" className="app-header-signout" onClick={signOut}>
-          Sign out
+        <button
+          type="button"
+          className={`app-header-signout${screen === 'settings' ? ' app-nav-item-on' : ''}`}
+          aria-current={screen === 'settings' ? 'page' : undefined}
+          onClick={() => onNavigate('settings')}
+        >
+          Settings
         </button>
       </div>
 

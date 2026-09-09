@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Bar, BarChart, Cell, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 import type { Tally } from './statsData'
+import { categoryColors, palette } from './palette'
 
 // A number you can read at arm's length, with a label that doesn't compete
 // with it.
@@ -8,26 +9,23 @@ export function Figure({
   value,
   label,
   wide,
+  tone,
 }: {
   value: ReactNode
   label: string
   wide?: boolean
+  // Whose number this is, when it sits beside the other person's.
+  tone?: 'me' | 'them'
 }) {
   return (
     <div className={`figure${wide ? ' figure-wide' : ''}`}>
-      <span className="figure-value">{value}</span>
+      <span className={`figure-value${tone ? ` figure-value-${tone}` : ''}`}>{value}</span>
       <span className="figure-label">{label}</span>
     </div>
   )
 }
 
-export function StatSection({
-  title,
-  children,
-}: {
-  title: string
-  children: ReactNode
-}) {
+export function StatSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="stat-section">
       <h3 className="stat-section-title">{title}</h3>
@@ -42,20 +40,20 @@ export function StatEmpty({ children }: { children: ReactNode }) {
   return <p className="stat-empty">{children}</p>
 }
 
-const BAR = '#e8c15c'
-const BAR_MUTED = '#4a4a55'
-
 export function TallyBars({
   data,
-  highlightMax,
+  colors,
   height,
 }: {
   data: Tally[]
-  highlightMax?: boolean
+  // One per row. Defaults to the categorical cycle.
+  colors?: string[]
   height?: number
 }) {
   if (data.length === 0) return null
   const max = Math.max(...data.map((entry) => entry.count))
+  const fills = colors ?? categoryColors(data.length)
+  const p = palette()
 
   return (
     <div className="chart" style={{ height: height ?? Math.max(120, data.length * 30) }}>
@@ -71,7 +69,7 @@ export function TallyBars({
             width={96}
             tickLine={false}
             axisLine={false}
-            tick={{ fill: '#c8c8ce', fontSize: 12 }}
+            tick={{ fill: p.axis, fontSize: 12 }}
           />
           {/* Drawn at full size straight away. The grow-in animation runs on
               requestAnimationFrame, so anywhere that is throttled — a
@@ -81,13 +79,10 @@ export function TallyBars({
             dataKey="count"
             radius={[0, 4, 4, 0]}
             isAnimationActive={false}
-            label={{ position: 'right', fill: '#9a9aa4', fontSize: 12 }}
+            label={{ position: 'right', fill: p.label, fontSize: 12 }}
           >
-            {data.map((entry) => (
-              <Cell
-                key={entry.label}
-                fill={highlightMax && entry.count < max ? BAR_MUTED : BAR}
-              />
+            {data.map((entry, index) => (
+              <Cell key={entry.label} fill={fills[index % fills.length]} />
             ))}
           </Bar>
         </BarChart>
@@ -98,6 +93,7 @@ export function TallyBars({
 
 export function RatingHistogram({ data }: { data: { rating: string; count: number }[] }) {
   const max = Math.max(1, ...data.map((entry) => entry.count))
+  const p = palette()
 
   return (
     <div className="chart" style={{ height: 160 }}>
@@ -107,10 +103,11 @@ export function RatingHistogram({ data }: { data: { rating: string; count: numbe
             dataKey="rating"
             tickLine={false}
             axisLine={false}
-            tick={{ fill: '#9a9aa4', fontSize: 11 }}
+            tick={{ fill: p.label, fontSize: 11 }}
           />
           <YAxis hide domain={[0, max]} />
-          <Bar dataKey="count" fill={BAR} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+          {/* These are my ratings, so they take my colour. */}
+          <Bar dataKey="count" fill={p.me} radius={[4, 4, 0, 0]} isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
     </div>

@@ -5,14 +5,7 @@ import { ResultModal } from './wheel/ResultModal'
 import type { WheelItem } from './wheel/titles'
 import { getSegmentIndexAtPointer } from './wheel/wheelMath'
 import { usePosterImages } from './wheel/usePosterImages'
-import {
-  loadBothRatedItems,
-  loadPartner,
-  loadRewatchItems,
-  loadOverlapItems,
-  loadWatchedFilmIds,
-  loadWheelItems,
-} from './wheel/loadWheelItems'
+import { loadPartner, loadWatchedFilmIds, loadWheelItems } from './wheel/loadWheelItems'
 import type { Partner } from './wheel/loadWheelItems'
 import { SourceToggle } from './wheel/SourceToggle'
 import {
@@ -53,38 +46,35 @@ import {
 } from './wheel/wheelPersistence'
 import type { FilterPreset, SpinOutcome } from './wheel/wheelPersistence'
 import { PresetsScreen } from './wheel/PresetsScreen'
-import { ensureAudioContext, playTick, useMuted } from './wheel/tickSound'
+import { ensureAudioContext } from './wheel/tickSound'
 import { FilmBackdrop } from './wheel/FilmBackdrop'
 import { AuthProvider, useAuth } from './auth/AuthProvider'
 import { SignInScreen } from './auth/SignInScreen'
 import { Header } from './auth/Header'
 import type { Screen } from './auth/Header'
 import { RecommendedScreen } from './social/RecommendedScreen'
-import { countUnseenRecommendations, sendRecommendation } from './social/recommendations'
+import { SettingsScreen } from './settings/SettingsScreen'
+import { Onboarding } from './onboarding/Onboarding'
+import { loadMyProfile, markOnboarded } from './onboarding/onboardingState'
+import { countUnseenRecommendations } from './social/recommendations'
 import { SharedListScreen } from './social/SharedListScreen'
-import { HistoryScreen } from './social/HistoryScreen'
 // Split out on its own: recharts is large, and it is only needed here.
 const StatsScreen = lazy(() =>
   import('./stats/StatsScreen').then((m) => ({ default: m.StatsScreen })),
 )
-import { WatchLogSheet } from './social/WatchLogSheet'
-import { PartnerRatingPrompt } from './social/PartnerRatingPrompt'
-import {
-  acknowledgeSharedWatch,
-  loadPendingSharedRatings,
-  saveWatchLog,
-} from './social/watchLog'
-import type { PendingShare, WatchLogEntry } from './social/watchLog'
+import { PendingWatchPrompt } from './social/PendingWatchPrompt'
+import type { WatchAnswer } from './social/PendingWatchPrompt'
+import { WatchedTogetherScreen } from './social/WatchedTogetherScreen'
+import { answerWatch, loadPendingWatches, undoWatch } from './social/pendingWatches'
+import type { PendingWatch } from './social/pendingWatches'
 import { loadSharedListItems } from './social/sharedList'
 import { EnrichmentProvider } from './import/EnrichmentContext'
 import { ImportScreen } from './import/ImportScreen'
 import {
   hasWatchedItems,
   hasWatchlistItems,
-  undoWatchFilm,
   watchFilmNow,
 } from './import/watchlistWrites'
-import type { WatchUndoSnapshot } from './import/watchlistWrites'
 import { Footer } from './Footer'
 
 const MAX_REROLLS = 2
@@ -181,23 +171,7 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
   const [deletedPreset, setDeletedPreset] = useState<FilterPreset | null>(null)
   const presetUndoTimerRef = useRef<number | undefined>(undefined)
   const spinIdRef = useRef<string | null>(null)
-  // The film just marked watched, held while its log sheet is open.
-  const [logging, setLogging] = useState<WheelItem | null>(null)
-  const [undo, setUndo] = useState<{
-    snapshot: WatchUndoSnapshot
-    title: string
-    item: WheelItem
-  } | null>(null)
-  const undoTimerRef = useRef<number | undefined>(undefined)
-  // Held from the moment the watch is written until the log sheet closes,
-  // which is when the undo banner actually appears.
-  const undoRef = useRef<{
-    snapshot: WatchUndoSnapshot
-    title: string
-    item: WheelItem
-  } | null>(null)
   const reduceMotion = usePrefersReducedMotion()
-  const [muted, toggleMuted] = useMuted()
 
   // Everything that doesn't depend on which source is selected.
   useEffect(() => {
@@ -250,19 +224,10 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
     let cancelled = false
 
     const load = (): Promise<WheelItem[]> => {
-      if (source === 'rewatch') return loadRewatchItems(userId)
-      if (source === 'both-loved') {
-        const linked = partnerRef.current
-        return linked ? loadBothRatedItems(userId, linked.id) : Promise.resolve([])
-      }
       if (source === 'custom') {
         return customWheelId ? loadCustomWheelItems(customWheelId) : Promise.resolve([])
       }
       if (source === 'shared') return loadSharedListItems()
-      if (source === 'overlap') {
-        const linked = partnerRef.current
-        return linked ? loadOverlapItems(userId, linked.id) : Promise.resolve([])
-      }
       return loadWheelItems(userId)
     }
 
@@ -321,7 +286,6 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
   const fallbackTimerRef = useRef<number | undefined>(undefined)
 
   useEffect(() => () => window.clearTimeout(fallbackTimerRef.current), [])
-  useEffect(() => () => window.clearTimeout(undoTimerRef.current), [])
   useEffect(() => () => window.clearTimeout(presetUndoTimerRef.current), [])
 
   // Marks the landed spin's outcome. Every spin is logged when it lands;
@@ -394,7 +358,7 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
   // Committing to a film takes it off this user's watchlist and records it
   // as watched today. Only ever touches this user's own rows — a partner
   // logs their own watch. The film drops off the wheel immediately; it
-  // stays in masterItems so its poster stays preloaded for an undo.
+  // stays in masterItems so its poster stays loaded if it comes back.
   const handleWatchThis = () => {
     const watched = result
     closeSpin('watched')
@@ -405,18 +369,9 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
     setItems((current) => current.filter((item) => item.id !== watched.id))
     setWatchedThisSession((current) => new Set(current).add(watched.id))
 
+    // Nothing is asked here. You are about to start a film; the question
+    // of who you watched it with waits until the app next opens.
     void watchFilmNow(userId, watched.id)
-      .then((snapshot) => {
-        window.clearTimeout(undoTimerRef.current)
-        // One undo banner at a time — they share a fixed position.
-        window.clearTimeout(presetUndoTimerRef.current)
-        setDeletedPreset(null)
-        undoRef.current = { snapshot, title: watched.title, item: watched }
-        // The row is written; the log sheet fills in the detail. The undo
-        // banner waits until the sheet is done rather than sitting behind
-        // it, and the sheet offers its own way out in the meantime.
-        setLogging(watched)
-      })
       .catch(() => {
         // The write failed, so put it back rather than showing a wheel that
         // disagrees with the database.
@@ -429,27 +384,6 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
           return next
         })
       })
-  }
-
-  const handleUndoWatch = () => {
-    const pending = undo ?? undoRef.current
-    if (!pending) return
-    window.clearTimeout(undoTimerRef.current)
-    undoRef.current = null
-    setUndo(null)
-    setLogging(null)
-    setItems((current) =>
-      current.some((item) => item.id === pending.item.id) ? current : [...current, pending.item],
-    )
-    setWatchedThisSession((current) => {
-      const next = new Set(current)
-      next.delete(pending.item.id)
-      return next
-    })
-    void undoWatchFilm(userId, pending.snapshot).catch(() => {
-      setItems((current) => current.filter((item) => item.id !== pending.item.id))
-      setWatchedThisSession((current) => new Set(current).add(pending.item.id))
-    })
   }
 
   // Dismissing (tap-outside or swipe down) just returns to idle — it
@@ -473,17 +407,6 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
       current.length > MIN_WHEEL_SEGMENTS ? current.filter((item) => item.id !== removedId) : current,
     )
     setResult(null)
-  }
-
-  // Unmuting plays one tick straight away, so the sound can be confirmed
-  // without spinning. Awaits the context so it isn't lost to a pending
-  // resume on the very first interaction of a session.
-  const handleToggleMute = () => {
-    const wasMuted = muted
-    toggleMuted()
-    if (wasMuted) {
-      void ensureAudioContext().then(playTick)
-    }
   }
 
   // Redraws the titles without touching the filters. Anything set aside or
@@ -571,25 +494,6 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
     setEditorFilms([])
     setSheet('editor')
     void refreshWheelFilms(wheel.id)
-  }
-
-  // Closing the log hands over to the undo banner, which has been waiting
-  // behind it rather than competing with it for the same corner.
-  const closeLog = () => {
-    setLogging(null)
-    const pending = undoRef.current
-    undoRef.current = null
-    if (!pending) return
-    setUndo(pending)
-    window.clearTimeout(undoTimerRef.current)
-    undoTimerRef.current = window.setTimeout(() => setUndo(null), UNDO_WINDOW_MS)
-  }
-
-  const handleSaveLog = (entry: WatchLogEntry) => {
-    const film = logging
-    closeLog()
-    if (!film) return
-    void saveWatchLog(userId, film.id, entry).catch(() => {})
   }
 
   // One veto each per sitting. The title leaves the wheel and the wheel
@@ -685,8 +589,6 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
     void deletePreset(preset.id)
       .then(() => {
         window.clearTimeout(presetUndoTimerRef.current)
-        window.clearTimeout(undoTimerRef.current)
-        setUndo(null)
         setDeletedPreset(preset)
         presetUndoTimerRef.current = window.setTimeout(() => setDeletedPreset(null), UNDO_WINDOW_MS)
       })
@@ -727,11 +629,6 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
       return 'Your watch together list is empty. Add films to it on the Together screen.'
     }
 
-    if (filters.source === 'overlap' && masterItems.length === 0) {
-      return partner === null
-        ? 'No partner is linked to this account yet, so there is nothing to overlap with.'
-        : `Nothing is on both watchlists yet. Anything you and ${partner.displayName} both add shows up here.`
-    }
 
     if (filters.source === 'custom') {
       if (filters.customWheelId === null) return 'Choose one of your wheels to spin.'
@@ -744,16 +641,6 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
     }
 
     if (masterItems.length === 0) {
-      if (filters.source === 'both-loved') {
-        return partner === null
-          ? 'No partner is linked to this account yet, so there are no shared ratings to draw from.'
-          : "Neither of you has rated anything you've both seen yet."
-      }
-      if (filters.source === 'rewatch') {
-        return hasWatchedEver
-          ? 'Your watched history is still being enriched. Give it a moment, or import your Letterboxd export.'
-          : "You haven't logged anything as watched yet. Import your Letterboxd export to fill the Watch again wheel."
-      }
       return hasWatchedEver
         ? "You've watched everything on your watchlist. Import a fresh export to add more."
         : 'Your watchlist is empty. Import your Letterboxd export to fill the wheel.'
@@ -794,11 +681,7 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
       <h1 className="app-title">Spin the Watchlist</h1>
 
       <div className="wheel-controls">
-        <SourceToggle
-          source={filters.source}
-          partnerAvailable={partner !== null}
-          onChange={handleSourceChange}
-        />
+        <SourceToggle source={filters.source} onChange={handleSourceChange} />
         <div className="wheel-controls-row">
           {filters.source === 'custom' ? (
             <button type="button" className="mute-toggle" onClick={() => setSheet('wheels')}>
@@ -885,9 +768,7 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
           <p className="wheel-remaining-count">
             {items.length} title{items.length === 1 ? '' : 's'} on the wheel
           </p>
-          <button type="button" className="mute-toggle" onClick={handleToggleMute}>
-            {muted ? 'Unmute' : 'Mute'}
-          </button>
+
         </div>
       )}
 
@@ -924,7 +805,7 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
           films={editorFilms}
           userId={userId}
           partnerId={partner?.id ?? null}
-          partnerName={partner?.displayName ?? 'Your partner'}
+          partnerName={partner?.displayName ?? null}
           onAddFilmId={async (filmId) => {
             await addFilmToWheel(editorWheel.id, filmId)
             await refreshWheelFilms(editorWheel.id)
@@ -957,36 +838,11 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
         </div>
       )}
 
-      {logging && (
-        <WatchLogSheet
-          title={logging.title}
-          userId={userId}
-          filmId={logging.id}
-          partnerId={partner?.id ?? null}
-          partnerName={partner?.displayName ?? 'your partner'}
-          onSave={handleSaveLog}
-          onSkip={closeLog}
-          onUndo={handleUndoWatch}
-        />
-      )}
 
-      {undo && (
-        <div className="undo-banner" role="status">
-          <span className="undo-banner-text">Marked "{undo.title}" watched</span>
-          <button type="button" className="undo-banner-action" onClick={handleUndoWatch}>
-            Undo
-          </button>
-        </div>
-      )}
 
       {result && (
         <ResultModal
           item={result}
-          partnerName={partner?.displayName ?? null}
-          onRecommend={async (note) => {
-            if (!partner) return
-            await sendRecommendation(userId, partner.id, result.id, note)
-          }}
           vetoes={vetoOptions}
           onVeto={handleVeto}
           rerollsRemaining={rerollsRemaining}
@@ -1010,23 +866,34 @@ function AuthenticatedApp() {
   const [screen, setScreen] = useState<Screen>('wheel')
   const [checkingWatchlist, setCheckingWatchlist] = useState(true)
   const [unseenRecommendations, setUnseenRecommendations] = useState(0)
-  const [partnerName, setPartnerName] = useState('your partner')
+  const [partnerName, setPartnerName] = useState<string | null>(null)
+  // My own name lives here, not in the header, so settings can change it
+  // and every screen showing it updates at once.
+  const [myName, setMyName] = useState<string | null>(null)
+  const [needsOnboarding, setNeedsOnboarding] = useState(false)
   const [partnerId, setPartnerId] = useState<string | null>(null)
   // Set only by "Spin this list"; cleared by any ordinary navigation, so
   // the wheel doesn't keep reopening on the shared list afterwards.
   const [wheelSource, setWheelSource] = useState<WheelSource | null>(null)
-  // Shared watches the partner has logged that this user hasn't answered.
-  const [pendingShares, setPendingShares] = useState<PendingShare[]>([])
+  // Watches recorded but not yet asked about. Dismissing hides the prompt
+  // for this session only; the rows stay unanswered and come back next
+  // time the app opens.
+  const [pendingWatches, setPendingWatches] = useState<PendingWatch[]>([])
   const [promptDismissed, setPromptDismissed] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     Promise.all([
       hasWatchlistItems(userId).catch(() => true),
+      loadMyProfile(userId).catch(() => null),
       countUnseenRecommendations(userId).catch(() => 0),
       loadPartner(userId).catch(() => null),
-    ]).then(async ([has, unseen, partner]) => {
+    ]).then(async ([has, profile, unseen, partner]) => {
       if (cancelled) return
+      setMyName(profile?.displayName ?? null)
+      // A profile that can't be read is not evidence the walkthrough is
+      // due, so it stays out of the way rather than showing on every open.
+      if (profile && profile.onboardedAt === null) setNeedsOnboarding(true)
       if (!has) setScreen('import')
       setUnseenRecommendations(unseen)
       if (partner) {
@@ -1035,19 +902,28 @@ function AuthenticatedApp() {
       }
       setCheckingWatchlist(false)
 
-      // Asked once per app open, which is what "next time they open the
-      // app" means.
-      if (partner) {
-        const shares = await loadPendingSharedRatings(userId, partner.id).catch(
-          () => [] as PendingShare[],
-        )
-        if (!cancelled) setPendingShares(shares)
-      }
+      // Asked on opening, which is the whole point of not asking at the
+      // moment of watching.
+      const queue = await loadPendingWatches(userId).catch(() => [] as PendingWatch[])
+      if (!cancelled) setPendingWatches(queue)
     })
     return () => {
       cancelled = true
     }
   }, [userId])
+
+  const handleWatchAnswer = (watch: PendingWatch, answer: WatchAnswer) => {
+    // Off the queue straight away: a failed write leaves the row
+    // unanswered, so it simply comes back next time rather than stalling
+    // the question in front of you.
+    setPendingWatches((current) => current.filter((entry) => entry.filmId !== watch.filmId))
+
+    if (answer === 'not-watched') {
+      void undoWatch(userId, watch).catch(() => {})
+      return
+    }
+    void answerWatch(userId, watch.filmId, answer === 'together').catch(() => {})
+  }
 
   if (checkingWatchlist) return null
 
@@ -1056,6 +932,7 @@ function AuthenticatedApp() {
       <div className="app-shell">
         <Header
           screen={screen}
+          displayName={myName}
           unseenRecommendations={unseenRecommendations}
           onNavigate={(next) => {
             setWheelSource(null)
@@ -1068,8 +945,12 @@ function AuthenticatedApp() {
             <StatsScreen userId={userId} partnerId={partnerId} partnerName={partnerName} />
           </Suspense>
         )}
-        {screen === 'history' && (
-          <HistoryScreen userId={userId} partnerId={partnerId} partnerName={partnerName} />
+        {screen === 'watched-together' && (
+          <WatchedTogetherScreen
+            userId={userId}
+            partnerId={partnerId}
+            partnerName={partnerName}
+          />
         )}
         {screen === 'together' && (
           <SharedListScreen
@@ -1083,30 +964,48 @@ function AuthenticatedApp() {
           />
         )}
         {screen === 'import' && <ImportScreen onGoToWheel={() => setScreen('wheel')} />}
+        {screen === 'settings' && (
+          <SettingsScreen
+            userId={userId}
+            displayName={myName}
+            onDisplayNameChange={setMyName}
+            onReplayWalkthrough={() => setNeedsOnboarding(true)}
+          />
+        )}
         {screen === 'recommended' && (
           <RecommendedScreen
             userId={userId}
+            partnerId={partnerId}
             partnerName={partnerName}
             onSeen={() => setUnseenRecommendations(0)}
           />
         )}
         <Footer />
 
-        {!promptDismissed && partnerId && (
-          <PartnerRatingPrompt
-            pending={pendingShares}
-            partnerName={partnerName}
-            onAnswer={(share, rating) => {
-              // Optimistic: the row goes either way, and a failed write
-              // simply means it is asked again next time.
-              setPendingShares((current) =>
-                current.filter((entry) => entry.filmId !== share.filmId),
-              )
-              void acknowledgeSharedWatch(userId, share.filmId, rating, share.watchedOn).catch(
-                () => {},
-              )
+        {needsOnboarding && (
+          <Onboarding
+            onDone={() => {
+              setNeedsOnboarding(false)
+              // Finishing and skipping are the same commitment; a failed
+              // write just means it is offered once more.
+              void markOnboarded(userId).catch(() => {})
             }}
-            onClose={() => setPromptDismissed(true)}
+            onGoToImport={() => {
+              setNeedsOnboarding(false)
+              void markOnboarded(userId).catch(() => {})
+              setScreen('import')
+            }}
+          />
+        )}
+
+        {/* The walkthrough comes first: a new account has nothing to be
+            asked about anyway. */}
+        {!needsOnboarding && !promptDismissed && (
+          <PendingWatchPrompt
+            pending={pendingWatches}
+            partnerName={partnerName}
+            onAnswer={handleWatchAnswer}
+            onDismiss={() => setPromptDismissed(true)}
           />
         )}
       </div>

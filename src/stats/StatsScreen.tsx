@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react'
 import { languageLabel, starLabel } from '../wheel/filters'
-import { Figure, RatingHistogram, StatEmpty, StatSection, TallyBars } from './StatBits'
+import {
+  Figure,
+  RatingHistogram,
+  StatEmpty,
+  StatSection,
+  TallyBars,
+} from './StatBits'
+import { personColor } from './palette'
 import {
   computeTogether,
   computeViewing,
@@ -13,7 +20,7 @@ import type { StatsRaw } from './statsData'
 interface StatsScreenProps {
   userId: string
   partnerId: string | null
-  partnerName: string
+  partnerName: string | null
 }
 
 function round(value: number, places = 1): string {
@@ -27,6 +34,9 @@ function monthsPhrase(months: number): string {
 }
 
 export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps) {
+  // Every label below reads the live name; this only covers an unreadable
+  // profile row, and is a pronoun rather than a name.
+  const them = partnerName ?? 'them'
   const [raw, setRaw] = useState<StatsRaw | null>(null)
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
@@ -60,7 +70,7 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
   }
 
   const viewing = computeViewing(raw, languageLabel)
-  const together = computeTogether(raw, userId, partnerId, partnerName)
+  const together = computeTogether(raw, userId, partnerId, them)
   const wheel = computeWheel(raw)
   const watchlist = computeWatchlist(raw)
 
@@ -72,7 +82,7 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
     if (together.betterRecommender === 'tie') return 'Too close to call — you recommend about as well as each other.'
     return together.betterRecommender === 'me'
       ? `You are the better recommender.`
-      : `${partnerName} is the better recommender.`
+      : `${them} is the better recommender.`
   })()
 
   return (
@@ -99,9 +109,13 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
             <div className="figure-row">
               <Figure
                 value={viewing.togetherCount}
-                label={partnerId ? `with ${partnerName}` : 'watched together'}
+                label={partnerId ? `with ${them}` : 'watched together'}
               />
               <Figure value={viewing.aloneCount} label="on your own" />
+              {/* Not folded into "on your own" — nobody has said which. */}
+              {viewing.unansweredCount > 0 && (
+                <Figure value={viewing.unansweredCount} label="not answered yet" />
+              )}
             </div>
 
             {viewing.ratedCount === 0 ? (
@@ -116,6 +130,7 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
                   <Figure
                     value={viewing.myAverage === null ? '—' : `★ ${round(viewing.myAverage, 2)}`}
                     label="your average"
+                    tone="me"
                   />
                   {/* No partner means no second average to sit beside it —
                       naming one would invent a comparison. */}
@@ -124,7 +139,8 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
                       value={
                         viewing.theirAverage === null ? '—' : `★ ${round(viewing.theirAverage, 2)}`
                       }
-                      label={`${partnerName}'s average`}
+                      label={`${them}'s average`}
+                      tone="them"
                     />
                   )}
                 </div>
@@ -185,13 +201,13 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
                     <li className="disagree-row" key={entry.filmId}>
                       <span className="disagree-title">{entry.title}</span>
                       <div className="disagree-scores">
-                        <span className="disagree-score">
+                        <span className="disagree-score who-me">
                           <span className="score-who">You</span>
                           <span className="score-value">★ {starLabel(entry.mine)}</span>
                         </span>
                         <span className="disagree-gap">{round(entry.gap, 1)}★ apart</span>
-                        <span className="disagree-score">
-                          <span className="score-who">{partnerName}</span>
+                        <span className="disagree-score who-them">
+                          <span className="score-who">{them}</span>
                           <span className="score-value">★ {starLabel(entry.theirs)}</span>
                         </span>
                       </div>
@@ -211,7 +227,8 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
                 <div className="figure-row">
                   <Figure
                     value={`${together.myRecommending.watched}/${together.myRecommending.sent}`}
-                    label={`yours ${partnerName} watched`}
+                    label={`yours ${them} watched`}
+                    tone="me"
                   />
                   <Figure
                     value={
@@ -220,12 +237,14 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
                         : `★ ${round(together.myRecommending.average, 2)}`
                     }
                     label="what they averaged"
+                    tone="me"
                   />
                 </div>
                 <div className="figure-row">
                   <Figure
                     value={`${together.theirRecommending.watched}/${together.theirRecommending.sent}`}
                     label="theirs you watched"
+                    tone="them"
                   />
                   <Figure
                     value={
@@ -234,6 +253,7 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
                         : `★ ${round(together.theirRecommending.average, 2)}`
                     }
                     label="what you averaged"
+                    tone="them"
                   />
                 </div>
                 {recommenderLine && <p className="stat-verdict">{recommenderLine}</p>}
@@ -246,7 +266,14 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
                 No picks recorded yet. Logging a watch records who chose it.
               </StatEmpty>
             ) : (
-              <TallyBars data={together.picks} highlightMax />
+              <TallyBars
+                data={together.picks}
+                colors={together.picks.map((entry) =>
+                  personColor(
+                    entry.label === 'You' ? 'me' : entry.label === them ? 'them' : 'neither',
+                  ),
+                )}
+              />
             )}
           </>
         )}

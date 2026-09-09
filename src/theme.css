@@ -1,0 +1,62 @@
+/*
+ * The only place a colour is written down. Everything else refers to a
+ * token, so a palette change happens here and nowhere else.
+ *
+ * The one deliberate exception is the wheel itself: SpinWheel.tsx and
+ * wheelMath.ts hold their own bone and amber, and are left untouched.
+ */
+
+:root {
+  /* Palette ---------------------------------------------------------- */
+  --amber: #d9a441;
+  --rust: #b0705f;
+  --sage: #7b9e87;
+  --slate: #6e7ba6;
+  --sand: #c2a878;
+  --mauve: #8e6b8e;
+
+  /* The wheel's own colours, named here for the chrome that sits against
+     it. The wheel draws itself from its own constants. */
+  --bone: #efe6d6;
+  --wheel-amber: #f5c451;
+
+  /* Surfaces --------------------------------------------------------- */
+  --ink: #101014;
+  --ink-deep: #0b0b0e;
+  --surface: #16161a;
+  --field: #1c1c24;
+  --raised: #26262c;
+  --on-accent: #14141a;
+
+  /* Text ------------------------------------------------------------- */
+  --text: #f5f5f5;
+  --text-bright: #e8e8ec;
+  --text-soft: #d8d8dc;
+  --text-muted: #c8c8ce;
+  --text-placeholder: #a8a8b0;
+  --text-dim: #9a9aa2;
+  --text-faint: #7a7a84;
+  --text-faintest: #6d6d75;
+
+  --danger: #e0483a;
+  --danger-soft: #f26d6d;
+
+  /* Who is who ------------------------------------------------------- */
+  /* Fixed for the two of us, so we read the same way wherever we appear
+     beside each other. */
+  --me: var(--amber);
+  --them: var(--rust);
+
+  /* The cycle categorical charts run through, in this order. */
+  --cat-1: var(--amber);
+  --cat-2: var(--rust);
+  --cat-3: var(--sage);
+  --cat-4: var(--slate);
+  --cat-5: var(--sand);
+  --cat-6: var(--mauve);
+
+  /* Which colour a selected chip takes. Each filter dimension overrides
+     this on its own group; anything outside the filter sheet keeps the
+     default. */
+  --dimension: var(--amber);
+}

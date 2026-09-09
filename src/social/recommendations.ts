@@ -38,7 +38,11 @@ export async function loadRecommendationsForMe(userId: string): Promise<Recommen
     .order('created_at', { ascending: false })
   if (error) throw error
 
-  return ((data ?? []) as unknown as RecommendationRow[])
+  return toRecommendations(data)
+}
+
+function toRecommendations(data: unknown): Recommendation[] {
+  return ((data ?? []) as RecommendationRow[])
     .filter((row) => row.films !== null)
     .map((row) => ({
       id: row.id,
@@ -75,19 +79,36 @@ export async function markRecommendationsSeen(userId: string): Promise<void> {
   if (error) throw error
 }
 
+
+// Sending never touches a watchlist: a recommendation is a suggestion,
+// and whether it becomes something to watch is the recipient's call.
 export async function sendRecommendation(
   fromUser: string,
   toUser: string,
   filmId: string,
-  note: string | null,
+  note: string,
 ): Promise<void> {
+  const trimmed = note.trim()
   const { error } = await supabase.from('recommendations').insert({
     from_user: fromUser,
     to_user: toUser,
     film_id: filmId,
-    note: note && note.trim().length > 0 ? note.trim() : null,
+    note: trimmed.length > 0 ? trimmed : null,
   })
   if (error) throw error
+}
+
+// What this user has sent that the other person has not dealt with yet —
+// responded_at, not status, is what marks one as answered.
+export async function loadRecommendationsSent(userId: string): Promise<Recommendation[]> {
+  const { data, error } = await supabase
+    .from('recommendations')
+    .select(ROW_COLUMNS)
+    .eq('from_user', userId)
+    .is('responded_at', null)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return toRecommendations(data)
 }
 
 // Records the decision. Status carries which way it went; responded_at is

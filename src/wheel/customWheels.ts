@@ -108,12 +108,7 @@ export async function loadCustomWheelItems(wheelId: string): Promise<WheelItem[]
   return (data ?? [])
     .filter((row) => row.films !== null)
     .map((row) =>
-      toWheelItemFromFilm(row.film_id, row.films as never, {
-        addedAt: row.added_at,
-        watchedOn: null,
-        myRating: null,
-        partnerRating: null,
-      }),
+      toWheelItemFromFilm(row.film_id, row.films as never, { addedAt: row.added_at }),
     )
 }
 

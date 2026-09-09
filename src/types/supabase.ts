@@ -14,16 +14,19 @@ export interface Database {
           id: string
           display_name: string
           partner_id: string | null
+          onboarded_at: string | null
         }
         Insert: {
           id: string
           display_name: string
           partner_id?: string | null
+          onboarded_at?: string | null
         }
         Update: {
           id?: string
           display_name?: string
           partner_id?: string | null
+          onboarded_at?: string | null
         }
         Relationships: []
       }
@@ -234,9 +237,10 @@ export interface Database {
           film_id: string
           rating: number | null
           watched_on: string | null
-          together: boolean
+          together: boolean | null
           picked_by: string | null
           source: string
+          prev_added_at: string | null
         }
         Insert: {
           id?: string
@@ -244,9 +248,10 @@ export interface Database {
           film_id: string
           rating?: number | null
           watched_on?: string | null
-          together?: boolean
+          together?: boolean | null
           picked_by?: string | null
           source?: string
+          prev_added_at?: string | null
         }
         Update: {
           id?: string
@@ -254,9 +259,10 @@ export interface Database {
           film_id?: string
           rating?: number | null
           watched_on?: string | null
-          together?: boolean
+          together?: boolean | null
           picked_by?: string | null
           source?: string
+          prev_added_at?: string | null
         }
         Relationships: [
           {

@@ -10,7 +10,7 @@ const MIN_TO_SPIN = 2
 interface SharedListScreenProps {
   userId: string
   partnerId: string | null
-  partnerName: string
+  partnerName: string | null
   onSpinList: () => void
 }
 

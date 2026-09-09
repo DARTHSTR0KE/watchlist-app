@@ -11,7 +11,8 @@ export interface WatchedRecord {
   filmId: string
   rating: number | null
   watchedOn: string | null
-  together: boolean
+  // Three-valued: true with them, false on my own, null not yet asked.
+  together: boolean | null
   pickedBy: string | null
 }
 
@@ -38,7 +39,7 @@ interface WatchedJoinRow {
   film_id: string
   rating: number | null
   watched_on: string | null
-  together: boolean
+  together: boolean | null
   picked_by: string | null
   films: {
     title: string
@@ -163,6 +164,9 @@ export interface ViewingStats {
   ratedCount: number
   togetherCount: number
   aloneCount: number
+  // Watched but never answered. Kept apart from "on my own", which is an
+  // answer rather than the absence of one.
+  unansweredCount: number
 }
 
 export const RATING_BUCKETS = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
@@ -180,10 +184,12 @@ export function computeViewing(raw: StatsRaw, languageName: (code: string) => st
   let showCount = 0
   let filmMinutes = 0
   let togetherCount = 0
+  let aloneCount = 0
 
   for (const record of raw.mine) {
     const film = raw.films.get(record.filmId)
-    if (record.together) togetherCount += 1
+    if (record.together === true) togetherCount += 1
+    else if (record.together === false) aloneCount += 1
     if (!film) continue
 
     if (film.mediaType === 'tv') showCount += 1
@@ -224,7 +230,8 @@ export function computeViewing(raw: StatsRaw, languageName: (code: string) => st
     theirAverage: average(theirRatings),
     ratedCount: myRatings.length,
     togetherCount,
-    aloneCount: raw.mine.length - togetherCount,
+    aloneCount,
+    unansweredCount: raw.mine.length - togetherCount - aloneCount,
   }
 }
 
@@ -372,7 +379,6 @@ const FILTER_LABELS: { key: keyof WheelFilters; label: string; active: (f: Wheel
   { key: 'maxRuntime', label: 'Runtime', active: (f) => f.maxRuntime !== null },
   { key: 'decadeFrom', label: 'Decade', active: (f) => f.decadeFrom !== null || f.decadeTo !== null },
   { key: 'excludeWatched', label: 'Unwatched only', active: (f) => f.excludeWatched === true },
-  { key: 'ratingMode', label: 'Rating', active: (f) => f.ratingMode !== undefined && f.ratingMode !== 'any' },
 ]
 
 // Key order is not meaningful — both sides have been through jsonb, which

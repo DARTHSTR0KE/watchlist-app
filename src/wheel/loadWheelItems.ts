@@ -41,9 +41,6 @@ export async function loadWheelItems(userId: string): Promise<WheelItem[]> {
         synopsis: film.overview ?? '',
         trailerKey: film.trailer_key,
         topCast: toTopCast(film.top_cast),
-        watchedOn: null,
-        myRating: null,
-        partnerRating: null,
         mediaType: film.media_type,
         originalLanguage: film.original_language,
         addedAt: row.added_at,
@@ -77,24 +74,13 @@ export interface FilmColumns {
   top_cast: unknown
 }
 
-interface WatchedRow {
-  film_id: string
-  rating: number | null
-  watched_on: string | null
-  films: FilmColumns | null
-}
 
 // The film half of a WheelItem, shared by every source. What differs
 // between them — when it entered the pool, and any ratings — is passed in.
 export function toWheelItemFromFilm(
   filmId: string,
   film: FilmColumns,
-  context: {
-    addedAt: string | null
-    watchedOn: string | null
-    myRating: number | null
-    partnerRating: number | null
-  },
+  context: { addedAt: string | null },
 ): WheelItem {
   return {
     id: filmId,
@@ -111,39 +97,16 @@ export function toWheelItemFromFilm(
     addedAt: context.addedAt,
     trailerKey: film.trailer_key,
     topCast: toTopCast(film.top_cast),
-    watchedOn: context.watchedOn,
-    myRating: context.myRating,
-    partnerRating: context.partnerRating,
   }
 }
 
-function toWheelItem(row: WatchedRow, partnerRating: number | null): WheelItem {
-  return toWheelItemFromFilm(row.film_id, row.films!, {
-    // Age-weighting works off this, so a watched film's "age" is how long
-    // ago it was seen rather than when it joined a list.
-    addedAt: row.watched_on,
-    watchedOn: row.watched_on,
-    myRating: row.rating,
-    partnerRating,
-  })
-}
 
-// The rewatch pool: everything this user has already seen.
-export async function loadRewatchItems(userId: string): Promise<WheelItem[]> {
-  const { data, error } = await supabase
-    .from('watched')
-    .select(`film_id, rating, watched_on, films(${FILM_COLUMNS})`)
-    .eq('user_id', userId)
-  if (error) throw error
-
-  return (data ?? [])
-    .filter((row) => row.films !== null)
-    .map((row) => toWheelItem(row as WatchedRow, null))
-}
 
 export interface Partner {
   id: string
-  displayName: string
+  // Whatever profiles.display_name holds, read fresh. Null only when that
+  // row can't be read — no name is ever written into the code.
+  displayName: string | null
 }
 
 // Whoever this user is paired with, or null if the profile has no partner.
@@ -164,57 +127,7 @@ export async function loadPartner(userId: string): Promise<Partner | null> {
     .select('display_name')
     .eq('id', partnerId)
     .maybeSingle()
-  return { id: partnerId, displayName: profile?.display_name ?? 'Your partner' }
+  return { id: partnerId, displayName: profile?.display_name ?? null }
 }
 
-// Films both people have rated at all, each carrying both scores. The
-// threshold is applied as a filter rather than here, so moving it updates
-// the count without another round trip.
-export async function loadBothRatedItems(userId: string, partnerId: string): Promise<WheelItem[]> {
-  const [mine, theirs] = await Promise.all([
-    supabase
-      .from('watched')
-      .select(`film_id, rating, watched_on, films(${FILM_COLUMNS})`)
-      .eq('user_id', userId)
-      .not('rating', 'is', null),
-    supabase.from('watched').select('film_id, rating').eq('user_id', partnerId).not('rating', 'is', null),
-  ])
-  if (mine.error) throw mine.error
-  if (theirs.error) throw theirs.error
 
-  const partnerRatings = new Map<string, number>()
-  for (const row of theirs.data ?? []) {
-    if (row.rating !== null) partnerRatings.set(row.film_id, row.rating)
-  }
-
-  return (mine.data ?? [])
-    .filter((row) => row.films !== null && partnerRatings.has(row.film_id))
-    .map((row) => toWheelItem(row as WatchedRow, partnerRatings.get(row.film_id) ?? null))
-}
-
-// Films sitting on both watchlists. added_at stays this user's own, so the
-// age weighting still means "how long I have been meaning to watch it".
-export async function loadOverlapItems(userId: string, partnerId: string): Promise<WheelItem[]> {
-  const [mine, theirs] = await Promise.all([
-    supabase
-      .from('watchlist_items')
-      .select(`film_id, added_at, films(${FILM_COLUMNS})`)
-      .eq('user_id', userId),
-    supabase.from('watchlist_items').select('film_id').eq('user_id', partnerId),
-  ])
-  if (mine.error) throw mine.error
-  if (theirs.error) throw theirs.error
-
-  const onTheirs = new Set((theirs.data ?? []).map((row) => row.film_id))
-
-  return (mine.data ?? [])
-    .filter((row) => row.films !== null && onTheirs.has(row.film_id))
-    .map((row) =>
-      toWheelItemFromFilm(row.film_id, row.films as never, {
-        addedAt: row.added_at,
-        watchedOn: null,
-        myRating: null,
-        partnerRating: null,
-      }),
-    )
-}

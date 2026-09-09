@@ -9,7 +9,7 @@ interface CustomWheelEditorProps {
   films: WheelItem[]
   userId: string
   partnerId: string | null
-  partnerName: string
+  partnerName: string | null
   onAddFilmId: (filmId: string) => Promise<void>
   onRemoveFilmId: (filmId: string) => void
   onBack: () => void

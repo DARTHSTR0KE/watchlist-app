@@ -10,10 +10,6 @@ interface ResultModalProps {
   canReroll: boolean
   canRemoveFromWheel: boolean
   reduceMotion: boolean
-  // Absent when no partner is linked, which makes recommending impossible
-  // rather than merely unused.
-  partnerName: string | null
-  onRecommend: (note: string) => Promise<void>
   // Empty outside the two shared sources. One each per spin session, so a
   // used one stays visible and disabled rather than disappearing. The label
   // is built by the caller, which is what knows whether the subject is
@@ -56,8 +52,6 @@ export function ResultModal({
   canReroll,
   canRemoveFromWheel,
   reduceMotion,
-  partnerName,
-  onRecommend,
   vetoes,
   onVeto,
   onWatch,
@@ -80,11 +74,6 @@ export function ResultModal({
   // A profile_path can go stale on TMDB's side; a 404 should read as "no
   // portrait" rather than a broken-image glyph in a row of eight.
   const [failedPhotos, setFailedPhotos] = useState<ReadonlySet<string>>(new Set())
-  const [recommending, setRecommending] = useState(false)
-  const [note, setNote] = useState('')
-  const [recommendState, setRecommendState] = useState<'idle' | 'sending' | 'sent' | 'failed'>(
-    'idle',
-  )
   const cast = useTopCast(item.id, item.topCast)
 
   const backdropUrl = buildBackdropUrl(item.backdropPath)
@@ -266,46 +255,6 @@ export function ResultModal({
                 </button>
               ))}
             </div>
-          )}
-
-          {partnerName !== null &&
-            (recommendState === 'sent' ? (
-              <p className="reroll-status">Sent to {partnerName}.</p>
-            ) : recommending ? (
-              <div className="recommend-form">
-                <input
-                  className="filter-preset-input"
-                  type="text"
-                  placeholder={`Why ${partnerName} should watch it (optional)`}
-                  value={note}
-                  autoFocus
-                  onChange={(event) => setNote(event.target.value)}
-                />
-                <button
-                  type="button"
-                  className="filter-save-button"
-                  disabled={recommendState === 'sending'}
-                  onClick={() => {
-                    setRecommendState('sending')
-                    void onRecommend(note)
-                      .then(() => setRecommendState('sent'))
-                      .catch(() => setRecommendState('failed'))
-                  }}
-                >
-                  {recommendState === 'sending' ? 'Sending…' : 'Send'}
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                className="action-button"
-                onClick={() => setRecommending(true)}
-              >
-                Recommend to {partnerName}
-              </button>
-            ))}
-          {recommendState === 'failed' && (
-            <p className="reroll-status">That didn't send. Try again.</p>
           )}
 
           <p className="reroll-status">

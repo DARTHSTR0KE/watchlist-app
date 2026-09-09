@@ -14,12 +14,17 @@ type AddSource = 'search' | 'watchlist' | 'watched' | 'partner'
 interface FilmPickerProps {
   userId: string
   partnerId: string | null
-  partnerName: string
+  partnerName: string | null
   // What is already there, so it can be shown as such rather than offered.
   existingIds: ReadonlySet<string>
   // Set when the destination can take no more; the message says why.
   full: boolean
   fullMessage: string | null
+  // What the section and its buttons are called. Adding to a list and
+  // sending to someone are the same pick with a different verb.
+  title?: string
+  actionLabel?: string
+  doneLabel?: string
   onAdd: (filmId: string) => Promise<void>
 }
 
@@ -42,6 +47,9 @@ export function FilmPicker({
   existingIds,
   full,
   fullMessage,
+  title = 'Add films',
+  actionLabel = 'Add',
+  doneLabel = 'Added',
   onAdd,
 }: FilmPickerProps) {
   const [addSource, setAddSource] = useState<AddSource>('search')
@@ -111,9 +119,9 @@ export function FilmPicker({
       const film = await resolveCandidate(result.mediaType, result.id)
       await upsertFilm(film)
       await onAdd(film.id)
-      setMessage(`Added "${result.title}".`)
+      setMessage(`${doneLabel} "${result.title}".`)
     } catch {
-      setMessage(`Couldn't add "${result.title}".`)
+      setMessage(`Couldn't do that with "${result.title}".`)
     }
     setBusyId(null)
   }
@@ -124,9 +132,9 @@ export function FilmPicker({
     setMessage(null)
     try {
       await onAdd(film.id)
-      setMessage(`Added "${film.title}".`)
+      setMessage(`${doneLabel} "${film.title}".`)
     } catch {
-      setMessage(`Couldn't add "${film.title}".`)
+      setMessage(`Couldn't do that with "${film.title}".`)
     }
     setBusyId(null)
   }
@@ -135,15 +143,19 @@ export function FilmPicker({
     { value: 'search', label: 'Search TMDB', available: true },
     { value: 'watchlist', label: 'My watchlist', available: true },
     { value: 'watched', label: 'My history', available: true },
-    { value: 'partner', label: `${partnerName}'s history`, available: partnerId !== null },
+    {
+      value: 'partner',
+      label: partnerName ? `${partnerName}'s history` : 'Their history',
+      available: partnerId !== null,
+    },
   ]
 
   const addLabel = (filmId: string) =>
-    existingIds.has(filmId) ? 'Added' : busyId === filmId ? 'Adding…' : 'Add'
+    existingIds.has(filmId) ? doneLabel : busyId === filmId ? '…' : actionLabel
 
   return (
     <section className="filter-group">
-      <p className="filter-group-title">Add films</p>
+      <p className="filter-group-title">{title}</p>
       <div className="filter-chips">
         {sources
           .filter((entry) => entry.available)

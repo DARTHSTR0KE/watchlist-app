@@ -1,19 +1,15 @@
 import { useState } from 'react'
 import {
   DEFAULT_FILTERS,
-  RATING_STEPS,
   RUNTIME_MIN,
   RUNTIME_STEP,
-  WATCHED_BEFORE_OPTIONS,
   decadesPresent,
   genreFacets,
-  isWatchedSource,
   languageFacets,
   languageLabel,
   runtimeCeiling,
-  starLabel,
 } from './filters'
-import type { RatingMode, WheelFilters } from './filters'
+import type { WheelFilters } from './filters'
 import type { WheelItem } from './titles'
 
 interface FilterSheetProps {
@@ -26,13 +22,6 @@ interface FilterSheetProps {
   onManagePresets: () => void
   onClose: () => void
 }
-
-const RATING_MODES: { value: RatingMode; label: string }[] = [
-  { value: 'any', label: 'Any' },
-  { value: 'min', label: 'At least' },
-  { value: 'exact', label: 'Exactly' },
-  { value: 'unrated', label: 'Never rated' },
-]
 
 function Chip({
   label,
@@ -85,10 +74,14 @@ export function FilterSheet({
       <div className="filter-sheet" onClick={(event) => event.stopPropagation()}>
         <div className="filter-sheet-header">
           <h2 className="filter-sheet-title">Filters</h2>
-          <span className="filter-sheet-count">{matchCount} matching</span>
+          <span
+            className={`filter-sheet-count${matchCount === 0 ? ' filter-sheet-count-empty' : ''}`}
+          >
+            {matchCount} matching
+          </span>
         </div>
 
-        <section className="filter-group">
+        <section className="filter-group dim-type">
           <p className="filter-group-title">Media type</p>
           <div className="filter-segmented">
             {(
@@ -112,7 +105,7 @@ export function FilterSheet({
         </section>
 
         {languages.length > 0 && (
-          <section className="filter-group">
+          <section className="filter-group dim-language">
             <p className="filter-group-title">Language</p>
             <div className="filter-chips">
               {languages.map((facet) => (
@@ -131,7 +124,7 @@ export function FilterSheet({
         )}
 
         {genres.length > 0 && (
-          <section className="filter-group">
+          <section className="filter-group dim-genre">
             <p className="filter-group-title">Genre</p>
             <div className="filter-chips">
               {genres.map((facet) => (
@@ -147,7 +140,7 @@ export function FilterSheet({
           </section>
         )}
 
-        <section className="filter-group">
+        <section className="filter-group dim-slider">
           <p className="filter-group-title">
             Maximum runtime{' '}
             <span className="filter-group-value">
@@ -169,7 +162,7 @@ export function FilterSheet({
         </section>
 
         {decades.length > 0 && (
-          <section className="filter-group">
+          <section className="filter-group dim-slider">
             <p className="filter-group-title">Release decade</p>
             <div className="filter-decades">
               <select
@@ -216,7 +209,7 @@ export function FilterSheet({
         {/* Everything in the watched sources is watched, so this would only
             ever empty the wheel there. */}
         {filters.source === 'watchlist' && (
-          <section className="filter-group">
+          <section className="filter-group dim-toggle">
             <label className="filter-toggle">
               <input
                 type="checkbox"
@@ -225,83 +218,6 @@ export function FilterSheet({
               />
               Exclude anything I've already watched
             </label>
-          </section>
-        )}
-
-        {filters.source === 'rewatch' && (
-          <section className="filter-group">
-            <p className="filter-group-title">My rating</p>
-            <div className="filter-chips">
-              {RATING_MODES.map((mode) => (
-                <button
-                  key={mode.value}
-                  type="button"
-                  className={`filter-chip${filters.ratingMode === mode.value ? ' filter-chip-selected' : ''}`}
-                  aria-pressed={filters.ratingMode === mode.value}
-                  onClick={() => onChange({ ...filters, ratingMode: mode.value })}
-                >
-                  {mode.label}
-                </button>
-              ))}
-            </div>
-            {(filters.ratingMode === 'min' || filters.ratingMode === 'exact') && (
-              <div className="filter-chips filter-chips-tight">
-                {RATING_STEPS.map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    className={`filter-chip${filters.ratingValue === value ? ' filter-chip-selected' : ''}`}
-                    aria-pressed={filters.ratingValue === value}
-                    onClick={() => onChange({ ...filters, ratingValue: value })}
-                  >
-                    {starLabel(value)}
-                  </button>
-                ))}
-              </div>
-            )}
-          </section>
-        )}
-
-        {filters.source === 'both-loved' && (
-          <section className="filter-group">
-            <p className="filter-group-title">
-              We both rated it at least <span className="filter-value">{starLabel(filters.bothLovedThreshold)}</span>
-            </p>
-            <div className="filter-chips filter-chips-tight">
-              {RATING_STEPS.map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  className={`filter-chip${filters.bothLovedThreshold === value ? ' filter-chip-selected' : ''}`}
-                  aria-pressed={filters.bothLovedThreshold === value}
-                  onClick={() => onChange({ ...filters, bothLovedThreshold: value })}
-                >
-                  {starLabel(value)}
-                </button>
-              ))}
-            </div>
-            <p className="filter-hint">
-              {matchCount} film{matchCount === 1 ? '' : 's'} you both rated that highly.
-            </p>
-          </section>
-        )}
-
-        {isWatchedSource(filters.source) && (
-          <section className="filter-group">
-            <p className="filter-group-title">Skip anything seen in the last</p>
-            <div className="filter-chips">
-              {WATCHED_BEFORE_OPTIONS.map((option) => (
-                <button
-                  key={option.label}
-                  type="button"
-                  className={`filter-chip${filters.watchedBeforeMonths === option.months ? ' filter-chip-selected' : ''}`}
-                  aria-pressed={filters.watchedBeforeMonths === option.months}
-                  onClick={() => onChange({ ...filters, watchedBeforeMonths: option.months })}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
           </section>
         )}
 
@@ -334,9 +250,8 @@ export function FilterSheet({
         </button>
 
         <div className="filter-sheet-actions">
-          {/* Reset clears the filters, not the source — you asked for the
-              rewatch wheel, so resetting shouldn't drop you back to the
-              watchlist. */}
+          {/* Reset clears the filters, not the source — you chose the wheel
+              you are on, so resetting shouldn't move you off it. */}
           <button
             type="button"
             className="action-button"

@@ -41,7 +41,7 @@
   white-space: nowrap;
   font-size: 0.95rem;
   font-weight: 600;
-  color: #f5f5f5;
+  color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -61,7 +61,7 @@
   border-radius: 999px;
   border: 1px solid rgba(245, 245, 245, 0.2);
   background-color: transparent;
-  color: #f5f5f5;
+  color: var(--text);
   cursor: pointer;
 }
 
@@ -97,7 +97,7 @@
 
 .signin-label {
   font-size: 0.85rem;
-  color: #9a9aa2;
+  color: var(--text-dim);
   margin-top: 0.5rem;
 }
 
@@ -106,19 +106,19 @@
   padding: 0.7rem 0.9rem;
   border-radius: 10px;
   border: 1px solid rgba(245, 245, 245, 0.2);
-  background-color: #1c1c24;
-  color: #f5f5f5;
+  background-color: var(--field);
+  color: var(--text);
 }
 
 .signin-input:focus {
-  outline: 2px solid #f5c451;
+  outline: 2px solid var(--amber);
   outline-offset: 1px;
 }
 
 .signin-error {
   margin: 0.5rem 0 0;
   font-size: 0.85rem;
-  color: #f26d6d;
+  color: var(--danger-soft);
 }
 
 .signin-button {
@@ -128,8 +128,8 @@
   padding: 0.85rem 1.5rem;
   border-radius: 999px;
   border: none;
-  background-color: #f5c451;
-  color: #101014;
+  background-color: var(--amber);
+  color: var(--ink);
   cursor: pointer;
 }
 
@@ -170,9 +170,9 @@
   min-width: 48px;
   min-height: 48px;
   border-radius: 50%;
-  border: 2px solid #efe6d6;
-  background-color: #f5c451;
-  color: #101014;
+  border: 2px solid var(--bone);
+  background-color: var(--amber);
+  color: var(--ink);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -214,8 +214,8 @@
   padding: 0.9rem 2.5rem;
   border-radius: 999px;
   border: none;
-  background-color: #f5c451;
-  color: #101014;
+  background-color: var(--amber);
+  color: var(--ink);
   cursor: pointer;
 }
 
@@ -235,13 +235,13 @@
   border-radius: 999px;
   border: 1px solid rgba(245, 245, 245, 0.2);
   background-color: transparent;
-  color: #f5f5f5;
+  color: var(--text);
   cursor: pointer;
 }
 
 .action-button.primary {
-  background-color: #f5c451;
-  color: #101014;
+  background-color: var(--amber);
+  color: var(--ink);
   border-color: transparent;
 }
 
@@ -257,12 +257,12 @@
 .reroll-status {
   margin: 0;
   font-size: 0.85rem;
-  color: #9a9aa2;
+  color: var(--text-dim);
 }
 
 .empty-state {
   font-size: 1rem;
-  color: #9a9aa2;
+  color: var(--text-dim);
 }
 
 /* Filter bar above the wheel */
@@ -301,7 +301,7 @@
   border: 0;
   border-radius: 999px;
   background: none;
-  color: #c8c8ce;
+  color: var(--text-muted);
   font-family: inherit;
   font-size: 0.76rem;
   cursor: pointer;
@@ -310,7 +310,7 @@
 
 .source-option-on {
   background-color: rgba(239, 230, 214, 0.92);
-  color: #14141a;
+  color: var(--on-accent);
   font-weight: 600;
 }
 
@@ -330,7 +330,7 @@
 .wheel-match-count {
   margin: 0;
   font-size: 0.85rem;
-  color: #d8d8dc;
+  color: var(--text-soft);
   padding: 0.3rem 0.7rem;
   border-radius: 999px;
   background-color: rgba(10, 12, 22, 0.55);
@@ -350,7 +350,7 @@
   border-radius: 999px;
   border: 1px solid rgba(245, 196, 81, 0.45);
   background-color: rgba(10, 12, 22, 0.55);
-  color: #f5c451;
+  color: var(--amber);
   cursor: pointer;
 }
 
@@ -377,7 +377,7 @@
   padding: 1rem 1.25rem;
   padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
   border-radius: 20px 20px 0 0;
-  background-color: #16161a;
+  background-color: var(--surface);
   box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.5);
 }
 
@@ -395,7 +395,14 @@
 
 .filter-sheet-count {
   font-size: 0.85rem;
-  color: #9a9aa2;
+  font-weight: 600;
+  color: var(--amber);
+}
+
+/* Nothing matches: the count is the thing to notice, so it changes
+   colour rather than staying the same as a healthy one. */
+.filter-sheet-count-empty {
+  color: var(--rust);
 }
 
 .filter-group {
@@ -409,13 +416,13 @@
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #9a9aa2;
+  color: var(--text-dim);
 }
 
 .filter-group-value {
   text-transform: none;
   letter-spacing: normal;
-  color: #f5c451;
+  color: var(--amber);
   font-weight: 600;
 }
 
@@ -431,15 +438,17 @@
   padding: 0.5rem 0.75rem;
   border-radius: 999px;
   border: 1px solid rgba(245, 245, 245, 0.2);
-  background: none;
-  color: #d8d8dc;
+  background-color: var(--field);
+  color: var(--text-soft);
   cursor: pointer;
 }
 
+/* Media type is a segmented control rather than chips, but it is still a
+   filter dimension, so it takes its group's colour the same way. */
 .filter-segment-active {
-  background-color: #f5c451;
+  background-color: var(--dimension);
   border-color: transparent;
-  color: #101014;
+  color: var(--on-accent);
 }
 
 .filter-chips {
@@ -455,15 +464,40 @@
   padding: 0.3rem 0.7rem;
   border-radius: 999px;
   border: 1px solid rgba(245, 245, 245, 0.2);
-  background: none;
-  color: #d8d8dc;
+  background-color: var(--field);
+  color: var(--text-soft);
   cursor: pointer;
 }
 
+/* Selected chips carry the colour of the dimension they belong to, so a
+   glance at the sheet groups them by what they filter. --dimension is set
+   on the group; anything outside the filter sheet keeps the default. */
 .filter-chip-selected {
-  background-color: #f5c451;
+  background-color: var(--dimension);
   border-color: transparent;
-  color: #101014;
+  color: var(--on-accent);
+}
+
+/* Each dimension's colour, set on the group so everything inside it —
+   chips, slider, select, checkbox — picks the same one up. */
+.dim-type {
+  --dimension: var(--amber);
+}
+
+.dim-language {
+  --dimension: var(--rust);
+}
+
+.dim-genre {
+  --dimension: var(--mauve);
+}
+
+.dim-slider {
+  --dimension: var(--sage);
+}
+
+.dim-toggle {
+  --dimension: var(--slate);
 }
 
 .filter-chip-count {
@@ -473,7 +507,7 @@
 
 .filter-range {
   width: 100%;
-  accent-color: #f5c451;
+  accent-color: var(--dimension);
 }
 
 .filter-decades {
@@ -484,7 +518,7 @@
 
 .filter-decades-sep {
   font-size: 0.8rem;
-  color: #9a9aa2;
+  color: var(--text-dim);
 }
 
 .filter-select {
@@ -493,8 +527,8 @@
   padding: 0.5rem;
   border-radius: 10px;
   border: 1px solid rgba(245, 245, 245, 0.2);
-  background-color: #1c1c24;
-  color: #f5f5f5;
+  background-color: var(--field);
+  color: var(--text);
 }
 
 .filter-toggle {
@@ -502,14 +536,14 @@
   align-items: center;
   gap: 0.6rem;
   font-size: 0.9rem;
-  color: #d8d8dc;
+  color: var(--text-soft);
   cursor: pointer;
 }
 
 .filter-toggle input {
   width: 1.1rem;
   height: 1.1rem;
-  accent-color: #f5c451;
+  accent-color: var(--dimension);
 }
 
 .filter-save-row {
@@ -523,8 +557,8 @@
   padding: 0.5rem 0.7rem;
   border-radius: 10px;
   border: 1px solid rgba(245, 245, 245, 0.2);
-  background-color: #1c1c24;
-  color: #f5f5f5;
+  background-color: var(--field);
+  color: var(--text);
 }
 
 .filter-save-button {
@@ -533,8 +567,8 @@
   padding: 0.5rem 1rem;
   border-radius: 10px;
   border: none;
-  background-color: #f5c451;
-  color: #101014;
+  background-color: var(--amber);
+  color: var(--ink);
   cursor: pointer;
 }
 
@@ -550,7 +584,7 @@
   background: none;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #f5c451;
+  color: var(--amber);
   text-decoration: underline;
   cursor: pointer;
 }
@@ -561,13 +595,13 @@
   margin: 0;
   font-size: 0.8rem;
   line-height: 1.45;
-  color: #a8a8b0;
+  color: var(--text-placeholder);
 }
 
 .preset-empty {
   margin: 0;
   font-size: 0.85rem;
-  color: #9a9aa2;
+  color: var(--text-dim);
 }
 
 .preset-list {
@@ -598,12 +632,12 @@
   background: none;
   font-size: 1.15rem;
   line-height: 1;
-  color: #6d6d75;
+  color: var(--text-faintest);
   cursor: pointer;
 }
 
 .preset-star-on {
-  color: #f5c451;
+  color: var(--amber);
 }
 
 .preset-star:disabled {
@@ -626,7 +660,7 @@
   background: none;
   font-size: 0.95rem;
   font-weight: 600;
-  color: #f5f5f5;
+  color: var(--text);
   text-align: left;
   cursor: text;
 }
@@ -637,8 +671,8 @@
   padding: 0.2rem 0.4rem;
   border-radius: 8px;
   border: 1px solid rgba(245, 196, 81, 0.6);
-  background-color: #1c1c24;
-  color: #f5f5f5;
+  background-color: var(--field);
+  color: var(--text);
   width: 100%;
 }
 
@@ -646,7 +680,7 @@
   margin: 0;
   font-size: 0.78rem;
   line-height: 1.35;
-  color: #a8a8b0;
+  color: var(--text-placeholder);
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -658,7 +692,7 @@
   border-radius: 999px;
   border: 1px solid rgba(245, 245, 245, 0.2);
   background: none;
-  color: #d8d8dc;
+  color: var(--text-soft);
   cursor: pointer;
 }
 
@@ -690,7 +724,7 @@
 
 .undo-banner-text {
   font-size: 0.85rem;
-  color: #d8d8dc;
+  color: var(--text-soft);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -703,8 +737,8 @@
   padding: 0.35rem 0.9rem;
   border-radius: 999px;
   border: none;
-  background-color: #f5c451;
-  color: #101014;
+  background-color: var(--amber);
+  color: var(--ink);
   cursor: pointer;
 }
 
@@ -726,14 +760,14 @@
   margin: 0;
   font-size: 0.95rem;
   font-weight: 600;
-  color: #f5f5f5;
+  color: var(--text);
 }
 
 .already-watched-hint {
   margin: 0;
   font-size: 0.8rem;
   line-height: 1.45;
-  color: #a8a8b0;
+  color: var(--text-placeholder);
 }
 
 .already-watched-list {
@@ -742,7 +776,7 @@
   max-height: 9rem;
   overflow-y: auto;
   font-size: 0.82rem;
-  color: #d8d8dc;
+  color: var(--text-soft);
 }
 
 /* Page backdrop: the current film, blurred past recognition behind
@@ -789,8 +823,8 @@
 .wheel-remaining-count {
   margin: 0;
   font-size: 0.85rem;
-  /* Was #9a9aa2, which measured about 2.8:1 against a bright backdrop. */
-  color: #d8d8dc;
+  /* Was var(--text-dim), which measured about 2.8:1 against a bright backdrop. */
+  color: var(--text-soft);
 }
 
 .mute-toggle {
@@ -800,7 +834,7 @@
   border-radius: 999px;
   border: 1px solid rgba(245, 245, 245, 0.2);
   background-color: transparent;
-  color: #d8d8dc;
+  color: var(--text-soft);
   cursor: pointer;
 }
 
@@ -824,7 +858,7 @@
   max-height: 92dvh;
   display: flex;
   flex-direction: column;
-  background-color: #16161a;
+  background-color: var(--surface);
   border-radius: 20px 20px 0 0;
   overflow: hidden;
   box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.5);
@@ -847,7 +881,7 @@
 .modal-header {
   position: relative;
   height: 150px;
-  background-color: #1c1c24;
+  background-color: var(--field);
 }
 
 .modal-backdrop {
@@ -863,7 +897,7 @@
 .modal-header-fade {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 40%, #16161a 100%);
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 40%, var(--surface) 100%);
 }
 
 .modal-poster {
@@ -878,7 +912,7 @@
 }
 
 .modal-poster-fallback {
-  background-color: #1c1c24;
+  background-color: var(--field);
   border: 1px solid rgba(245, 245, 245, 0.15);
 }
 
@@ -902,7 +936,7 @@
 .modal-subline {
   margin: 0 0 0.5rem;
   font-size: 0.85rem;
-  color: #9a9aa2;
+  color: var(--text-dim);
   text-align: left;
 }
 
@@ -918,14 +952,14 @@
   padding: 0.2rem 0.6rem;
   border-radius: 999px;
   border: 1px solid rgba(245, 245, 245, 0.2);
-  color: #d8d8dc;
+  color: var(--text-soft);
 }
 
 .modal-rating {
   margin: 0;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #f5c451;
+  color: var(--amber);
   text-align: left;
 }
 
@@ -938,7 +972,7 @@
   margin: 0;
   font-size: 0.9rem;
   line-height: 1.5;
-  color: #d8d8dc;
+  color: var(--text-soft);
 }
 
 .synopsis-clamped {
@@ -953,7 +987,7 @@
   background: none;
   border: none;
   padding: 0;
-  color: #f5c451;
+  color: var(--amber);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
@@ -965,7 +999,7 @@
   font-weight: 600;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: #9a9aa4;
+  color: var(--text-dim);
 }
 
 /* Trailer ------------------------------------------------------------- */
@@ -975,7 +1009,7 @@
   aspect-ratio: 16 / 9;
   border-radius: 12px;
   overflow: hidden;
-  background-color: #0b0b0e;
+  background-color: var(--ink-deep);
 }
 
 .modal-trailer-frame,
@@ -992,7 +1026,7 @@
   position: relative;
   padding: 0;
   cursor: pointer;
-  background-color: #0b0b0e;
+  background-color: var(--ink-deep);
 }
 
 .modal-trailer-facade img {
@@ -1023,7 +1057,7 @@
   transform: translate(-42%, -50%);
   border-style: solid;
   border-width: 9px 0 9px 15px;
-  border-color: transparent transparent transparent #efe6d6;
+  border-color: transparent transparent transparent var(--bone);
 }
 
 .modal-trailer-label {
@@ -1034,7 +1068,7 @@
   font-weight: 600;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: #efe6d6;
+  color: var(--bone);
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
 }
 
@@ -1077,20 +1111,20 @@
   margin: 0 auto 0.35rem;
   border-radius: 50%;
   object-fit: cover;
-  background-color: #26262c;
+  background-color: var(--raised);
 }
 
 .cast-photo-fallback {
   font-size: 0.8rem;
   font-weight: 600;
-  color: #9a9aa4;
+  color: var(--text-dim);
 }
 
 .cast-name {
   display: block;
   font-size: 0.68rem;
   line-height: 1.25;
-  color: #c8c8ce;
+  color: var(--text-muted);
 }
 
 .modal-actions {
@@ -1129,7 +1163,7 @@
 .import-last-updated {
   margin: 0;
   font-size: 0.85rem;
-  color: #9a9aa2;
+  color: var(--text-dim);
 }
 
 .import-go-to-wheel {
@@ -1139,8 +1173,8 @@
   padding: 0.5rem 1.1rem;
   border-radius: 999px;
   border: none;
-  background-color: #f5c451;
-  color: #101014;
+  background-color: var(--amber);
+  color: var(--ink);
   cursor: pointer;
 }
 
@@ -1153,19 +1187,19 @@
 .import-file-hint {
   margin: 0;
   font-size: 0.85rem;
-  color: #9a9aa2;
+  color: var(--text-dim);
   text-align: left;
 }
 
 .import-file-input {
   font-size: 0.85rem;
-  color: #d8d8dc;
+  color: var(--text-soft);
 }
 
 .import-error {
   margin: 0;
   font-size: 0.9rem;
-  color: #f26d6d;
+  color: var(--danger-soft);
   text-align: left;
 }
 
@@ -1179,19 +1213,19 @@
 .import-progress-label {
   margin: 0;
   font-size: 0.9rem;
-  color: #d8d8dc;
+  color: var(--text-soft);
 }
 
 .import-progress-track {
   height: 8px;
   border-radius: 999px;
-  background-color: #1c1c24;
+  background-color: var(--field);
   overflow: hidden;
 }
 
 .import-progress-fill {
   height: 100%;
-  background-color: #f5c451;
+  background-color: var(--amber);
   transition: width 200ms ease-out;
 }
 
@@ -1205,20 +1239,20 @@
 .import-summary-line {
   margin: 0;
   font-size: 0.95rem;
-  color: #f5f5f5;
+  color: var(--text);
 }
 
 .import-watched-progress {
   margin: 0;
   font-size: 0.8rem;
-  color: #9a9aa2;
+  color: var(--text-dim);
   text-align: left;
 }
 
 .import-empty {
   margin: 0;
   font-size: 0.9rem;
-  color: #9a9aa2;
+  color: var(--text-dim);
   text-align: left;
 }
 
@@ -1233,7 +1267,7 @@
 .missing-panel-title {
   margin: 0;
   font-size: 0.85rem;
-  color: #9a9aa2;
+  color: var(--text-dim);
 }
 
 .missing-panel-list {
@@ -1255,7 +1289,7 @@
 }
 
 .missing-panel-item-selected {
-  border-color: #f5c451;
+  border-color: var(--amber);
 }
 
 .missing-panel-poster {
@@ -1263,7 +1297,7 @@
   aspect-ratio: 2 / 3;
   object-fit: cover;
   border-radius: 8px;
-  background-color: #1c1c24;
+  background-color: var(--field);
 }
 
 .missing-panel-poster-fallback {
@@ -1272,7 +1306,7 @@
 
 .missing-panel-item-title {
   font-size: 0.7rem;
-  color: #d8d8dc;
+  color: var(--text-soft);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1317,13 +1351,13 @@
   margin: 0;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #f5f5f5;
+  color: var(--text);
 }
 
 .review-item-empty {
   margin: 0;
   font-size: 0.85rem;
-  color: #9a9aa2;
+  color: var(--text-dim);
 }
 
 .review-candidates {
@@ -1348,7 +1382,7 @@
   aspect-ratio: 2 / 3;
   object-fit: cover;
   border-radius: 8px;
-  background-color: #1c1c24;
+  background-color: var(--field);
 }
 
 .review-candidate-poster-fallback {
@@ -1357,7 +1391,7 @@
 
 .review-candidate-title {
   font-size: 0.72rem;
-  color: #f5f5f5;
+  color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1365,13 +1399,13 @@
 
 .review-candidate-year {
   font-size: 0.68rem;
-  color: #9a9aa2;
+  color: var(--text-dim);
 }
 
 .review-skip {
   align-self: flex-start;
   font-size: 0.8rem;
-  color: #9a9aa2;
+  color: var(--text-dim);
   background: none;
   border: none;
   cursor: pointer;
@@ -1403,8 +1437,8 @@
   padding: 0.6rem 0.8rem;
   border-radius: 10px;
   border: 1px solid rgba(245, 245, 245, 0.2);
-  background-color: #1c1c24;
-  color: #f5f5f5;
+  background-color: var(--field);
+  color: var(--text);
 }
 
 .manual-search-button {
@@ -1413,8 +1447,8 @@
   padding: 0.6rem 1rem;
   border-radius: 10px;
   border: none;
-  background-color: #f5c451;
-  color: #101014;
+  background-color: var(--amber);
+  color: var(--ink);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -1426,7 +1460,7 @@
 .manual-search-message {
   margin: 0;
   font-size: 0.85rem;
-  color: #9a9aa2;
+  color: var(--text-dim);
 }
 
 .manual-search-results {
@@ -1446,7 +1480,7 @@
   aspect-ratio: 2 / 3;
   object-fit: cover;
   border-radius: 8px;
-  background-color: #1c1c24;
+  background-color: var(--field);
 }
 
 .manual-search-poster-fallback {
@@ -1455,7 +1489,7 @@
 
 .manual-search-result-title {
   font-size: 0.75rem;
-  color: #f5f5f5;
+  color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1463,7 +1497,7 @@
 
 .manual-search-result-year {
   font-size: 0.68rem;
-  color: #9a9aa2;
+  color: var(--text-dim);
 }
 
 .manual-search-add {
@@ -1473,7 +1507,7 @@
   border-radius: 999px;
   border: 1px solid rgba(245, 245, 245, 0.2);
   background: none;
-  color: #f5f5f5;
+  color: var(--text);
   cursor: pointer;
 }
 
@@ -1493,7 +1527,7 @@
 .watchlist-grid-count {
   margin: 0;
   font-size: 0.9rem;
-  color: #9a9aa2;
+  color: var(--text-dim);
 }
 
 .watchlist-grid {
@@ -1507,7 +1541,7 @@
   aspect-ratio: 2 / 3;
   object-fit: cover;
   border-radius: 8px;
-  background-color: #1c1c24;
+  background-color: var(--field);
 }
 
 .watchlist-grid-poster-fallback {
@@ -1517,7 +1551,7 @@
   padding: 0.4rem;
   font-size: 0.7rem;
   text-align: center;
-  color: #9a9aa2;
+  color: var(--text-dim);
 }
 
 /* Footer */
@@ -1528,8 +1562,8 @@
   padding-bottom: max(0.6rem, env(safe-area-inset-bottom));
   font-size: 0.68rem;
   /* Lightened, and backed by its own bar: against a bright film backdrop the
-     old #6d6d75 dropped to roughly 1.5:1 and vanished. */
-  color: #a8a8b0;
+     old var(--text-faintest) dropped to roughly 1.5:1 and vanished. */
+  color: var(--text-placeholder);
   background-color: rgba(10, 12, 22, 0.55);
   text-align: center;
   border-top: 1px solid rgba(245, 245, 245, 0.08);
@@ -1541,15 +1575,10 @@
   margin-top: 0.45rem;
 }
 
-.filter-value {
-  color: #efe6d6;
-  font-weight: 600;
-}
-
 .filter-hint {
   margin: 0.5rem 0 0;
   font-size: 0.78rem;
-  color: #9a9aa4;
+  color: var(--text-dim);
 }
 
 /* Custom wheels -------------------------------------------------------- */
@@ -1585,7 +1614,7 @@
   border-radius: 999px;
   border: 1px solid rgba(245, 245, 245, 0.2);
   background: none;
-  color: #d8d8dc;
+  color: var(--text-soft);
   font-family: inherit;
   font-size: 0.72rem;
   cursor: pointer;
@@ -1593,7 +1622,7 @@
 
 .wheel-row-action-on {
   border-color: rgba(239, 230, 214, 0.6);
-  color: #efe6d6;
+  color: var(--bone);
 }
 
 .wheel-row-action:disabled {
@@ -1632,7 +1661,7 @@
   height: 48px;
   border-radius: 4px;
   object-fit: cover;
-  background-color: #26262c;
+  background-color: var(--raised);
 }
 
 .picker-poster-fallback {
@@ -1643,11 +1672,11 @@
   flex: 1;
   min-width: 0;
   font-size: 0.82rem;
-  color: #e8e8ec;
+  color: var(--text-bright);
 }
 
 .picker-year {
-  color: #9a9aa4;
+  color: var(--text-dim);
   font-size: 0.74rem;
 }
 
@@ -1683,7 +1712,7 @@
   border: 0;
   border-radius: 999px;
   background: none;
-  color: #c8c8ce;
+  color: var(--text-muted);
   font-family: inherit;
   font-size: 0.78rem;
   cursor: pointer;
@@ -1692,7 +1721,7 @@
 
 .app-nav-item-on {
   background-color: rgba(239, 230, 214, 0.92);
-  color: #14141a;
+  color: var(--on-accent);
   font-weight: 600;
 }
 
@@ -1705,8 +1734,8 @@
   height: 16px;
   padding: 0 4px;
   border-radius: 999px;
-  background-color: #e0483a;
-  color: #fff;
+  background-color: var(--danger);
+  color: var(--text);
   font-size: 0.62rem;
   font-weight: 700;
   line-height: 16px;
@@ -1728,7 +1757,7 @@
   margin: 0 0 1rem;
   font-size: 1.1rem;
   font-weight: 600;
-  color: #f5f5f5;
+  color: var(--text);
 }
 
 /* Recommendations ------------------------------------------------------ */
@@ -1756,7 +1785,7 @@
   height: 78px;
   border-radius: 6px;
   object-fit: cover;
-  background-color: #26262c;
+  background-color: var(--raised);
 }
 
 .rec-body {
@@ -1768,25 +1797,25 @@
   margin: 0;
   font-size: 0.92rem;
   font-weight: 600;
-  color: #f5f5f5;
+  color: var(--text);
 }
 
 .rec-note {
   margin: 0.3rem 0 0;
   font-size: 0.84rem;
   line-height: 1.4;
-  color: #d8d8dc;
+  color: var(--text-soft);
 }
 
 .rec-note-empty {
-  color: #7a7a84;
+  color: var(--text-faint);
   font-style: italic;
 }
 
 .rec-outcome {
   margin: 0.55rem 0 0;
   font-size: 0.78rem;
-  color: #9a9aa4;
+  color: var(--text-dim);
 }
 
 .rec-actions {
@@ -1794,11 +1823,6 @@
   flex-wrap: wrap;
   gap: 0.35rem;
   margin-top: 0.6rem;
-}
-
-.recommend-form {
-  display: flex;
-  gap: 0.5rem;
 }
 
 /* Watch together list -------------------------------------------------- */
@@ -1848,7 +1872,7 @@
   aspect-ratio: 2 / 3;
   border-radius: 8px;
   object-fit: cover;
-  background-color: #26262c;
+  background-color: var(--raised);
 }
 
 /* Titles only show through when there is no poster to show instead. */
@@ -1860,7 +1884,7 @@
   font-size: 0.72rem;
   line-height: 1.25;
   text-align: center;
-  color: #9a9aa4;
+  color: var(--text-dim);
 }
 
 .poster-cell-remove {
@@ -1872,7 +1896,7 @@
   border-radius: 50%;
   border: 0;
   background-color: rgba(10, 12, 22, 0.82);
-  color: #efe6d6;
+  color: var(--bone);
   font-size: 1rem;
   line-height: 1;
   cursor: pointer;
@@ -1881,7 +1905,7 @@
 .poster-cell-title {
   font-size: 0.72rem;
   line-height: 1.25;
-  color: #c8c8ce;
+  color: var(--text-muted);
 }
 
 /* Vetoes --------------------------------------------------------------- */
@@ -1903,23 +1927,6 @@
 
 /* Watch log and history ------------------------------------------------ */
 
-.log-date {
-  width: auto;
-  min-width: 10rem;
-  color-scheme: dark;
-}
-
-.log-undo {
-  align-self: center;
-  margin-top: 0.25rem;
-}
-
-.score-row {
-  display: flex;
-  gap: 1.25rem;
-  margin-top: 0.5rem;
-}
-
 .score {
   display: flex;
   flex-direction: column;
@@ -1930,20 +1937,13 @@
   font-size: 0.68rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #7a7a84;
+  color: var(--text-faint);
 }
 
 .score-value {
   font-size: 0.88rem;
   font-weight: 600;
-  color: #efe6d6;
-}
-
-/* An unscored watch is a real state, not a missing one — it shouldn't
-   shout as loudly as a score does. */
-.score-value-empty {
-  font-weight: 400;
-  color: #6a6a74;
+  color: var(--bone);
 }
 
 /* Stats ---------------------------------------------------------------- */
@@ -1958,14 +1958,14 @@
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #e8c15c;
+  color: var(--amber);
 }
 
 .stat-subtitle {
   margin: 1.4rem 0 0.5rem;
   font-size: 0.78rem;
   font-weight: 600;
-  color: #c8c8ce;
+  color: var(--text-muted);
 }
 
 /* Figures wrap rather than shrink: a number small enough to fit four
@@ -1995,38 +1995,38 @@
   font-size: 1.55rem;
   font-weight: 700;
   line-height: 1.1;
-  color: #f5f5f5;
+  color: var(--text);
 }
 
 .figure-label {
   font-size: 0.7rem;
   line-height: 1.3;
-  color: #9a9aa4;
+  color: var(--text-dim);
 }
 
 .stat-note {
   margin: 0 0 0.6rem;
   font-size: 0.7rem;
   line-height: 1.4;
-  color: #7a7a84;
+  color: var(--text-faint);
 }
 
 .stat-verdict {
   margin: 0.7rem 0 0;
   padding: 0.65rem 0.85rem;
   border-radius: 10px;
-  border-left: 3px solid #e8c15c;
+  border-left: 3px solid var(--amber);
   background-color: rgba(232, 193, 92, 0.08);
   font-size: 0.85rem;
   line-height: 1.45;
-  color: #efe6d6;
+  color: var(--bone);
 }
 
 .stat-empty {
   margin: 0.4rem 0 0;
   font-size: 0.82rem;
   line-height: 1.45;
-  color: #9a9aa4;
+  color: var(--text-dim);
 }
 
 .chart {
@@ -2055,7 +2055,7 @@
   display: block;
   font-size: 0.95rem;
   font-weight: 600;
-  color: #f5f5f5;
+  color: var(--text);
 }
 
 .disagree-scores {
@@ -2087,7 +2087,7 @@
   background-color: rgba(232, 193, 92, 0.14);
   font-size: 0.72rem;
   font-weight: 600;
-  color: #e8c15c;
+  color: var(--amber);
 }
 
 .waiting-row {
@@ -2113,5 +2113,214 @@
 .dodged-title {
   font-size: 1.15rem;
   font-weight: 700;
-  color: #f5f5f5;
+  color: var(--text);
+}
+
+/* Who is who ----------------------------------------------------------- */
+
+/* The two of us keep the same colours wherever we appear beside each
+   other, so a glance tells you whose number is whose. */
+.figure-value-me,
+.who-me .score-who,
+.who-me .score-value {
+  color: var(--me);
+}
+
+.figure-value-them,
+.who-them .score-who,
+.who-them .score-value {
+  color: var(--them);
+}
+
+/* Pending watch prompt -------------------------------------------------- */
+
+.pending-sheet {
+  text-align: center;
+}
+
+.pending-film {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0 1rem;
+}
+
+.pending-poster {
+  width: 132px;
+  aspect-ratio: 2 / 3;
+  border-radius: 10px;
+  object-fit: cover;
+  background-color: var(--raised);
+}
+
+.pending-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.pending-later {
+  align-self: center;
+  margin-top: 0.25rem;
+}
+
+/* Recommendations ------------------------------------------------------ */
+
+.rec-section {
+  margin-bottom: 2rem;
+}
+
+.rec-section .stat-section-title {
+  margin-bottom: 0.75rem;
+}
+
+/* The outstanding list is a reference, so it opens on request rather than
+   taking up the screen by default. */
+.rec-disclosure {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.rec-disclosure-count {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.rec-note-input {
+  width: 100%;
+}
+
+/* Onboarding ----------------------------------------------------------- */
+
+.onboard-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 1rem;
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  background-color: rgba(0, 0, 0, 0.72);
+}
+
+.onboard-card {
+  width: 100%;
+  max-width: 460px;
+  max-height: 92dvh;
+  overflow-y: auto;
+  padding: 1.5rem 1.35rem;
+  border-radius: 20px;
+  background-color: var(--surface);
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.5);
+}
+
+.onboard-progress {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 1.25rem;
+}
+
+.onboard-dot {
+  flex: 1;
+  height: 3px;
+  border-radius: 999px;
+  background-color: rgba(245, 245, 245, 0.18);
+}
+
+.onboard-dot-on {
+  background-color: var(--amber);
+}
+
+.onboard-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.onboard-body p {
+  margin: 0 0 0.75rem;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--text-soft);
+}
+
+.onboard-body strong {
+  color: var(--text);
+}
+
+.onboard-body code {
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+  background-color: var(--field);
+  font-size: 0.85em;
+  color: var(--sand);
+}
+
+.onboard-list {
+  margin: 0 0 0.75rem;
+  padding-left: 1.1rem;
+}
+
+.onboard-list li {
+  margin-bottom: 0.4rem;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--text-soft);
+}
+
+.onboard-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 1.25rem;
+}
+
+.onboard-footer {
+  display: flex;
+  justify-content: center;
+  gap: 1.25rem;
+  margin-top: 0.25rem;
+}
+
+.onboard-quiet {
+  padding: 0.4rem;
+  border: 0;
+  background: none;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+/* Settings ------------------------------------------------------------- */
+
+.settings-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.settings-signout {
+  width: 100%;
+  color: var(--rust);
+  border-color: var(--rust);
+}
+
+.intro-video {
+  width: 100%;
+  border-radius: 12px;
+  background-color: var(--ink-deep);
 }
