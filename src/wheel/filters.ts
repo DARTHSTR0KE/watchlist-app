@@ -62,6 +62,17 @@ export const RATING_STEP = 0.5
 export const RATING_MIN = 0.5
 export const RATING_MAX = 5
 
+// Every half step on the Letterboxd scale, and how to write one: 4 rather
+// than "4.0", but 4.5 keeps its half.
+export const RATING_STEPS: number[] = Array.from(
+  { length: Math.round((RATING_MAX - RATING_MIN) / RATING_STEP) + 1 },
+  (_, i) => RATING_MIN + i * RATING_STEP,
+)
+
+export function starLabel(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1)
+}
+
 export const WATCHED_BEFORE_OPTIONS: { months: number | null; label: string }[] = [
   { months: 6, label: '6 months' },
   { months: 12, label: 'a year' },

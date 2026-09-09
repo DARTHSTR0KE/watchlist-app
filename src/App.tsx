@@ -62,6 +62,15 @@ import type { Screen } from './auth/Header'
 import { RecommendedScreen } from './social/RecommendedScreen'
 import { countUnseenRecommendations, sendRecommendation } from './social/recommendations'
 import { SharedListScreen } from './social/SharedListScreen'
+import { HistoryScreen } from './social/HistoryScreen'
+import { WatchLogSheet } from './social/WatchLogSheet'
+import { PartnerRatingPrompt } from './social/PartnerRatingPrompt'
+import {
+  acknowledgeSharedWatch,
+  loadPendingSharedRatings,
+  saveWatchLog,
+} from './social/watchLog'
+import type { PendingShare, WatchLogEntry } from './social/watchLog'
 import { loadSharedListItems } from './social/sharedList'
 import { EnrichmentProvider } from './import/EnrichmentContext'
 import { ImportScreen } from './import/ImportScreen'
@@ -168,12 +177,21 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
   const [deletedPreset, setDeletedPreset] = useState<FilterPreset | null>(null)
   const presetUndoTimerRef = useRef<number | undefined>(undefined)
   const spinIdRef = useRef<string | null>(null)
+  // The film just marked watched, held while its log sheet is open.
+  const [logging, setLogging] = useState<WheelItem | null>(null)
   const [undo, setUndo] = useState<{
     snapshot: WatchUndoSnapshot
     title: string
     item: WheelItem
   } | null>(null)
   const undoTimerRef = useRef<number | undefined>(undefined)
+  // Held from the moment the watch is written until the log sheet closes,
+  // which is when the undo banner actually appears.
+  const undoRef = useRef<{
+    snapshot: WatchUndoSnapshot
+    title: string
+    item: WheelItem
+  } | null>(null)
   const reduceMotion = usePrefersReducedMotion()
   const [muted, toggleMuted] = useMuted()
 
@@ -389,8 +407,11 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
         // One undo banner at a time — they share a fixed position.
         window.clearTimeout(presetUndoTimerRef.current)
         setDeletedPreset(null)
-        setUndo({ snapshot, title: watched.title, item: watched })
-        undoTimerRef.current = window.setTimeout(() => setUndo(null), UNDO_WINDOW_MS)
+        undoRef.current = { snapshot, title: watched.title, item: watched }
+        // The row is written; the log sheet fills in the detail. The undo
+        // banner waits until the sheet is done rather than sitting behind
+        // it, and the sheet offers its own way out in the meantime.
+        setLogging(watched)
       })
       .catch(() => {
         // The write failed, so put it back rather than showing a wheel that
@@ -407,10 +428,12 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
   }
 
   const handleUndoWatch = () => {
-    const pending = undo
+    const pending = undo ?? undoRef.current
     if (!pending) return
     window.clearTimeout(undoTimerRef.current)
+    undoRef.current = null
     setUndo(null)
+    setLogging(null)
     setItems((current) =>
       current.some((item) => item.id === pending.item.id) ? current : [...current, pending.item],
     )
@@ -544,6 +567,25 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
     setEditorFilms([])
     setSheet('editor')
     void refreshWheelFilms(wheel.id)
+  }
+
+  // Closing the log hands over to the undo banner, which has been waiting
+  // behind it rather than competing with it for the same corner.
+  const closeLog = () => {
+    setLogging(null)
+    const pending = undoRef.current
+    undoRef.current = null
+    if (!pending) return
+    setUndo(pending)
+    window.clearTimeout(undoTimerRef.current)
+    undoTimerRef.current = window.setTimeout(() => setUndo(null), UNDO_WINDOW_MS)
+  }
+
+  const handleSaveLog = (entry: WatchLogEntry) => {
+    const film = logging
+    closeLog()
+    if (!film) return
+    void saveWatchLog(userId, film.id, entry).catch(() => {})
   }
 
   // One veto each per sitting. The title leaves the wheel and the wheel
@@ -911,6 +953,19 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
         </div>
       )}
 
+      {logging && (
+        <WatchLogSheet
+          title={logging.title}
+          userId={userId}
+          filmId={logging.id}
+          partnerId={partner?.id ?? null}
+          partnerName={partner?.displayName ?? 'your partner'}
+          onSave={handleSaveLog}
+          onSkip={closeLog}
+          onUndo={handleUndoWatch}
+        />
+      )}
+
       {undo && (
         <div className="undo-banner" role="status">
           <span className="undo-banner-text">Marked "{undo.title}" watched</span>
@@ -956,6 +1011,9 @@ function AuthenticatedApp() {
   // Set only by "Spin this list"; cleared by any ordinary navigation, so
   // the wheel doesn't keep reopening on the shared list afterwards.
   const [wheelSource, setWheelSource] = useState<WheelSource | null>(null)
+  // Shared watches the partner has logged that this user hasn't answered.
+  const [pendingShares, setPendingShares] = useState<PendingShare[]>([])
+  const [promptDismissed, setPromptDismissed] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -963,7 +1021,7 @@ function AuthenticatedApp() {
       hasWatchlistItems(userId).catch(() => true),
       countUnseenRecommendations(userId).catch(() => 0),
       loadPartner(userId).catch(() => null),
-    ]).then(([has, unseen, partner]) => {
+    ]).then(async ([has, unseen, partner]) => {
       if (cancelled) return
       if (!has) setScreen('import')
       setUnseenRecommendations(unseen)
@@ -972,6 +1030,15 @@ function AuthenticatedApp() {
         setPartnerId(partner.id)
       }
       setCheckingWatchlist(false)
+
+      // Asked once per app open, which is what "next time they open the
+      // app" means.
+      if (partner) {
+        const shares = await loadPendingSharedRatings(userId, partner.id).catch(
+          () => [] as PendingShare[],
+        )
+        if (!cancelled) setPendingShares(shares)
+      }
     })
     return () => {
       cancelled = true
@@ -992,6 +1059,9 @@ function AuthenticatedApp() {
           }}
         />
         {screen === 'wheel' && <WheelScreen startSource={wheelSource} />}
+        {screen === 'history' && (
+          <HistoryScreen userId={userId} partnerId={partnerId} partnerName={partnerName} />
+        )}
         {screen === 'together' && (
           <SharedListScreen
             userId={userId}
@@ -1012,6 +1082,24 @@ function AuthenticatedApp() {
           />
         )}
         <Footer />
+
+        {!promptDismissed && partnerId && (
+          <PartnerRatingPrompt
+            pending={pendingShares}
+            partnerName={partnerName}
+            onAnswer={(share, rating) => {
+              // Optimistic: the row goes either way, and a failed write
+              // simply means it is asked again next time.
+              setPendingShares((current) =>
+                current.filter((entry) => entry.filmId !== share.filmId),
+              )
+              void acknowledgeSharedWatch(userId, share.filmId, rating, share.watchedOn).catch(
+                () => {},
+              )
+            }}
+            onClose={() => setPromptDismissed(true)}
+          />
+        )}
       </div>
     </EnrichmentProvider>
   )

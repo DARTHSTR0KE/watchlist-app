@@ -1900,3 +1900,48 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* Watch log and history ------------------------------------------------ */
+
+.log-date {
+  width: auto;
+  min-width: 10rem;
+  color-scheme: dark;
+}
+
+.log-undo {
+  align-self: center;
+  margin-top: 0.25rem;
+}
+
+.score-row {
+  display: flex;
+  gap: 1.25rem;
+  margin-top: 0.5rem;
+}
+
+.score {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.score-who {
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #7a7a84;
+}
+
+.score-value {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #efe6d6;
+}
+
+/* An unscored watch is a real state, not a missing one — it shouldn't
+   shout as loudly as a score does. */
+.score-value-empty {
+  font-weight: 400;
+  color: #6a6a74;
+}

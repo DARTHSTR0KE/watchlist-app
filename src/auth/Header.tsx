@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from './AuthProvider'
 
-export type Screen = 'wheel' | 'recommended' | 'together' | 'import'
+export type Screen = 'wheel' | 'recommended' | 'together' | 'history' | 'import'
 
 interface HeaderProps {
   screen: Screen
@@ -14,6 +14,7 @@ const NAV: { value: Screen; label: string }[] = [
   { value: 'wheel', label: 'Wheel' },
   { value: 'recommended', label: 'For me' },
   { value: 'together', label: 'Together' },
+  { value: 'history', label: 'History' },
   { value: 'import', label: 'Import' },
 ]
 

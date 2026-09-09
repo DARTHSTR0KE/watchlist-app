@@ -1,9 +1,7 @@
 import { useState } from 'react'
 import {
   DEFAULT_FILTERS,
-  RATING_MAX,
-  RATING_MIN,
-  RATING_STEP,
+  RATING_STEPS,
   RUNTIME_MIN,
   RUNTIME_STEP,
   WATCHED_BEFORE_OPTIONS,
@@ -13,6 +11,7 @@ import {
   languageFacets,
   languageLabel,
   runtimeCeiling,
+  starLabel,
 } from './filters'
 import type { RatingMode, WheelFilters } from './filters'
 import type { WheelItem } from './titles'
@@ -28,21 +27,12 @@ interface FilterSheetProps {
   onClose: () => void
 }
 
-const RATING_STEPS = Array.from(
-  { length: Math.round((RATING_MAX - RATING_MIN) / RATING_STEP) + 1 },
-  (_, i) => RATING_MIN + i * RATING_STEP,
-)
-
 const RATING_MODES: { value: RatingMode; label: string }[] = [
   { value: 'any', label: 'Any' },
   { value: 'min', label: 'At least' },
   { value: 'exact', label: 'Exactly' },
   { value: 'unrated', label: 'Never rated' },
 ]
-
-function starLabel(value: number): string {
-  return Number.isInteger(value) ? String(value) : value.toFixed(1)
-}
 
 function Chip({
   label,
