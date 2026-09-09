@@ -1800,3 +1800,103 @@
   display: flex;
   gap: 0.5rem;
 }
+
+/* Watch together list -------------------------------------------------- */
+
+.list-screen-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.list-screen-head .list-screen-title {
+  margin: 0;
+}
+
+.list-screen-spin {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+}
+
+.list-screen-add {
+  width: 100%;
+  margin-top: 1.25rem;
+}
+
+.poster-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.poster-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.poster-cell-image {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: 8px;
+  object-fit: cover;
+  background-color: #26262c;
+}
+
+/* Titles only show through when there is no poster to show instead. */
+.poster-cell-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem;
+  font-size: 0.72rem;
+  line-height: 1.25;
+  text-align: center;
+  color: #9a9aa4;
+}
+
+.poster-cell-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 0;
+  background-color: rgba(10, 12, 22, 0.82);
+  color: #efe6d6;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.poster-cell-title {
+  font-size: 0.72rem;
+  line-height: 1.25;
+  color: #c8c8ce;
+}
+
+/* Vetoes --------------------------------------------------------------- */
+
+.veto-row {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.veto-button {
+  flex: 1;
+  font-size: 0.82rem;
+}
+
+.veto-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

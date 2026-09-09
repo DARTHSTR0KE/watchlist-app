@@ -191,3 +191,30 @@ export async function loadBothRatedItems(userId: string, partnerId: string): Pro
     .filter((row) => row.films !== null && partnerRatings.has(row.film_id))
     .map((row) => toWheelItem(row as WatchedRow, partnerRatings.get(row.film_id) ?? null))
 }
+
+// Films sitting on both watchlists. added_at stays this user's own, so the
+// age weighting still means "how long I have been meaning to watch it".
+export async function loadOverlapItems(userId: string, partnerId: string): Promise<WheelItem[]> {
+  const [mine, theirs] = await Promise.all([
+    supabase
+      .from('watchlist_items')
+      .select(`film_id, added_at, films(${FILM_COLUMNS})`)
+      .eq('user_id', userId),
+    supabase.from('watchlist_items').select('film_id').eq('user_id', partnerId),
+  ])
+  if (mine.error) throw mine.error
+  if (theirs.error) throw theirs.error
+
+  const onTheirs = new Set((theirs.data ?? []).map((row) => row.film_id))
+
+  return (mine.data ?? [])
+    .filter((row) => row.films !== null && onTheirs.has(row.film_id))
+    .map((row) =>
+      toWheelItemFromFilm(row.film_id, row.films as never, {
+        addedAt: row.added_at,
+        watchedOn: null,
+        myRating: null,
+        partnerRating: null,
+      }),
+    )
+}

@@ -9,6 +9,7 @@ import {
   loadBothRatedItems,
   loadPartner,
   loadRewatchItems,
+  loadOverlapItems,
   loadWatchedFilmIds,
   loadWheelItems,
 } from './wheel/loadWheelItems'
@@ -29,7 +30,14 @@ import type { CustomWheel } from './wheel/customWheels'
 import { CustomWheelsScreen } from './wheel/CustomWheelsScreen'
 import { CustomWheelEditor } from './wheel/CustomWheelEditor'
 import { FilterSheet } from './wheel/FilterSheet'
-import { DEFAULT_FILTERS, applyFilters, isCustomSource, mostRestrictiveFilter } from './wheel/filters'
+import {
+  DEFAULT_FILTERS,
+  SOURCE_LABELS,
+  allowsVeto,
+  applyFilters,
+  isCustomSource,
+  mostRestrictiveFilter,
+} from './wheel/filters'
 import type { WheelFilters, WheelSource } from './wheel/filters'
 import { WHEEL_DRAW_SIZE, weightedSample } from './wheel/weightedDraw'
 import {
@@ -53,6 +61,8 @@ import { Header } from './auth/Header'
 import type { Screen } from './auth/Header'
 import { RecommendedScreen } from './social/RecommendedScreen'
 import { countUnseenRecommendations, sendRecommendation } from './social/recommendations'
+import { SharedListScreen } from './social/SharedListScreen'
+import { loadSharedListItems } from './social/sharedList'
 import { EnrichmentProvider } from './import/EnrichmentContext'
 import { ImportScreen } from './import/ImportScreen'
 import {
@@ -78,13 +88,16 @@ function visiblePool(
   watchedIds: Set<string>,
   setAside: Set<string>,
   watchedThisSession: Set<string>,
+  vetoed: Set<string> = new Set(),
 ): WheelItem[] {
   // A hand-built wheel is spun as assembled — no filter touches it. Only
   // the session-only exclusions still apply.
   const filtered = isCustomSource(filters.source)
     ? pool
     : applyFilters(pool, filters, watchedIds)
-  return filtered.filter((item) => !setAside.has(item.id) && !watchedThisSession.has(item.id))
+  return filtered.filter(
+    (item) => !setAside.has(item.id) && !watchedThisSession.has(item.id) && !vetoed.has(item.id),
+  )
 }
 
 // The watchlist and watched sources sample eight from a large pool; a
@@ -110,7 +123,7 @@ function usePrefersReducedMotion(): boolean {
   return reduced
 }
 
-function WheelScreen() {
+function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
   const { session } = useAuth()
   const userId = session?.user.id ?? ''
 
@@ -129,7 +142,12 @@ function WheelScreen() {
   // excluded when the wheel is redrawn.
   const [setAside, setSetAside] = useState<Set<string>>(new Set())
   const [watchedIds, setWatchedIds] = useState<Set<string>>(new Set())
-  const [filters, setFilters] = useState<WheelFilters>(DEFAULT_FILTERS)
+  // The screen remounts whenever you leave and come back, so seeding the
+  // source here is all "Spin this list" needs to hand over.
+  const [filters, setFilters] = useState<WheelFilters>(() => ({
+    ...DEFAULT_FILTERS,
+    source: startSource ?? DEFAULT_FILTERS.source,
+  }))
   // Both forms are needed: the id drives the toggle's disabled state, the
   // ref lets the pool loader read it without reloading when it resolves.
   const [partner, setPartner] = useState<Partner | null>(null)
@@ -140,6 +158,11 @@ function WheelScreen() {
   // A source switch keeps the old wheel on screen rather than blanking the
   // app, so it needs its own flag to hold the spin until the pool lands.
   const [switchingSource, setSwitchingSource] = useState(false)
+  // Vetoed titles leave the wheel for the session, and each person spends
+  // one veto per session. Both reset when the source changes, since that
+  // starts a new sitting.
+  const [vetoedIds, setVetoedIds] = useState<Set<string>>(new Set())
+  const [vetoesSpent, setVetoesSpent] = useState<Set<string>>(new Set())
   const [sheet, setSheet] = useState<'none' | 'filters' | 'presets' | 'wheels' | 'editor'>('none')
   const [presets, setPresets] = useState<FilterPreset[]>([])
   const [deletedPreset, setDeletedPreset] = useState<FilterPreset | null>(null)
@@ -213,6 +236,11 @@ function WheelScreen() {
       if (source === 'custom') {
         return customWheelId ? loadCustomWheelItems(customWheelId) : Promise.resolve([])
       }
+      if (source === 'shared') return loadSharedListItems()
+      if (source === 'overlap') {
+        const linked = partnerRef.current
+        return linked ? loadOverlapItems(userId, linked.id) : Promise.resolve([])
+      }
       return loadWheelItems(userId)
     }
 
@@ -224,6 +252,8 @@ function WheelScreen() {
         setItems(
           drawFor(
             source,
+            // A new source is a new sitting: vetoes do not carry over, so
+            // none are excluded here.
             visiblePool(
               loaded,
               filtersRef.current,
@@ -235,6 +265,8 @@ function WheelScreen() {
         )
         setResult(null)
         setRerollsUsed(0)
+        setVetoedIds(new Set())
+        setVetoesSpent(new Set())
         setLoadingItems(false)
         setSwitchingSource(false)
       })
@@ -248,7 +280,14 @@ function WheelScreen() {
   // to hundreds, and gating the spin on all of those would be a long wait.
   const { statuses: imageStatuses, allSettled: postersReady } = usePosterImages(items)
 
-  const matchingPool = visiblePool(masterItems, filters, watchedIds, setAside, watchedThisSession)
+  const matchingPool = visiblePool(
+    masterItems,
+    filters,
+    watchedIds,
+    setAside,
+    watchedThisSession,
+    vetoedIds,
+  )
 
   const drawFromPool = useCallback((pool: WheelItem[], forSource: WheelSource) => {
     setItems(drawFor(forSource, pool))
@@ -285,13 +324,15 @@ function WheelScreen() {
     })
   }, [userId, filters])
 
-  const spin = useCallback(
-    (isReroll: boolean) => {
+  // Takes the list explicitly, because a veto has to spin the wheel that is
+  // about to render rather than the one still in state.
+  const spinList = useCallback(
+    (list: WheelItem[], isReroll: boolean) => {
       // Every spin routes through here — the hub and "Spin again" alike — so
       // this is the one place that reliably sits inside the starting tap.
       void ensureAudioContext()
 
-      if (spinning || items.length === 0 || !postersReady) return
+      if (spinning || list.length === 0 || !postersReady) return
       if (isReroll && rerollsUsed >= MAX_REROLLS) return
       // The spin being replaced is closed out as a reroll before the next
       // one starts.
@@ -299,8 +340,8 @@ function WheelScreen() {
 
       const extraSpins = 4 + Math.random() * 2 // 4-6 full rotations
       const nextRotation = rotation + 360 * extraSpins
-      const index = getSegmentIndexAtPointer(nextRotation, items.length)
-      pendingResultRef.current = items[index] ?? null
+      const index = getSegmentIndexAtPointer(nextRotation, list.length)
+      pendingResultRef.current = list[index] ?? null
 
       setResult(null)
       setSpinning(true)
@@ -318,7 +359,12 @@ function WheelScreen() {
         fallbackTimerRef.current = window.setTimeout(finishSpin, SPIN_DURATION_MS + 150)
       }
     },
-    [spinning, items, rerollsUsed, rotation, reduceMotion, finishSpin, postersReady, closeSpin],
+    [spinning, rerollsUsed, rotation, reduceMotion, finishSpin, postersReady, closeSpin],
+  )
+
+  const spin = useCallback(
+    (isReroll: boolean) => spinList(items, isReroll),
+    [spinList, items],
   )
 
   // The only reset trigger: committing to a film ends the round, so the
@@ -428,7 +474,10 @@ function WheelScreen() {
     // and drawing from the outgoing pool here would only flash the wrong
     // films first.
     if (next.source === filters.source) {
-      drawFromPool(visiblePool(masterItems, next, watchedIds, setAside, watchedThisSession), next.source)
+      drawFromPool(
+        visiblePool(masterItems, next, watchedIds, setAside, watchedThisSession, vetoedIds),
+        next.source,
+      )
     }
   }
 
@@ -496,6 +545,46 @@ function WheelScreen() {
     setSheet('editor')
     void refreshWheelFilms(wheel.id)
   }
+
+  // One veto each per sitting. The title leaves the wheel and the wheel
+  // goes again straight away — spun with the list that is about to render,
+  // not the one still in state.
+  const handleVeto = (key: string) => {
+    const vetoed = result
+    if (!vetoed || vetoesSpent.has(key)) return
+    closeSpin('removed')
+
+    const next = items.filter((item) => item.id !== vetoed.id)
+    setVetoesSpent((current) => new Set(current).add(key))
+    setVetoedIds((current) => new Set(current).add(vetoed.id))
+    setItems(next)
+    setResult(null)
+
+    // Below two there is nothing left to decide between, so the wheel says
+    // so rather than spinning at itself.
+    if (next.length >= MIN_WHEEL_SEGMENTS) spinList(next, false)
+  }
+
+  const vetoOptions = allowsVeto(filters.source)
+    ? [
+        {
+          key: 'me',
+          label: vetoesSpent.has('me') ? 'You vetoed this' : 'You veto this',
+          used: vetoesSpent.has('me'),
+        },
+        ...(partner
+          ? [
+              {
+                key: 'partner',
+                label: vetoesSpent.has('partner')
+                  ? `${partner.displayName} vetoed this`
+                  : `${partner.displayName} vetoes this`,
+                used: vetoesSpent.has('partner'),
+              },
+            ]
+          : []),
+      ]
+    : []
 
   const handleSourceChange = (next: WheelSource) => {
     if (next === filters.source) return
@@ -588,6 +677,16 @@ function WheelScreen() {
   // which the wheel gives up and explains itself.
   const tooFewMatches = matchingPool.length < 2
   const emptyReason = (): string => {
+    if (filters.source === 'shared' && masterItems.length === 0) {
+      return 'Your watch together list is empty. Add films to it on the Together screen.'
+    }
+
+    if (filters.source === 'overlap' && masterItems.length === 0) {
+      return partner === null
+        ? 'No partner is linked to this account yet, so there is nothing to overlap with.'
+        : `Nothing is on both watchlists yet. Anything you and ${partner.displayName} both add shows up here.`
+    }
+
     if (filters.source === 'custom') {
       if (filters.customWheelId === null) return 'Choose one of your wheels to spin.'
       const chosen = customWheels.find((wheel) => wheel.id === filters.customWheelId)
@@ -655,20 +754,29 @@ function WheelScreen() {
           onChange={handleSourceChange}
         />
         <div className="wheel-controls-row">
-          {isCustomSource(filters.source) ? (
+          {filters.source === 'custom' ? (
             <button type="button" className="mute-toggle" onClick={() => setSheet('wheels')}>
               My wheels
             </button>
           ) : (
-            <button type="button" className="mute-toggle" onClick={() => setSheet('filters')}>
+            <button
+              type="button"
+              className="mute-toggle"
+              // The shared list is spun exactly as assembled, so there is
+              // nothing here for filters to do.
+              disabled={filters.source === 'shared'}
+              onClick={() => setSheet('filters')}
+            >
               Filters
             </button>
           )}
           <p className="wheel-match-count">
             {switchingSource ? (
               'Loading…'
-            ) : isCustomSource(filters.source) ? (
+            ) : filters.source === 'custom' ? (
               selectedWheel ? `${selectedWheel.name} · ${items.length}` : 'No wheel selected'
+            ) : filters.source === 'shared' ? (
+              `${SOURCE_LABELS.shared} · ${items.length}`
             ) : (
               <>
                 {items.length} of {matchingPool.length} matching title
@@ -676,7 +784,7 @@ function WheelScreen() {
               </>
             )}
           </p>
-          {isCustomSource(filters.source) ? (
+          {filters.source === 'custom' ? (
             <button
               type="button"
               className="mute-toggle"
@@ -686,7 +794,13 @@ function WheelScreen() {
               Edit
             </button>
           ) : (
-            <button type="button" className="mute-toggle" onClick={handleReshuffle}>
+            <button
+              type="button"
+              className="mute-toggle"
+              // Nothing to redraw when the whole list is already on screen.
+              disabled={filters.source === 'shared'}
+              onClick={handleReshuffle}
+            >
               Reshuffle
             </button>
           )}
@@ -814,6 +928,8 @@ function WheelScreen() {
             if (!partner) return
             await sendRecommendation(userId, partner.id, result.id, note)
           }}
+          vetoes={vetoOptions}
+          onVeto={handleVeto}
           rerollsRemaining={rerollsRemaining}
           canReroll={rerollsRemaining > 0}
           canRemoveFromWheel={canRemoveFromWheel}
@@ -836,6 +952,10 @@ function AuthenticatedApp() {
   const [checkingWatchlist, setCheckingWatchlist] = useState(true)
   const [unseenRecommendations, setUnseenRecommendations] = useState(0)
   const [partnerName, setPartnerName] = useState('your partner')
+  const [partnerId, setPartnerId] = useState<string | null>(null)
+  // Set only by "Spin this list"; cleared by any ordinary navigation, so
+  // the wheel doesn't keep reopening on the shared list afterwards.
+  const [wheelSource, setWheelSource] = useState<WheelSource | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -847,7 +967,10 @@ function AuthenticatedApp() {
       if (cancelled) return
       if (!has) setScreen('import')
       setUnseenRecommendations(unseen)
-      if (partner) setPartnerName(partner.displayName)
+      if (partner) {
+        setPartnerName(partner.displayName)
+        setPartnerId(partner.id)
+      }
       setCheckingWatchlist(false)
     })
     return () => {
@@ -863,9 +986,23 @@ function AuthenticatedApp() {
         <Header
           screen={screen}
           unseenRecommendations={unseenRecommendations}
-          onNavigate={setScreen}
+          onNavigate={(next) => {
+            setWheelSource(null)
+            setScreen(next)
+          }}
         />
-        {screen === 'wheel' && <WheelScreen />}
+        {screen === 'wheel' && <WheelScreen startSource={wheelSource} />}
+        {screen === 'together' && (
+          <SharedListScreen
+            userId={userId}
+            partnerId={partnerId}
+            partnerName={partnerName}
+            onSpinList={() => {
+              setWheelSource('shared')
+              setScreen('wheel')
+            }}
+          />
+        )}
         {screen === 'import' && <ImportScreen onGoToWheel={() => setScreen('wheel')} />}
         {screen === 'recommended' && (
           <RecommendedScreen

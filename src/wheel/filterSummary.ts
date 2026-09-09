@@ -32,11 +32,13 @@ export function describeFilters(filters: WheelFilters): string {
   // A hand-built wheel is exactly what was put on it, so there is nothing
   // for the filters to describe.
   if (filters.source === 'custom') return 'A wheel I built'
+  if (filters.source === 'shared') return 'Our watch together list'
 
   const parts: string[] = []
 
   // The source leads, since it changes what the rest of the line is about.
   if (filters.source === 'rewatch') parts.push('Watch again')
+  else if (filters.source === 'overlap') parts.push('On both watchlists')
   else if (filters.source === 'both-loved') parts.push('Both loved it')
 
   if (filters.mediaType === 'movie') parts.push('Films')

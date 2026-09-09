@@ -3,7 +3,13 @@ import type { WheelItem } from './titles'
 // Which pool the wheel draws from. 'watchlist' is the films still to see;
 // 'rewatch' and 'both-loved' come from the watched table; 'custom' is a
 // hand-built wheel, which no filter touches.
-export type WheelSource = 'watchlist' | 'rewatch' | 'both-loved' | 'custom'
+export type WheelSource =
+  | 'watchlist'
+  | 'rewatch'
+  | 'both-loved'
+  | 'custom'
+  | 'overlap'
+  | 'shared'
 
 export type RatingMode = 'any' | 'min' | 'exact' | 'unrated'
 
@@ -69,10 +75,11 @@ export function isWatchedSource(source: WheelSource): boolean {
   return source === 'rewatch' || source === 'both-loved'
 }
 
-// A hand-built wheel is spun exactly as assembled: no filtering, no
-// sampling, no weighting. The choosing was already done by hand.
+// Hand-picked wheels are spun exactly as assembled: no filtering, no
+// sampling, no weighting. The choosing was already done by hand, and that
+// covers the shared list as much as a wheel built one film at a time.
 export function isCustomSource(source: WheelSource): boolean {
-  return source === 'custom'
+  return source === 'custom' || source === 'shared'
 }
 
 export const SOURCE_LABELS: Record<WheelSource, string> = {
@@ -80,6 +87,14 @@ export const SOURCE_LABELS: Record<WheelSource, string> = {
   rewatch: 'Watch again',
   'both-loved': 'Both loved it',
   custom: 'My wheels',
+  overlap: 'Overlap',
+  shared: 'Together',
+}
+
+// Where a veto applies: the two sources that are about both people, so a
+// title one of them won't sit through should leave the wheel.
+export function allowsVeto(source: WheelSource): boolean {
+  return source === 'overlap' || source === 'shared'
 }
 
 // Only the dimensions that actually narrow a pool. `source` chooses the

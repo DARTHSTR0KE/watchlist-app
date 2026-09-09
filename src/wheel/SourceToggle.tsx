@@ -1,7 +1,14 @@
 import { SOURCE_LABELS } from './filters'
 import type { WheelSource } from './filters'
 
-const SOURCES: WheelSource[] = ['watchlist', 'rewatch', 'both-loved', 'custom']
+const SOURCES: WheelSource[] = [
+  'watchlist',
+  'rewatch',
+  'overlap',
+  'both-loved',
+  'shared',
+  'custom',
+]
 
 interface SourceToggleProps {
   source: WheelSource
@@ -15,7 +22,9 @@ export function SourceToggle({ source, partnerAvailable, onChange }: SourceToggl
   return (
     <div className="source-toggle" role="group" aria-label="Where the wheel draws from">
       {SOURCES.map((value) => {
-        const unavailable = value === 'both-loved' && !partnerAvailable
+        // Overlap and Both loved it both need someone to compare against.
+        const unavailable =
+          (value === 'both-loved' || value === 'overlap') && !partnerAvailable
         return (
           <button
             key={value}

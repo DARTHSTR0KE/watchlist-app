@@ -14,6 +14,12 @@ interface ResultModalProps {
   // rather than merely unused.
   partnerName: string | null
   onRecommend: (note: string) => Promise<void>
+  // Empty outside the two shared sources. One each per spin session, so a
+  // used one stays visible and disabled rather than disappearing. The label
+  // is built by the caller, which is what knows whether the subject is
+  // "you" or a name — the verb has to agree with it.
+  vetoes: { key: string; label: string; used: boolean }[]
+  onVeto: (key: string) => void
   onWatch: () => void
   onSpinAgain: () => void
   onTakeOff: () => void
@@ -52,6 +58,8 @@ export function ResultModal({
   reduceMotion,
   partnerName,
   onRecommend,
+  vetoes,
+  onVeto,
   onWatch,
   onSpinAgain,
   onTakeOff,
@@ -244,6 +252,22 @@ export function ResultModal({
               Reshuffle
             </button>
           )}
+          {vetoes.length > 0 && (
+            <div className="veto-row">
+              {vetoes.map((veto) => (
+                <button
+                  key={veto.key}
+                  type="button"
+                  className="action-button veto-button"
+                  disabled={veto.used}
+                  onClick={() => onVeto(veto.key)}
+                >
+                  {veto.label}
+                </button>
+              ))}
+            </div>
+          )}
+
           {partnerName !== null &&
             (recommendState === 'sent' ? (
               <p className="reroll-status">Sent to {partnerName}.</p>
