@@ -1,12 +1,9 @@
 import { useState } from 'react'
-
-// Drop a file here to make "Play intro" play something. Nothing in the
-// repo ships one, so until a file exists at this path the player says so
-// rather than showing a broken frame.
-export const INTRO_VIDEO_SRC = '/intro.mp4'
+import { INTRO_BUCKET, INTRO_OBJECT, introVideoUrl } from './introSource'
 
 export function IntroVideo({ onClose }: { onClose: () => void }) {
   const [failed, setFailed] = useState(false)
+  const src = introVideoUrl()
 
   return (
     <div className="filter-sheet-overlay" onClick={onClose}>
@@ -17,16 +14,19 @@ export function IntroVideo({ onClose }: { onClose: () => void }) {
 
         {failed ? (
           <p className="preset-empty">
-            There's no intro video yet. Once one is added at <code>{INTRO_VIDEO_SRC}</code> it will
-            play here.
+            The intro couldn't be loaded. It's expected at <code>{INTRO_OBJECT}</code> in the{' '}
+            <code>{INTRO_BUCKET}</code> bucket, which needs to exist and be public.
           </p>
         ) : (
           <video
             className="intro-video"
-            src={INTRO_VIDEO_SRC}
+            src={src}
             controls
             autoPlay
             playsInline
+            // Nothing is fetched until Play intro is tapped, and this
+            // keeps it that way if a browser ever renders it early.
+            preload="none"
             onError={() => setFailed(true)}
           />
         )}
