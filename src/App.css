@@ -2506,3 +2506,232 @@
   text-align: left;
   text-decoration: underline;
 }
+
+/* haaapppyyyy birthdayyyy ------------------------------------------------ */
+
+.birthday-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #000;
+}
+
+.birthday-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* One control, centred on the first frame. Sound needs a deliberate tap,
+   so this is the only way in. */
+.birthday-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  border: 2px solid rgba(239, 230, 214, 0.85);
+  background-color: rgba(10, 12, 22, 0.55);
+  cursor: pointer;
+}
+
+.birthday-play:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.birthday-play-mark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-38%, -50%);
+  border-style: solid;
+  border-width: 15px 0 15px 25px;
+  border-color: transparent transparent transparent var(--bone);
+}
+
+.birthday-controls {
+  position: absolute;
+  right: 1rem;
+  bottom: 1.25rem;
+  bottom: max(1.25rem, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.birthday-control {
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(239, 230, 214, 0.45);
+  background-color: rgba(10, 12, 22, 0.65);
+  color: var(--bone);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.birthday-note {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+}
+
+/* Picking a wheel -------------------------------------------------------- */
+
+.wheel-pick {
+  flex: 1;
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto;
+  padding: 0.5rem 1.25rem 1.25rem;
+  overflow-y: auto;
+}
+
+.wheel-pick-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.wheel-pick-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.wheel-pick-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wheel-pick-row {
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+
+/* The row is the load action; the buttons underneath manage it. */
+.wheel-pick-main {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  padding: 0.75rem 0.85rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Three posters, overlapped, so the row is recognisable from its films. */
+.wheel-stack {
+  position: relative;
+  flex: 0 0 auto;
+  width: 62px;
+  height: 51px;
+}
+
+.wheel-stack-poster {
+  position: absolute;
+  top: 0;
+  width: 34px;
+  height: 51px;
+  border-radius: 4px;
+  object-fit: cover;
+  background-color: var(--raised);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.wheel-stack-empty {
+  display: block;
+  width: 34px;
+  height: 51px;
+  border-radius: 4px;
+  background-color: var(--raised);
+}
+
+.wheel-pick-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.wheel-pick-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.wheel-pick-meta {
+  font-size: 0.76rem;
+  color: var(--text-dim);
+}
+
+.wheel-pick-badge {
+  flex: 0 0 auto;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background-color: rgba(110, 123, 166, 0.22);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--slate);
+}
+
+.wheel-pick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0 0.85rem 0.75rem;
+}
+
+.wheel-pick-new {
+  margin-top: 1rem;
+}
+
+/* Filling a wheel ------------------------------------------------------- */
+
+.wheel-editor-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.wheel-editor-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.wheel-editor-rename {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}

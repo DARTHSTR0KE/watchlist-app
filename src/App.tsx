@@ -20,7 +20,7 @@ import {
   setCustomWheelShared,
 } from './wheel/customWheels'
 import type { CustomWheel } from './wheel/customWheels'
-import { CustomWheelsScreen } from './wheel/CustomWheelsScreen'
+import { CustomWheelsList } from './wheel/CustomWheelsScreen'
 import { CustomWheelEditor } from './wheel/CustomWheelEditor'
 import { FilterSheet } from './wheel/FilterSheet'
 import {
@@ -76,6 +76,7 @@ import {
   watchFilmNow,
 } from './import/watchlistWrites'
 import { Footer } from './Footer'
+import { BirthdayGate } from './birthday/BirthdayGate'
 
 const MAX_REROLLS = 2
 const SPIN_DURATION_MS = 4000
@@ -166,7 +167,7 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
   // starts a new sitting.
   const [vetoedIds, setVetoedIds] = useState<Set<string>>(new Set())
   const [vetoesSpent, setVetoesSpent] = useState<Set<string>>(new Set())
-  const [sheet, setSheet] = useState<'none' | 'filters' | 'presets' | 'wheels' | 'editor'>('none')
+  const [sheet, setSheet] = useState<'none' | 'filters' | 'presets'>('none')
   const [presets, setPresets] = useState<FilterPreset[]>([])
   const [deletedPreset, setDeletedPreset] = useState<FilterPreset | null>(null)
   const presetUndoTimerRef = useRef<number | undefined>(undefined)
@@ -486,13 +487,11 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
     closeSpin('abandoned')
     setSwitchingSource(true)
     setFilters((current) => ({ ...current, source: 'custom', customWheelId: wheel.id }))
-    setSheet('none')
   }
 
   const handleEditWheel = (wheel: CustomWheel) => {
     setEditorWheel(wheel)
     setEditorFilms([])
-    setSheet('editor')
     void refreshWheelFilms(wheel.id)
   }
 
@@ -538,10 +537,6 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
 
   const handleSourceChange = (next: WheelSource) => {
     if (next === filters.source) return
-    if (next === 'custom' && filters.customWheelId === null) {
-      setSheet('wheels')
-      return
-    }
     setSwitchingSource(true)
     handleFiltersChange({ ...filters, source: next })
   }
@@ -675,6 +670,37 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
 
   if (loadingItems) return null
 
+  // Filling a wheel is a screen of its own, not a panel over the wheel.
+  if (editorWheel) {
+    return (
+      <CustomWheelEditor
+        wheel={editorWheel}
+        films={editorFilms}
+        userId={userId}
+        partnerId={partner?.id ?? null}
+        partnerName={partner?.displayName ?? null}
+        onAddFilmId={async (filmId) => {
+          await addFilmToWheel(editorWheel.id, filmId)
+          await refreshWheelFilms(editorWheel.id)
+        }}
+        onRemoveFilmId={(filmId) => {
+          void removeFilmFromWheel(editorWheel.id, filmId)
+            .then(() => refreshWheelFilms(editorWheel.id))
+            .catch(() => {})
+        }}
+        onRename={(name) => {
+          handleRenameWheel(editorWheel, name)
+          setEditorWheel({ ...editorWheel, name })
+        }}
+        onBack={() => setEditorWheel(null)}
+      />
+    )
+  }
+
+  // My wheels with nothing chosen: the wheel area becomes the list, in
+  // place, rather than a sheet sliding over a wheel nobody picked.
+  const pickingWheel = filters.source === 'custom' && filters.customWheelId === null
+
   return (
     <div className="app">
       <FilmBackdrop backdropPath={displayedBackdrop} />
@@ -682,9 +708,14 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
 
       <div className="wheel-controls">
         <SourceToggle source={filters.source} onChange={handleSourceChange} />
+        {!pickingWheel && (
         <div className="wheel-controls-row">
           {filters.source === 'custom' ? (
-            <button type="button" className="mute-toggle" onClick={() => setSheet('wheels')}>
+            <button
+              type="button"
+              className="mute-toggle"
+              onClick={() => handleFiltersChange({ ...filters, customWheelId: null })}
+            >
               My wheels
             </button>
           ) : (
@@ -734,6 +765,7 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
             </button>
           )}
         </div>
+        )}
         {/* Presets describe filters, which a hand-built wheel ignores. */}
         {!isCustomSource(filters.source) && starredPresets.length > 0 && (
           <div className="preset-chips">
@@ -751,25 +783,38 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
         )}
       </div>
 
-      <SpinWheel
-        items={items}
-        rotation={rotation}
-        reduceMotion={reduceMotion}
-        imageStatuses={imageStatuses}
-        onSpinEnd={finishSpin}
-        onSpin={() => spin(false)}
-        spinDisabled={spinDisabled}
-      />
-
-      {tooFewMatches ? (
-        <p className="empty-state">{emptyReason()}</p>
+      {pickingWheel ? (
+        <CustomWheelsList
+          wheels={customWheels}
+          partnerName={partner?.displayName ?? null}
+          onCreate={handleCreateWheel}
+          onSpin={handleSpinWheel}
+          onEdit={handleEditWheel}
+          onDelete={handleDeleteWheel}
+          onToggleShared={handleToggleShared}
+        />
       ) : (
-        <div className="wheel-footer-row">
-          <p className="wheel-remaining-count">
-            {items.length} title{items.length === 1 ? '' : 's'} on the wheel
-          </p>
+        <>
+          <SpinWheel
+            items={items}
+            rotation={rotation}
+            reduceMotion={reduceMotion}
+            imageStatuses={imageStatuses}
+            onSpinEnd={finishSpin}
+            onSpin={() => spin(false)}
+            spinDisabled={spinDisabled}
+          />
 
-        </div>
+          {tooFewMatches ? (
+            <p className="empty-state">{emptyReason()}</p>
+          ) : (
+            <div className="wheel-footer-row">
+              <p className="wheel-remaining-count">
+                {items.length} title{items.length === 1 ? '' : 's'} on the wheel
+              </p>
+            </div>
+          )}
+        </>
       )}
 
       {sheet === 'filters' && (
@@ -785,39 +830,7 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
         />
       )}
 
-      {sheet === 'wheels' && (
-        <CustomWheelsScreen
-          wheels={customWheels}
-          selectedId={filters.customWheelId}
-          onCreate={handleCreateWheel}
-          onRename={handleRenameWheel}
-          onDelete={handleDeleteWheel}
-          onToggleShared={handleToggleShared}
-          onSpin={handleSpinWheel}
-          onEdit={handleEditWheel}
-          onBack={() => setSheet('none')}
-        />
-      )}
 
-      {sheet === 'editor' && editorWheel && (
-        <CustomWheelEditor
-          wheel={editorWheel}
-          films={editorFilms}
-          userId={userId}
-          partnerId={partner?.id ?? null}
-          partnerName={partner?.displayName ?? null}
-          onAddFilmId={async (filmId) => {
-            await addFilmToWheel(editorWheel.id, filmId)
-            await refreshWheelFilms(editorWheel.id)
-          }}
-          onRemoveFilmId={(filmId) => {
-            void removeFilmFromWheel(editorWheel.id, filmId)
-              .then(() => refreshWheelFilms(editorWheel.id))
-              .catch(() => {})
-          }}
-          onBack={() => setSheet('wheels')}
-        />
-      )}
 
       {sheet === 'presets' && (
         <PresetsScreen
@@ -1034,6 +1047,9 @@ function Gate() {
 function App() {
   return (
     <AuthProvider>
+      {/* Above the auth gate deliberately: the video comes before the
+          sign-in screen, so a first open isn't a password prompt. */}
+      <BirthdayGate />
       <Gate />
     </AuthProvider>
   )

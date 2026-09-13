@@ -14,8 +14,13 @@ export interface CustomWheel {
   // Someone else's shared wheel can be spun but not edited.
   isMine: boolean
   filmCount: number
+  // A few posters to show what is on it, without opening it.
+  posterPaths: string[]
   createdAt: string | null
 }
+
+// Enough to read a row at a glance; more would be a wall of thumbnails.
+export const WHEEL_PREVIEW_POSTERS = 3
 
 interface WheelRow {
   id: string
@@ -24,9 +29,13 @@ interface WheelRow {
   shared: boolean
   created_at: string | null
   custom_wheel_items: { count: number }[] | null
+  // A second embed of the same relation: the count aggregate can't also
+  // return rows, so the posters come alongside it.
+  items: { films: { poster_path: string | null } | null }[] | null
 }
 
-const WHEEL_COLUMNS = 'id, user_id, name, shared, created_at, custom_wheel_items(count)'
+const WHEEL_COLUMNS =
+  'id, user_id, name, shared, created_at, custom_wheel_items(count), items:custom_wheel_items(films(poster_path))'
 
 function toWheel(row: WheelRow, userId: string): CustomWheel {
   return {
@@ -36,6 +45,10 @@ function toWheel(row: WheelRow, userId: string): CustomWheel {
     ownerId: row.user_id,
     isMine: row.user_id === userId,
     filmCount: row.custom_wheel_items?.[0]?.count ?? 0,
+    posterPaths: (row.items ?? [])
+      .map((item) => item.films?.poster_path ?? null)
+      .filter((path): path is string => path !== null)
+      .slice(0, WHEEL_PREVIEW_POSTERS),
     createdAt: row.created_at,
   }
 }
@@ -77,7 +90,7 @@ export async function createCustomWheel(userId: string, name: string): Promise<C
     .select('id, user_id, name, shared, created_at')
     .single()
   if (error) throw error
-  return toWheel({ ...data, custom_wheel_items: null }, userId)
+  return toWheel({ ...data, custom_wheel_items: null, items: null }, userId)
 }
 
 export async function renameCustomWheel(wheelId: string, name: string): Promise<void> {

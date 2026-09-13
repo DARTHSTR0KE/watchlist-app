@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import { ensureAudioContext, playTick, useMuted } from '../wheel/tickSound'
 import { NoRowsAffected, saveDisplayName } from '../onboarding/onboardingState'
-import { IntroVideo } from './IntroVideo'
+import { BirthdayVideo } from '../birthday/BirthdayVideo'
 
 interface SettingsScreenProps {
   userId: string
@@ -134,7 +134,7 @@ export function SettingsScreen({
         <h3 className="stat-section-title">Help</h3>
         <div className="settings-buttons">
           <button type="button" className="action-button" onClick={() => setShowIntro(true)}>
-            Play intro
+            haaapppyyyy birthdayyyy
           </button>
           <button type="button" className="action-button" onClick={onReplayWalkthrough}>
             Replay walkthrough
@@ -148,7 +148,15 @@ export function SettingsScreen({
         </button>
       </section>
 
-      {showIntro && <IntroVideo onClose={() => setShowIntro(false)} />}
+      {/* Replaying from here never records the day as spent, so it can't
+          stop the real one firing. */}
+      {showIntro && (
+        <BirthdayVideo
+          recordPlayed={false}
+          onPlayed={() => {}}
+          onClose={() => setShowIntro(false)}
+        />
+      )}
     </div>
   )
 }

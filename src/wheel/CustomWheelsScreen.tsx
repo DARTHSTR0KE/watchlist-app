@@ -1,118 +1,110 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { buildPosterUrl } from './posters'
+import { WHEEL_PREVIEW_POSTERS } from './customWheels'
 import type { CustomWheel } from './customWheels'
 
-interface CustomWheelsScreenProps {
+interface CustomWheelsListProps {
   wheels: CustomWheel[]
-  selectedId: string | null
+  // Whose wheels the shared ones are, read from profiles by the caller.
+  partnerName: string | null
   onCreate: (name: string) => void
-  onRename: (wheel: CustomWheel, name: string) => void
-  onDelete: (wheel: CustomWheel) => void
-  onToggleShared: (wheel: CustomWheel) => void
   onSpin: (wheel: CustomWheel) => void
   onEdit: (wheel: CustomWheel) => void
-  onBack: () => void
+  onDelete: (wheel: CustomWheel) => void
+  onToggleShared: (wheel: CustomWheel) => void
+}
+
+// Three posters, overlapping, so a wheel is recognisable from its films
+// rather than only from whatever it was named at the time.
+function PosterStack({ posterPaths }: { posterPaths: string[] }) {
+  const slots = posterPaths.slice(0, WHEEL_PREVIEW_POSTERS)
+  if (slots.length === 0) {
+    return <span className="wheel-stack wheel-stack-empty" aria-hidden="true" />
+  }
+  return (
+    <span className="wheel-stack" aria-hidden="true">
+      {slots.map((path, index) => (
+        <img
+          key={path}
+          className="wheel-stack-poster"
+          style={{ left: `${index * 14}px`, zIndex: slots.length - index }}
+          src={buildPosterUrl(path) ?? undefined}
+          alt=""
+        />
+      ))}
+    </span>
+  )
 }
 
 function WheelRow({
   wheel,
-  selected,
-  onRename,
-  onDelete,
-  onToggleShared,
+  partnerName,
   onSpin,
   onEdit,
+  onDelete,
+  onToggleShared,
 }: {
   wheel: CustomWheel
-  selected: boolean
-  onRename: (name: string) => void
-  onDelete: () => void
-  onToggleShared: () => void
+  partnerName: string | null
   onSpin: () => void
   onEdit: () => void
+  onDelete: () => void
+  onToggleShared: () => void
 }) {
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(wheel.name)
-
-  const commit = () => {
-    const name = draft.trim()
-    setEditing(false)
-    if (name.length > 0 && name !== wheel.name) onRename(name)
-    else setDraft(wheel.name)
-  }
-
   return (
-    <li className={`wheel-row${selected ? ' wheel-row-selected' : ''}`}>
-      <div className="wheel-row-body">
-        {editing && wheel.isMine ? (
-          <input
-            className="preset-name-input"
-            value={draft}
-            autoFocus
-            onChange={(event) => setDraft(event.target.value)}
-            onBlur={commit}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') commit()
-              if (event.key === 'Escape') {
-                setDraft(wheel.name)
-                setEditing(false)
-              }
-            }}
-          />
-        ) : (
+    <li className="wheel-pick-row">
+      {/* The row itself loads the wheel; the controls below are for
+          managing it. */}
+      <button type="button" className="wheel-pick-main" onClick={onSpin}>
+        <PosterStack posterPaths={wheel.posterPaths} />
+        <span className="wheel-pick-text">
+          <span className="wheel-pick-name">{wheel.name}</span>
+          <span className="wheel-pick-meta">
+            {wheel.filmCount} film{wheel.filmCount === 1 ? '' : 's'}
+            {!wheel.isMine && ` · from ${partnerName ?? 'them'}`}
+          </span>
+        </span>
+        {!wheel.isMine && <span className="wheel-pick-badge">Shared</span>}
+      </button>
+
+      {wheel.isMine && (
+        <div className="wheel-pick-actions">
+          <button type="button" className="wheel-row-action" onClick={onEdit}>
+            Edit
+          </button>
           <button
             type="button"
-            className="preset-name"
-            onClick={() => wheel.isMine && setEditing(true)}
+            className={`wheel-row-action${wheel.shared ? ' wheel-row-action-on' : ''}`}
+            aria-pressed={wheel.shared}
+            onClick={onToggleShared}
           >
-            {wheel.name}
+            {wheel.shared ? 'Shared' : 'Share'}
           </button>
-        )}
-        <p className="preset-summary">
-          {wheel.filmCount} film{wheel.filmCount === 1 ? '' : 's'}
-          {wheel.isMine ? '' : ' · shared with you'}
-        </p>
-      </div>
-
-      <div className="wheel-row-actions">
-        <button type="button" className="wheel-row-action" onClick={onSpin}>
-          {selected ? 'Selected' : 'Spin'}
-        </button>
-        {/* Someone else's wheel is theirs to edit; this one is only spun. */}
-        {wheel.isMine && (
-          <>
-            <button type="button" className="wheel-row-action" onClick={onEdit}>
-              Edit
-            </button>
-            <button
-              type="button"
-              className={`wheel-row-action${wheel.shared ? ' wheel-row-action-on' : ''}`}
-              aria-pressed={wheel.shared}
-              onClick={onToggleShared}
-            >
-              {wheel.shared ? 'Shared' : 'Share'}
-            </button>
-            <button type="button" className="preset-delete" onClick={onDelete}>
-              Delete
-            </button>
-          </>
-        )}
-      </div>
+          <button type="button" className="preset-delete" onClick={onDelete}>
+            Delete
+          </button>
+        </div>
+      )}
     </li>
   )
 }
 
-export function CustomWheelsScreen({
+/**
+ * Rendered where the wheel would be, not over it. A list about wheels on
+ * top of a half-visible wheel was two things at once; this is one screen
+ * doing one thing, with the header and source toggle still in place.
+ */
+export function CustomWheelsList({
   wheels,
-  selectedId,
+  partnerName,
   onCreate,
-  onRename,
-  onDelete,
-  onToggleShared,
   onSpin,
   onEdit,
-  onBack,
-}: CustomWheelsScreenProps) {
+  onDelete,
+  onToggleShared,
+}: CustomWheelsListProps) {
+  const [naming, setNaming] = useState(false)
   const [newName, setNewName] = useState('')
 
   const handleCreate = (event: FormEvent) => {
@@ -121,58 +113,65 @@ export function CustomWheelsScreen({
     if (name.length === 0) return
     onCreate(name)
     setNewName('')
+    setNaming(false)
   }
 
   return (
-    <div className="filter-sheet-overlay" onClick={onBack}>
-      <div className="filter-sheet" onClick={(event) => event.stopPropagation()}>
-        <div className="filter-sheet-header">
-          <h2 className="filter-sheet-title">My wheels</h2>
-          <span className="filter-sheet-count">
-            {wheels.length} wheel{wheels.length === 1 ? '' : 's'}
-          </span>
-        </div>
+    <div className="wheel-pick">
+      <div className="wheel-pick-head">
+        <h2 className="wheel-pick-title">Pick a wheel</h2>
+        <span className="filter-sheet-count">
+          {wheels.length} wheel{wheels.length === 1 ? '' : 's'}
+        </span>
+      </div>
 
-        <form className="filter-save-row" onSubmit={handleCreate}>
+      {wheels.length === 0 ? (
+        <p className="preset-empty">
+          No wheels yet. Make one, then fill it from a search, your lists, or an actor's films.
+        </p>
+      ) : (
+        <ul className="wheel-pick-list">
+          {wheels.map((wheel) => (
+            <WheelRow
+              key={wheel.id}
+              wheel={wheel}
+              partnerName={partnerName}
+              onSpin={() => onSpin(wheel)}
+              onEdit={() => onEdit(wheel)}
+              onDelete={() => onDelete(wheel)}
+              onToggleShared={() => onToggleShared(wheel)}
+            />
+          ))}
+        </ul>
+      )}
+
+      {naming ? (
+        <form className="filter-save-row wheel-pick-new" onSubmit={handleCreate}>
           <input
             className="filter-preset-input"
             type="text"
-            placeholder="Name a new wheel"
+            placeholder="Name it"
+            autoFocus
             value={newName}
             onChange={(event) => setNewName(event.target.value)}
           />
-          <button type="submit" className="filter-save-button" disabled={newName.trim().length === 0}>
+          <button
+            type="submit"
+            className="filter-save-button"
+            disabled={newName.trim().length === 0}
+          >
             Create
           </button>
         </form>
-
-        {wheels.length === 0 ? (
-          <p className="preset-empty">
-            No wheels yet. Create one, then add films to it from your lists or straight from TMDB.
-          </p>
-        ) : (
-          <ul className="preset-list">
-            {wheels.map((wheel) => (
-              <WheelRow
-                key={wheel.id}
-                wheel={wheel}
-                selected={wheel.id === selectedId}
-                onRename={(name) => onRename(wheel, name)}
-                onDelete={() => onDelete(wheel)}
-                onToggleShared={() => onToggleShared(wheel)}
-                onSpin={() => onSpin(wheel)}
-                onEdit={() => onEdit(wheel)}
-              />
-            ))}
-          </ul>
-        )}
-
-        <div className="filter-sheet-actions">
-          <button type="button" className="action-button primary" onClick={onBack}>
-            Done
-          </button>
-        </div>
-      </div>
+      ) : (
+        <button
+          type="button"
+          className="action-button settings-wide wheel-pick-new"
+          onClick={() => setNaming(true)}
+        >
+          New wheel
+        </button>
+      )}
     </div>
   )
 }
