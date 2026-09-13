@@ -1,8 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import { ensureAudioContext, playTick, useMuted } from '../wheel/tickSound'
 import { NoRowsAffected, saveDisplayName } from '../onboarding/onboardingState'
 import { BirthdayVideo } from '../birthday/BirthdayVideo'
+import { Empty, Row, Rows, Screen, ScreenHead, SectionLabel } from '../ui/Screen'
+import { loadWatchlistSummary } from '../import/watchlistWrites'
+import type { WatchlistSummary } from '../import/watchlistWrites'
 
 interface SettingsScreenProps {
   userId: string
@@ -41,6 +44,19 @@ export function SettingsScreen({
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [showIntro, setShowIntro] = useState(false)
+  const [summary, setSummary] = useState<WatchlistSummary | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void loadWatchlistSummary(userId)
+      .catch(() => null)
+      .then((rows) => {
+        if (!cancelled) setSummary(rows)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [userId])
 
   // Unmuting plays one tick straight away, so the sound can be confirmed
   // here rather than by going back and spinning. Awaits the context so it
@@ -76,19 +92,19 @@ export function SettingsScreen({
   }
 
   return (
-    <div className="list-screen">
-      <h2 className="list-screen-title">Settings</h2>
+    <Screen>
+      <ScreenHead title="Settings" status={displayName ?? undefined} />
 
-      <section className="rec-section">
-        <h3 className="stat-section-title">Your name</h3>
+      <section>
+        <SectionLabel>Your name</SectionLabel>
         {profileStatus === 'unreadable' ? (
-          <p className="preset-empty">
+          <Empty>
             Your profile couldn't be read, so there's no name to show or change. The row may be
             missing, or a policy may be blocking it.
-          </p>
+          </Empty>
         ) : (
           <>
-            <p className="stat-note">This is what the other person sees you as, everywhere.</p>
+            <p className="screen-empty">This is what the other person sees you as, everywhere.</p>
             <div className="filter-save-row">
               <input
                 className="filter-preset-input"
@@ -112,38 +128,53 @@ export function SettingsScreen({
         )}
       </section>
 
-      <section className="rec-section">
-        <h3 className="stat-section-title">Sound</h3>
+      <section>
+        <SectionLabel>Sound</SectionLabel>
         <label className="filter-toggle">
           <input type="checkbox" checked={!muted} onChange={handleToggleMute} />
           Tick as the wheel turns
         </label>
       </section>
 
-      <section className="rec-section">
-        <h3 className="stat-section-title">Your films</h3>
-        <p className="stat-note">
-          Bring a Letterboxd export in, or add to what's already here.
-        </p>
-        <button type="button" className="action-button settings-wide" onClick={onGoToImport}>
+      <section>
+        <SectionLabel>Your films</SectionLabel>
+        {/* What is already there, so importing again is a decision rather
+            than a guess. */}
+        <Rows>
+          <Row
+            name={
+              summary === null
+                ? 'Counting…'
+                : `${summary.count} film${summary.count === 1 ? '' : 's'} on your watchlist`
+            }
+            meta={
+              summary === null
+                ? undefined
+                : summary.lastImportedAt
+                  ? `Last imported ${new Date(summary.lastImportedAt).toLocaleDateString()}`
+                  : 'Never imported'
+            }
+          />
+        </Rows>
+        {/* The one amber button on this screen. */}
+        <button type="button" className="btn-primary" onClick={onGoToImport}>
           Import a watchlist
         </button>
       </section>
 
-      <section className="rec-section">
-        <h3 className="stat-section-title">Help</h3>
-        <div className="settings-buttons">
-          <button type="button" className="action-button" onClick={() => setShowIntro(true)}>
-            haaapppyyyy birthdayyyy
-          </button>
-          <button type="button" className="action-button" onClick={onReplayWalkthrough}>
-            Replay walkthrough
-          </button>
-        </div>
+      <section>
+        <SectionLabel>Help</SectionLabel>
+        <button type="button" className="btn-field" onClick={() => setShowIntro(true)}>
+          haaapppyyyy birthdayyyy
+        </button>
+        <button type="button" className="btn-field" onClick={onReplayWalkthrough}>
+          Replay walkthrough
+        </button>
       </section>
 
-      <section className="rec-section">
-        <button type="button" className="action-button settings-signout" onClick={signOut}>
+      <section>
+        {/* Bordered, not competing with a primary action. */}
+        <button type="button" className="btn-field btn-danger" onClick={signOut}>
           Sign out
         </button>
       </section>
@@ -157,6 +188,6 @@ export function SettingsScreen({
           onClose={() => setShowIntro(false)}
         />
       )}
-    </div>
+    </Screen>
   )
 }

@@ -700,6 +700,9 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
   // My wheels with nothing chosen: the wheel area becomes the list, in
   // place, rather than a sheet sliding over a wheel nobody picked.
   const pickingWheel = filters.source === 'custom' && filters.customWheelId === null
+  // Filters and presets take over the wheel area rather than sliding over
+  // it. Nothing in the app is a sheet any more.
+  const inPlacePanel = sheet !== 'none'
 
   return (
     <div className="app">
@@ -708,7 +711,7 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
 
       <div className="wheel-controls">
         <SourceToggle source={filters.source} onChange={handleSourceChange} />
-        {!pickingWheel && (
+        {!pickingWheel && !inPlacePanel && (
         <div className="wheel-controls-row">
           {filters.source === 'custom' ? (
             <button
@@ -767,7 +770,7 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
         </div>
         )}
         {/* Presets describe filters, which a hand-built wheel ignores. */}
-        {!isCustomSource(filters.source) && starredPresets.length > 0 && (
+        {!inPlacePanel && !isCustomSource(filters.source) && starredPresets.length > 0 && (
           <div className="preset-chips">
             {starredPresets.map((preset) => (
               <button
@@ -783,7 +786,7 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
         )}
       </div>
 
-      {pickingWheel ? (
+      {inPlacePanel ? null : pickingWheel ? (
         <CustomWheelsList
           wheels={customWheels}
           partnerName={partner?.displayName ?? null}

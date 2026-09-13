@@ -2735,3 +2735,336 @@
   text-align: left;
   cursor: pointer;
 }
+
+/* ======================================================================
+   One pattern for every section
+   ====================================================================== */
+
+.screen {
+  flex: 1;
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto;
+  padding: 1rem 1.25rem 2rem;
+  padding-bottom: max(2rem, env(safe-area-inset-bottom));
+  overflow-y: auto;
+}
+
+/* Title left, status right, in the same place on every screen. */
+.screen-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.1rem;
+}
+
+.screen-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.screen-status {
+  flex: 0 0 auto;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tone-amber {
+  color: var(--amber);
+}
+.tone-rust {
+  color: var(--rust);
+}
+.tone-sage {
+  color: var(--sage);
+}
+.tone-slate {
+  color: var(--slate);
+}
+.tone-sand {
+  color: var(--sand);
+}
+.tone-mauve {
+  color: var(--mauve);
+}
+/* Inside a filter group this follows the dimension's own colour. */
+.tone-dimension {
+  color: var(--dimension);
+}
+
+.section-label {
+  margin: 1.75rem 0 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.section-label:first-child {
+  margin-top: 0;
+}
+
+/* Rows ------------------------------------------------------------------ */
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Hairlines, not cards. A box around every row turns a list into a stack
+   of unrelated objects. */
+.row + .row {
+  border-top: 1px solid rgba(245, 245, 245, 0.1);
+}
+
+.row-main {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  padding: 0.8rem 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+}
+
+.row-main-tappable {
+  cursor: pointer;
+}
+
+.row-poster {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 57px;
+  border-radius: 5px;
+  object-fit: cover;
+  background-color: var(--raised);
+  color: var(--text-faint);
+  font-size: 0.9rem;
+}
+
+.row-poster-empty {
+  font-weight: 600;
+}
+
+.row-stack {
+  position: relative;
+  flex: 0 0 auto;
+  width: 64px;
+  height: 57px;
+}
+
+.row-stack-poster {
+  position: absolute;
+  top: 0;
+  width: 38px;
+  height: 57px;
+  border-radius: 5px;
+  object-fit: cover;
+  background-color: var(--raised);
+  box-shadow: 0 0 0 2px var(--ink);
+}
+
+.row-stack-empty {
+  display: block;
+  width: 38px;
+  height: 57px;
+  border-radius: 5px;
+  background-color: var(--raised);
+}
+
+.row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.row-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.row-meta {
+  font-size: 0.76rem;
+  color: var(--text-dim);
+}
+
+.row-chevron {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  margin-right: 2px;
+  border-right: 2px solid var(--text-faint);
+  border-bottom: 2px solid var(--text-faint);
+  transform: rotate(-45deg);
+}
+
+/* Actions sit on the row, so acting on one is a single tap from the list. */
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0 0 0.85rem;
+}
+
+.row-note {
+  margin: 0 0 0.6rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--text-soft);
+}
+
+.row-note-empty {
+  color: var(--text-faintest);
+  font-style: italic;
+}
+
+/* Grids ----------------------------------------------------------------- */
+
+.poster-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.poster-cell-3 {
+  position: relative;
+}
+
+.poster-cell-3-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: 8px;
+  object-fit: cover;
+  background-color: var(--raised);
+}
+
+.poster-cell-3-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem;
+  font-size: 0.7rem;
+  line-height: 1.25;
+  text-align: center;
+  color: var(--text-dim);
+}
+
+/* One grid with a marker beats two tabs. */
+.poster-mark {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  font-size: 0.8rem;
+  line-height: 1;
+  color: var(--sage);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.poster-cell-3-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 0;
+  background-color: rgba(10, 12, 22, 0.82);
+  color: var(--bone);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.screen-empty {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+/* Buttons --------------------------------------------------------------- */
+
+/* One amber button to a screen. Everything else is a bordered field, so
+   the eye has a single place to land. */
+.btn-primary,
+.btn-field {
+  display: block;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  margin-top: 1rem;
+  border-radius: 14px;
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-primary {
+  border: 1px solid transparent;
+  background-color: var(--amber);
+  color: var(--on-accent);
+}
+
+.btn-field {
+  border: 1px solid rgba(245, 245, 245, 0.2);
+  background-color: var(--field);
+  color: var(--text);
+}
+
+.btn-danger {
+  border-color: var(--rust);
+  color: var(--rust);
+  background: none;
+}
+
+.btn-primary:disabled,
+.btn-field:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* A small bordered action that lives on a row. */
+.btn-row {
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 245, 245, 0.22);
+  background-color: var(--field);
+  color: var(--text-soft);
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-row-on {
+  border-color: var(--sage);
+  color: var(--sage);
+}
+
+.btn-row-danger {
+  border-color: rgba(176, 112, 95, 0.6);
+  color: var(--rust);
+}
+
+.btn-row:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { buildPosterUrl } from '../wheel/posters'
+import { Empty, PosterThumb, Row, Rows, Screen, ScreenHead, SectionLabel } from '../ui/Screen'
 import { FilmPicker } from '../wheel/FilmPicker'
 import type { PickedFilm } from '../wheel/FilmPicker'
 import {
@@ -17,39 +18,11 @@ interface RecommendedScreenProps {
   partnerId: string | null
   // Read from profiles.display_name by the caller, never written down here.
   partnerName: string | null
-  // Lets the shell clear the badge once these have been looked at.
   onSeen: () => void
 }
 
-function RecommendationRow({
-  item,
-  children,
-}: {
-  item: Recommendation
-  children?: React.ReactNode
-}) {
-  const posterUrl = buildPosterUrl(item.posterPath)
-  return (
-    <li className="rec-row">
-      {posterUrl ? (
-        <img className="rec-poster" src={posterUrl} alt="" aria-hidden="true" />
-      ) : (
-        <span className="rec-poster picker-poster-fallback" aria-hidden="true" />
-      )}
-      <div className="rec-body">
-        <p className="rec-title">
-          {item.title}
-          <span className="picker-year">{item.year ? ` ${item.year}` : ''}</span>
-        </p>
-        {item.note ? (
-          <p className="rec-note">“{item.note}”</p>
-        ) : (
-          <p className="rec-note rec-note-empty">No note.</p>
-        )}
-        {children}
-      </div>
-    </li>
-  )
+function yearSuffix(year: number | null): string {
+  return year ? ` · ${year}` : ''
 }
 
 export function RecommendedScreen({
@@ -61,17 +34,13 @@ export function RecommendedScreen({
   const [received, setReceived] = useState<Recommendation[]>([])
   const [sent, setSent] = useState<Recommendation[]>([])
   const [loading, setLoading] = useState(true)
-  const [sentOpen, setSentOpen] = useState(false)
   const [note, setNote] = useState('')
-  // Step one picks the film; step two writes about it. Nothing about the
-  // note is on screen until there is a film for it to be about.
   const [chosen, setChosen] = useState<PickedFilm | null>(null)
+  const [composing, setComposing] = useState(false)
   const [sending, setSending] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
 
-  // Held in a ref so the load effect keys on the user alone; depending on
-  // the callback would re-mark everything seen on every render.
   const onSeenRef = useRef(onSeen)
   useEffect(() => {
     onSeenRef.current = onSeen
@@ -79,7 +48,6 @@ export function RecommendedScreen({
 
   useEffect(() => {
     let cancelled = false
-
     void Promise.all([
       loadRecommendationsForMe(userId).catch(() => [] as Recommendation[]),
       loadRecommendationsSent(userId).catch(() => [] as Recommendation[]),
@@ -88,13 +56,11 @@ export function RecommendedScreen({
       setReceived(mine)
       setSent(outgoing)
       setLoading(false)
-      // Opening the screen is what counts as having seen them.
       if (mine.some((item) => !item.seen)) {
         await markRecommendationsSeen(userId).catch(() => {})
         if (!cancelled) onSeenRef.current()
       }
     })
-
     return () => {
       cancelled = true
     }
@@ -103,9 +69,7 @@ export function RecommendedScreen({
   const settle = (item: Recommendation, status: Recommendation['status']) =>
     setReceived((current) =>
       current.map((entry) =>
-        entry.id === item.id
-          ? { ...entry, status, respondedAt: new Date().toISOString() }
-          : entry,
+        entry.id === item.id ? { ...entry, status, respondedAt: new Date().toISOString() } : entry,
       ),
     )
 
@@ -116,8 +80,6 @@ export function RecommendedScreen({
     setBusyId(item.id)
     setMessage(null)
     const { error } = await addExistingFilmToWatchlist(userId, item.filmId)
-    // Already on the list still means the recommendation is dealt with, so
-    // only a real failure leaves it waiting.
     if (error && error !== 'Already on your watchlist.') {
       setMessage(`Couldn't add "${item.title}".`)
       setBusyId(null)
@@ -142,8 +104,6 @@ export function RecommendedScreen({
     setSending(true)
     setMessage(null)
     try {
-      // Enriched here, at the point of committing — not when it was
-      // merely tapped in a list of results.
       const filmId = chosen.source
         ? await ensureFilmStored(chosen.source.mediaType, chosen.source.tmdbId)
         : chosen.filmId
@@ -151,9 +111,8 @@ export function RecommendedScreen({
       setMessage(`Sent "${chosen.title}".`)
       setChosen(null)
       setNote('')
-      const outgoing = await loadRecommendationsSent(userId).catch(() => sent)
-      setSent(outgoing)
-      setSentOpen(true)
+      setComposing(false)
+      setSent(await loadRecommendationsSent(userId).catch(() => sent))
     } catch {
       setMessage(`Couldn't send "${chosen.title}".`)
     }
@@ -164,41 +123,43 @@ export function RecommendedScreen({
 
   if (!partnerId) {
     return (
-      <div className="list-screen">
-        <h2 className="list-screen-title">Recommendations</h2>
-        <p className="preset-empty">
+      <Screen>
+        <ScreenHead title="Recommendations" />
+        <Empty>
           No partner is linked to this account, so there is nobody to swap recommendations with.
-        </p>
-      </div>
+        </Empty>
+      </Screen>
     )
   }
 
-  // Everything below reads the live name. Only an unreadable profile row
-  // falls back, and to a pronoun rather than a name.
   const them = partnerName ?? 'them'
   const waiting = received.filter((item) => item.respondedAt === null)
   const answered = received.filter((item) => item.respondedAt !== null)
+  const chosenPoster = chosen ? buildPosterUrl(chosen.posterPath) : null
 
   return (
-    <div className="list-screen">
-      <h2 className="list-screen-title">{them}</h2>
+    <Screen>
+      <ScreenHead title={`From ${them}`} status={`${waiting.length} waiting`} />
 
-      {/* One place for every message on this screen, rather than one
-          buried between a set of tabs and a search box. */}
-      {message && <p className="filter-hint rec-message">{message}</p>}
+      {message && <Empty>{message}</Empty>}
 
-      <section className="rec-section">
-        <h3 className="stat-section-title">From {them}</h3>
-        {received.length === 0 ? (
-          <p className="preset-empty">Nothing yet. Anything {them} sends will land here.</p>
-        ) : (
-          <ul className="rec-list">
-            {waiting.map((item) => (
-              <RecommendationRow item={item} key={item.id}>
-                <div className="rec-actions">
+      {received.length === 0 ? (
+        <Empty>Nothing yet. Anything {them} sends lands here.</Empty>
+      ) : (
+        <Rows>
+          {waiting.map((item) => (
+            <Row
+              key={item.id}
+              art={<PosterThumb posterPath={item.posterPath} title={item.title} />}
+              name={item.title}
+              meta={`${them}${yearSuffix(item.year)}`}
+              actions={
+                <>
+                  {/* On the row, so acting on one is a single tap from
+                      the list rather than a trip into a detail view. */}
                   <button
                     type="button"
-                    className="wheel-row-action"
+                    className="btn-row"
                     disabled={busyId === item.id}
                     onClick={() => void handleAdd(item)}
                   >
@@ -206,119 +167,116 @@ export function RecommendedScreen({
                   </button>
                   <button
                     type="button"
-                    className="wheel-row-action"
+                    className="btn-row"
                     disabled={busyId === item.id}
                     onClick={() => void handlePass(item)}
                   >
                     Pass
                   </button>
-                </div>
-              </RecommendationRow>
-            ))}
-            {answered.map((item) => (
-              <RecommendationRow item={item} key={item.id}>
-                <p className="rec-outcome">
-                  {item.status === 'passed' ? 'Passed' : 'On your watchlist'}
-                </p>
-              </RecommendationRow>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {/* Collapsed by default: it is a reference for what is outstanding,
-          not something to work through. */}
-      <section className="rec-section">
-        <button
-          type="button"
-          className="rec-disclosure"
-          aria-expanded={sentOpen}
-          onClick={() => setSentOpen((open) => !open)}
-        >
-          <span className="stat-section-title">Sent to {them}</span>
-          <span className="rec-disclosure-count">
-            {sent.length} waiting {sentOpen ? '−' : '+'}
-          </span>
-        </button>
-        {sentOpen &&
-          (sent.length === 0 ? (
-            <p className="preset-empty">Nothing outstanding — {them} has answered everything.</p>
-          ) : (
-            <ul className="rec-list">
-              {sent.map((item) => (
-                <RecommendationRow item={item} key={item.id} />
-              ))}
-            </ul>
-          ))}
-      </section>
-
-      <section className="rec-section">
-        <h3 className="stat-section-title">Recommend a film to {them}</h3>
-
-        {chosen === null ? (
-          <FilmPicker
-            userId={userId}
-            partnerId={partnerId}
-            partnerName={partnerName}
-            // Recommending the same film twice is allowed, so nothing here
-            // is ever "already there".
-            existingIds={new Set<string>()}
-            full={false}
-            fullMessage={null}
-            title="Find it"
-            actionLabel="Choose"
-            onSelect={setChosen}
-          />
-        ) : (
-          <>
-            <div className="rec-chosen">
-              {buildPosterUrl(chosen.posterPath) ? (
-                <img
-                  className="rec-chosen-poster"
-                  src={buildPosterUrl(chosen.posterPath)!}
-                  alt=""
-                  aria-hidden="true"
-                />
-              ) : (
-                <span className="rec-chosen-poster picker-poster-fallback" aria-hidden="true" />
-              )}
-              <div className="rec-chosen-body">
-                <p className="rec-title">
-                  {chosen.title}
-                  <span className="picker-year">{chosen.year ? ` ${chosen.year}` : ''}</span>
-                </p>
-                <button
-                  type="button"
-                  className="onboard-quiet rec-chosen-change"
-                  onClick={() => setChosen(null)}
-                >
-                  Choose a different film
-                </button>
-              </div>
-            </div>
-
-            <input
-              className="filter-preset-input rec-note-input"
-              type="text"
-              autoFocus
-              placeholder={`What made you think of it for ${them}?`}
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-            />
-            <p className="stat-note">
-              Optional, but a line of why lands better than a bare title.
-            </p>
-            <button
-              type="button"
-              className="action-button primary settings-wide"
-              disabled={sending}
-              onClick={() => void handleSend()}
+                </>
+              }
             >
-              {sending ? 'Sending…' : `Send to ${them}`}
-            </button>
-          </>
-        )}
-      </section>
-    </div>
+              {item.note ? (
+                <p className="row-note">“{item.note}”</p>
+              ) : (
+                <p className="row-note row-note-empty">No note.</p>
+              )}
+            </Row>
+          ))}
+
+          {answered.map((item) => (
+            <Row
+              key={item.id}
+              art={<PosterThumb posterPath={item.posterPath} title={item.title} />}
+              name={item.title}
+              meta={item.status === 'passed' ? 'Passed' : 'On your watchlist'}
+            />
+          ))}
+        </Rows>
+      )}
+
+      <SectionLabel>Sent to {them}</SectionLabel>
+      {sent.length === 0 ? (
+        <Empty>Nothing outstanding — {them} has answered everything.</Empty>
+      ) : (
+        <Rows>
+          {sent.map((item) => (
+            <Row
+              key={item.id}
+              art={<PosterThumb posterPath={item.posterPath} title={item.title} />}
+              name={item.title}
+              meta={item.note ? `“${item.note}”` : `Waiting${yearSuffix(item.year)}`}
+            />
+          ))}
+        </Rows>
+      )}
+
+      {composing ? (
+        <>
+          <SectionLabel>Recommend a film to {them}</SectionLabel>
+          {chosen === null ? (
+            <FilmPicker
+              userId={userId}
+              partnerId={partnerId}
+              partnerName={partnerName}
+              existingIds={new Set<string>()}
+              full={false}
+              fullMessage={null}
+              title="Find it"
+              actionLabel="Choose"
+              onSelect={setChosen}
+            />
+          ) : (
+            <>
+              <Rows>
+                <Row
+                  art={
+                    chosenPoster ? (
+                      <img className="row-poster" src={chosenPoster} alt="" aria-hidden="true" />
+                    ) : (
+                      <span className="row-poster row-poster-empty" aria-hidden="true" />
+                    )
+                  }
+                  name={chosen.title}
+                  meta={chosen.year ? String(chosen.year) : undefined}
+                  actions={
+                    <button type="button" className="btn-row" onClick={() => setChosen(null)}>
+                      Choose a different film
+                    </button>
+                  }
+                />
+              </Rows>
+              <input
+                className="filter-preset-input rec-note-input"
+                type="text"
+                autoFocus
+                placeholder={`What made you think of it for ${them}?`}
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+              />
+              <p className="screen-empty">
+                Optional, but a line of why lands better than a bare title.
+              </p>
+              {/* The one amber button on this screen. */}
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={sending}
+                onClick={() => void handleSend()}
+              >
+                {sending ? 'Sending…' : `Send to ${them}`}
+              </button>
+            </>
+          )}
+          <button type="button" className="btn-field" onClick={() => setComposing(false)}>
+            Cancel
+          </button>
+        </>
+      ) : (
+        <button type="button" className="btn-primary" onClick={() => setComposing(true)}>
+          Recommend a film to {them}
+        </button>
+      )}
+    </Screen>
   )
 }

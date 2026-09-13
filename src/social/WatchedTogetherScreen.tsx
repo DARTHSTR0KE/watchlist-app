@@ -1,26 +1,22 @@
 import { useEffect, useState } from 'react'
-import { buildPosterUrl } from '../wheel/posters'
-import { loadWatchedTogether } from './pendingWatches'
-import type { WatchedTogetherFilm } from './pendingWatches'
+import { Empty, PosterCell, PosterGrid, Screen, ScreenHead, SectionLabel } from '../ui/Screen'
+import { loadWatchedFilms } from './pendingWatches'
+import type { WatchedFilm } from './pendingWatches'
 
-interface WatchedTogetherScreenProps {
+interface WatchedScreenProps {
   userId: string
   partnerId: string | null
   partnerName: string | null
 }
 
-export function WatchedTogetherScreen({
-  userId,
-  partnerId,
-  partnerName,
-}: WatchedTogetherScreenProps) {
-  const [films, setFilms] = useState<WatchedTogetherFilm[]>([])
+export function WatchedTogetherScreen({ userId, partnerId, partnerName }: WatchedScreenProps) {
+  const [films, setFilms] = useState<WatchedFilm[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
-    void loadWatchedTogether(userId, partnerId)
-      .catch(() => [] as WatchedTogetherFilm[])
+    void loadWatchedFilms(userId, partnerId)
+      .catch(() => [] as WatchedFilm[])
       .then((rows) => {
         if (cancelled) return
         setFilms(rows)
@@ -33,32 +29,35 @@ export function WatchedTogetherScreen({
 
   if (loading) return null
 
+  const them = partnerName ?? 'them'
+  const togetherCount = films.filter((film) => film.together).length
+
   return (
-    <div className="list-screen">
-      <h2 className="list-screen-title">Watched together</h2>
+    <Screen>
+      <ScreenHead title="Watched" status={`${films.length}`} />
 
       {films.length === 0 ? (
-        <p className="preset-empty">
-          Nothing yet. A film lands here once either you or {partnerName ?? 'they'} answers
-          "watched it together" after a spin.
-        </p>
+        <Empty>Nothing watched yet. Films land here once one of you logs one.</Empty>
       ) : (
-        <ul className="poster-grid">
-          {films.map((film) => {
-            const posterUrl = buildPosterUrl(film.posterPath)
-            return (
-              <li className="poster-cell" key={film.filmId}>
-                {posterUrl ? (
-                  <img className="poster-cell-image" src={posterUrl} alt={film.title} />
-                ) : (
-                  <span className="poster-cell-image poster-cell-fallback">{film.title}</span>
-                )}
-                <span className="poster-cell-title">{film.title}</span>
-              </li>
-            )
-          })}
-        </ul>
+        <>
+          {/* One grid, marked, rather than two tabs holding the same films
+              split by a single fact about them. */}
+          <SectionLabel tone="sage">
+            ★ {togetherCount} watched with {them}
+          </SectionLabel>
+          <PosterGrid>
+            {films.map((film) => (
+              <PosterCell
+                key={film.filmId}
+                posterPath={film.posterPath}
+                title={film.title}
+                marked={film.together}
+                markLabel={`Watched with ${them}`}
+              />
+            ))}
+          </PosterGrid>
+        </>
       )}
-    </div>
+    </Screen>
   )
 }

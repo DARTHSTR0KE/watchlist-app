@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { buildPosterUrl } from '../wheel/posters'
+import { Empty, PosterCell, PosterGrid, Screen, ScreenHead, SectionLabel } from '../ui/Screen'
 import { FilmPicker } from '../wheel/FilmPicker'
 import { addToSharedList, loadSharedList, removeFromSharedList } from './sharedList'
 import type { SharedListEntry } from './sharedList'
@@ -26,8 +26,7 @@ export function SharedListScreen({
   const [message, setMessage] = useState<string | null>(null)
 
   const refresh = async () => {
-    const rows = await loadSharedList().catch(() => [] as SharedListEntry[])
-    setEntries(rows)
+    setEntries(await loadSharedList().catch(() => [] as SharedListEntry[]))
   }
 
   useEffect(() => {
@@ -61,76 +60,60 @@ export function SharedListScreen({
   const existingIds = new Set(entries.map((entry) => entry.filmId))
 
   return (
-    <div className="list-screen">
-      <div className="list-screen-head">
-        <h2 className="list-screen-title">Watch together</h2>
-        <button
-          type="button"
-          className="action-button primary list-screen-spin"
-          disabled={entries.length < MIN_TO_SPIN}
-          onClick={onSpinList}
-        >
-          Spin this list
-        </button>
-      </div>
+    <Screen>
+      <ScreenHead title="Watch together" status={`${entries.length}`} />
 
-      {entries.length === 1 && (
-        <p className="filter-hint">One more film and you can spin this list.</p>
-      )}
-      {message && <p className="filter-hint">{message}</p>}
+      {message && <Empty>{message}</Empty>}
 
       {entries.length === 0 ? (
-        <p className="preset-empty">
-          Nothing here yet. Anything either of you adds shows up for both.
-        </p>
+        <Empty>Nothing here yet. Anything either of you adds shows up for both.</Empty>
       ) : (
-        <ul className="poster-grid">
-          {entries.map((entry) => {
-            const posterUrl = buildPosterUrl(entry.posterPath)
-            return (
-              <li className="poster-cell" key={entry.filmId}>
-                {posterUrl ? (
-                  <img className="poster-cell-image" src={posterUrl} alt={entry.title} />
-                ) : (
-                  <span className="poster-cell-image poster-cell-fallback">{entry.title}</span>
-                )}
-                <button
-                  type="button"
-                  className="poster-cell-remove"
-                  onClick={() => void handleRemove(entry)}
-                  aria-label={`Remove ${entry.title} from the shared list`}
-                >
-                  ×
-                </button>
-                <span className="poster-cell-title">{entry.title}</span>
-              </li>
-            )
-          })}
-        </ul>
+        <PosterGrid>
+          {entries.map((entry) => (
+            <PosterCell
+              key={entry.filmId}
+              posterPath={entry.posterPath}
+              title={entry.title}
+              onRemove={() => void handleRemove(entry)}
+              removeLabel={`Remove ${entry.title} from the shared list`}
+            />
+          ))}
+        </PosterGrid>
       )}
 
+      {/* The one amber button on this screen. */}
+      <button
+        type="button"
+        className="btn-primary"
+        disabled={entries.length < MIN_TO_SPIN}
+        onClick={onSpinList}
+      >
+        Spin this list
+      </button>
+      {entries.length === 1 && <Empty>One more film and you can spin it.</Empty>}
+
       {adding ? (
-        <FilmPicker
-          userId={userId}
-          partnerId={partnerId}
-          partnerName={partnerName}
-          existingIds={existingIds}
-          full={false}
-          fullMessage={null}
-          onAdd={async (filmId) => {
-            await addToSharedList(userId, filmId)
-            await refresh()
-          }}
-        />
+        <>
+          <SectionLabel>Add a film</SectionLabel>
+          <FilmPicker
+            userId={userId}
+            partnerId={partnerId}
+            partnerName={partnerName}
+            existingIds={existingIds}
+            full={false}
+            fullMessage={null}
+            title="Find it"
+            onAdd={async (filmId) => {
+              await addToSharedList(userId, filmId)
+              await refresh()
+            }}
+          />
+        </>
       ) : (
-        <button
-          type="button"
-          className="action-button list-screen-add"
-          onClick={() => setAdding(true)}
-        >
-          Add films
+        <button type="button" className="btn-field" onClick={() => setAdding(true)}>
+          Add a film
         </button>
       )}
-    </div>
+    </Screen>
   )
 }

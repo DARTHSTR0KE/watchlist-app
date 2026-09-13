@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { buildPosterUrl } from './posters'
-import { WHEEL_PREVIEW_POSTERS } from './customWheels'
 import type { CustomWheel } from './customWheels'
+import { Empty, PosterStack, Row, Rows, Screen, ScreenHead } from '../ui/Screen'
 
 interface CustomWheelsListProps {
   wheels: CustomWheel[]
@@ -13,28 +12,6 @@ interface CustomWheelsListProps {
   onEdit: (wheel: CustomWheel) => void
   onDelete: (wheel: CustomWheel) => void
   onToggleShared: (wheel: CustomWheel) => void
-}
-
-// Three posters, overlapping, so a wheel is recognisable from its films
-// rather than only from whatever it was named at the time.
-function PosterStack({ posterPaths }: { posterPaths: string[] }) {
-  const slots = posterPaths.slice(0, WHEEL_PREVIEW_POSTERS)
-  if (slots.length === 0) {
-    return <span className="wheel-stack wheel-stack-empty" aria-hidden="true" />
-  }
-  return (
-    <span className="wheel-stack" aria-hidden="true">
-      {slots.map((path, index) => (
-        <img
-          key={path}
-          className="wheel-stack-poster"
-          style={{ left: `${index * 14}px`, zIndex: slots.length - index }}
-          src={buildPosterUrl(path) ?? undefined}
-          alt=""
-        />
-      ))}
-    </span>
-  )
 }
 
 function WheelRow({
@@ -53,40 +30,37 @@ function WheelRow({
   onToggleShared: () => void
 }) {
   return (
-    <li className="wheel-pick-row">
-      {/* The row itself loads the wheel; the controls below are for
-          managing it. */}
-      <button type="button" className="wheel-pick-main" onClick={onSpin}>
-        <PosterStack posterPaths={wheel.posterPaths} />
-        <span className="wheel-pick-text">
-          <span className="wheel-pick-name">{wheel.name}</span>
-          <span className="wheel-pick-meta">
-            {wheel.filmCount} film{wheel.filmCount === 1 ? '' : 's'}
-            {!wheel.isMine && ` · from ${partnerName ?? 'them'}`}
-          </span>
-        </span>
-        {!wheel.isMine && <span className="wheel-pick-badge">Shared</span>}
-      </button>
-
-      {wheel.isMine && (
-        <div className="wheel-pick-actions">
-          <button type="button" className="wheel-row-action" onClick={onEdit}>
-            Edit
-          </button>
-          <button
-            type="button"
-            className={`wheel-row-action${wheel.shared ? ' wheel-row-action-on' : ''}`}
-            aria-pressed={wheel.shared}
-            onClick={onToggleShared}
-          >
-            {wheel.shared ? 'Shared' : 'Share'}
-          </button>
-          <button type="button" className="preset-delete" onClick={onDelete}>
-            Delete
-          </button>
-        </div>
-      )}
-    </li>
+    <Row
+      art={<PosterStack posterPaths={wheel.posterPaths} />}
+      name={wheel.name}
+      meta={
+        <>
+          {wheel.filmCount} film{wheel.filmCount === 1 ? '' : 's'}
+          {!wheel.isMine && ` · from ${partnerName ?? 'them'}`}
+        </>
+      }
+      onOpen={onSpin}
+      actions={
+        wheel.isMine ? (
+          <>
+            <button type="button" className="btn-row" onClick={onEdit}>
+              Edit
+            </button>
+            <button
+              type="button"
+              className={`btn-row${wheel.shared ? ' btn-row-on' : ''}`}
+              aria-pressed={wheel.shared}
+              onClick={onToggleShared}
+            >
+              {wheel.shared ? 'Shared' : 'Share'}
+            </button>
+            <button type="button" className="btn-row btn-row-danger" onClick={onDelete}>
+              Delete
+            </button>
+          </>
+        ) : undefined
+      }
+    />
   )
 }
 
@@ -117,20 +91,18 @@ export function CustomWheelsList({
   }
 
   return (
-    <div className="wheel-pick">
-      <div className="wheel-pick-head">
-        <h2 className="wheel-pick-title">Pick a wheel</h2>
-        <span className="filter-sheet-count">
-          {wheels.length} wheel{wheels.length === 1 ? '' : 's'}
-        </span>
-      </div>
+    <Screen>
+      <ScreenHead
+        title="Pick a wheel"
+        status={`${wheels.length} wheel${wheels.length === 1 ? '' : 's'}`}
+      />
 
       {wheels.length === 0 ? (
-        <p className="preset-empty">
+        <Empty>
           No wheels yet. Make one, then fill it from a search, your lists, or an actor's films.
-        </p>
+        </Empty>
       ) : (
-        <ul className="wheel-pick-list">
+        <Rows>
           {wheels.map((wheel) => (
             <WheelRow
               key={wheel.id}
@@ -142,7 +114,7 @@ export function CustomWheelsList({
               onToggleShared={() => onToggleShared(wheel)}
             />
           ))}
-        </ul>
+        </Rows>
       )}
 
       {naming ? (
@@ -164,14 +136,11 @@ export function CustomWheelsList({
           </button>
         </form>
       ) : (
-        <button
-          type="button"
-          className="action-button settings-wide wheel-pick-new"
-          onClick={() => setNaming(true)}
-        >
+        /* The one amber button on this screen. */
+        <button type="button" className="btn-primary" onClick={() => setNaming(true)}>
           New wheel
         </button>
       )}
-    </div>
+    </Screen>
   )
 }

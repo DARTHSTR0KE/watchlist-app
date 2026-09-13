@@ -95,46 +95,56 @@ export async function undoWatch(userId: string, pending: PendingWatch): Promise<
   if (deleteError) throw deleteError
 }
 
-export interface WatchedTogetherFilm {
+export interface WatchedFilm {
   filmId: string
   title: string
   year: number | null
   posterPath: string | null
   watchedOn: string | null
+  // True when either of us said we watched it together. One grid with a
+  // marker reads better than splitting the same films across two tabs.
+  together: boolean
 }
 
-interface TogetherRow {
+// A Letterboxd history runs to thousands; the screen shows the recent end.
+export const WATCHED_LIMIT = 300
+
+interface WatchedRow {
   film_id: string
   watched_on: string | null
+  together: boolean | null
   films: { title: string; year: number | null; poster_path: string | null } | null
 }
 
-async function fetchTogether(userId: string): Promise<TogetherRow[]> {
+async function fetchWatched(userId: string): Promise<WatchedRow[]> {
   const { data, error } = await supabase
     .from('watched')
-    .select('film_id, watched_on, films(title, year, poster_path)')
+    .select('film_id, watched_on, together, films(title, year, poster_path)')
     .eq('user_id', userId)
-    .eq('together', true)
+    .order('watched_on', { ascending: false, nullsFirst: false })
+    .limit(WATCHED_LIMIT)
   if (error) throw error
-  return ((data ?? []) as unknown as TogetherRow[]).filter((row) => row.films !== null)
+  return ((data ?? []) as unknown as WatchedRow[]).filter((row) => row.films !== null)
 }
 
-// Every film either of us marked as watched together, newest first. One
-// entry per film, dated by whichever of us recorded it later.
-export async function loadWatchedTogether(
+// Everything either of us has watched, newest first, one entry per film.
+// A film counts as together if either of us said so — null is unanswered,
+// which is not the same as no.
+export async function loadWatchedFilms(
   userId: string,
   partnerId: string | null,
-): Promise<WatchedTogetherFilm[]> {
+): Promise<WatchedFilm[]> {
   const [mine, theirs] = await Promise.all([
-    fetchTogether(userId),
-    partnerId ? fetchTogether(partnerId) : Promise.resolve([] as TogetherRow[]),
+    fetchWatched(userId),
+    partnerId ? fetchWatched(partnerId) : Promise.resolve([] as WatchedRow[]),
   ])
 
-  const byFilm = new Map<string, WatchedTogetherFilm>()
+  const byFilm = new Map<string, WatchedFilm>()
   for (const row of [...mine, ...theirs]) {
     const existing = byFilm.get(row.film_id)
     if (existing) {
       if ((row.watched_on ?? '') > (existing.watchedOn ?? '')) existing.watchedOn = row.watched_on
+      existing.together = existing.together || row.together === true
       continue
     }
     byFilm.set(row.film_id, {
@@ -143,6 +153,7 @@ export async function loadWatchedTogether(
       year: row.films!.year,
       posterPath: row.films!.poster_path,
       watchedOn: row.watched_on,
+      together: row.together === true,
     })
   }
 

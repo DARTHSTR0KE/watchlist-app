@@ -333,6 +333,25 @@ export async function recordImport(
   if (error) throw error
 }
 
+// What is on the list and when it last changed, so importing again is a
+// decision rather than a guess.
+export interface WatchlistSummary {
+  count: number
+  lastImportedAt: string | null
+}
+
+export async function loadWatchlistSummary(userId: string): Promise<WatchlistSummary> {
+  const [{ count, error }, lastImportedAt] = await Promise.all([
+    supabase
+      .from('watchlist_items')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId),
+    getLastImportDate(userId).catch(() => null),
+  ])
+  if (error) throw error
+  return { count: count ?? 0, lastImportedAt }
+}
+
 export async function getLastImportDate(userId: string): Promise<string | null> {
   const { data } = await supabase
     .from('imports')

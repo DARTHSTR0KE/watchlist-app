@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { describeFilters } from './filterSummary'
 import { MAX_STARRED_PRESETS } from './wheelPersistence'
 import type { FilterPreset } from './wheelPersistence'
+import { Empty, Row, Rows, Screen, ScreenHead } from '../ui/Screen'
 
 interface PresetsScreenProps {
   presets: FilterPreset[]
@@ -36,20 +37,21 @@ function PresetRow({
   }
 
   return (
-    <li className="preset-row">
-      <button
-        type="button"
-        className={`preset-star${starred ? ' preset-star-on' : ''}`}
-        onClick={onToggleStar}
-        disabled={starDisabled}
-        aria-pressed={starred}
-        aria-label={starred ? `Unstar ${preset.name}` : `Star ${preset.name}`}
-      >
-        {starred ? '★' : '☆'}
-      </button>
-
-      <div className="preset-row-body">
-        {editing ? (
+    <Row
+      art={
+        <button
+          type="button"
+          className={`preset-star${starred ? ' preset-star-on' : ''}`}
+          onClick={onToggleStar}
+          disabled={starDisabled}
+          aria-pressed={starred}
+          aria-label={starred ? `Unstar ${preset.name}` : `Star ${preset.name}`}
+        >
+          {starred ? '★' : '☆'}
+        </button>
+      }
+      name={
+        editing ? (
           <input
             className="preset-name-input"
             value={draft}
@@ -68,14 +70,20 @@ function PresetRow({
           <button type="button" className="preset-name" onClick={() => setEditing(true)}>
             {preset.name}
           </button>
-        )}
-        <p className="preset-summary">{describeFilters(preset.filters)}</p>
-      </div>
-
-      <button type="button" className="preset-delete" onClick={onDelete} aria-label={`Delete ${preset.name}`}>
-        Delete
-      </button>
-    </li>
+        )
+      }
+      meta={describeFilters(preset.filters)}
+      actions={
+        <button
+          type="button"
+          className="btn-row btn-row-danger"
+          onClick={onDelete}
+          aria-label={`Delete ${preset.name}`}
+        >
+          Delete
+        </button>
+      }
+    />
   )
 }
 
@@ -90,48 +98,37 @@ export function PresetsScreen({
   const atCap = starredCount >= MAX_STARRED_PRESETS
 
   return (
-    <div className="filter-sheet-overlay" onClick={onBack}>
-      <div className="filter-sheet" onClick={(event) => event.stopPropagation()}>
-        <div className="filter-sheet-header">
-          <h2 className="filter-sheet-title">Presets</h2>
-          <span className="filter-sheet-count">
-            {starredCount} of {MAX_STARRED_PRESETS} active
-          </span>
-        </div>
+    <Screen>
+      <ScreenHead title="Presets" status={`${starredCount} of ${MAX_STARRED_PRESETS} active`} />
 
-        <p className="preset-help">
-          {atCap
-            ? `${MAX_STARRED_PRESETS} of ${MAX_STARRED_PRESETS} active — unstar one to add another`
-            : 'Starred presets appear as chips above the wheel.'}
-        </p>
+      <p className="screen-empty">
+        {atCap
+          ? `${MAX_STARRED_PRESETS} of ${MAX_STARRED_PRESETS} active — unstar one to add another`
+          : 'Starred presets appear as chips above the wheel.'}
+      </p>
 
-        {presets.length === 0 ? (
-          <p className="preset-empty">
-            No presets yet. Save a filter combination from the filters sheet.
-          </p>
-        ) : (
-          <ul className="preset-list">
-            {presets.map((preset) => (
-              <PresetRow
-                key={preset.id}
-                preset={preset}
-                // Only unstarred rows lock at the cap; a starred one must
-                // stay clickable so it can be unstarred.
-                starDisabled={atCap && preset.starredAt === null}
-                onToggleStar={() => onToggleStar(preset)}
-                onRename={(name) => onRename(preset, name)}
-                onDelete={() => onDelete(preset)}
-              />
-            ))}
-          </ul>
-        )}
+      {presets.length === 0 ? (
+        <Empty>No presets yet. Save a filter combination from the filters screen.</Empty>
+      ) : (
+        <Rows>
+          {presets.map((preset) => (
+            <PresetRow
+              key={preset.id}
+              preset={preset}
+              // Only unstarred rows lock at the cap; a starred one must
+              // stay clickable so it can be unstarred.
+              starDisabled={atCap && preset.starredAt === null}
+              onToggleStar={() => onToggleStar(preset)}
+              onRename={(name) => onRename(preset, name)}
+              onDelete={() => onDelete(preset)}
+            />
+          ))}
+        </Rows>
+      )}
 
-        <div className="filter-sheet-actions">
-          <button type="button" className="action-button primary" onClick={onBack}>
-            Back to filters
-          </button>
-        </div>
-      </div>
-    </div>
+      <button type="button" className="btn-field" onClick={onBack}>
+        Back to filters
+      </button>
+    </Screen>
   )
 }

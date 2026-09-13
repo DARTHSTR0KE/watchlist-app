@@ -10,6 +10,7 @@ import {
   runtimeCeiling,
 } from './filters'
 import type { WheelFilters } from './filters'
+import { Screen, ScreenHead } from '../ui/Screen'
 import type { WheelItem } from './titles'
 
 interface FilterSheetProps {
@@ -70,19 +71,16 @@ export function FilterSheet({
     list.includes(value) ? list.filter((entry) => entry !== value) : [...list, value]
 
   return (
-    <div className="filter-sheet-overlay" onClick={onClose}>
-      <div className="filter-sheet" onClick={(event) => event.stopPropagation()}>
-        <div className="filter-sheet-header">
-          <h2 className="filter-sheet-title">Filters</h2>
-          <span
-            className={`filter-sheet-count${matchCount === 0 ? ' filter-sheet-count-empty' : ''}`}
-          >
-            {matchCount} matching
-          </span>
-        </div>
+    /* In place like every other section — no sheet, nothing dimmed. */
+    <Screen>
+      <ScreenHead
+        title="Filters"
+        status={`${matchCount} matching`}
+        tone={matchCount === 0 ? 'rust' : 'amber'}
+      />
 
         <section className="filter-group dim-type">
-          <p className="filter-group-title">Media type</p>
+          <p className="section-label tone-dimension">Media type</p>
           <div className="filter-segmented">
             {(
               [
@@ -106,7 +104,7 @@ export function FilterSheet({
 
         {languages.length > 0 && (
           <section className="filter-group dim-language">
-            <p className="filter-group-title">Language</p>
+            <p className="section-label tone-dimension">Language</p>
             <div className="filter-chips">
               {languages.map((facet) => (
                 <Chip
@@ -125,7 +123,7 @@ export function FilterSheet({
 
         {genres.length > 0 && (
           <section className="filter-group dim-genre">
-            <p className="filter-group-title">Genre</p>
+            <p className="section-label tone-dimension">Genre</p>
             <div className="filter-chips">
               {genres.map((facet) => (
                 <Chip
@@ -141,7 +139,7 @@ export function FilterSheet({
         )}
 
         <section className="filter-group dim-slider">
-          <p className="filter-group-title">
+          <p className="section-label tone-dimension">
             Maximum runtime{' '}
             <span className="filter-group-value">
               {filters.maxRuntime === null ? 'No limit' : `${filters.maxRuntime} min`}
@@ -163,7 +161,7 @@ export function FilterSheet({
 
         {decades.length > 0 && (
           <section className="filter-group dim-slider">
-            <p className="filter-group-title">Release decade</p>
+            <p className="section-label tone-dimension">Release decade</p>
             <div className="filter-decades">
               <select
                 className="filter-select"
@@ -222,7 +220,7 @@ export function FilterSheet({
         )}
 
         <section className="filter-group">
-          <p className="filter-group-title">Save these filters</p>
+          <p className="section-label tone-dimension">Save these filters</p>
           <div className="filter-save-row">
             <input
               className="filter-preset-input"
@@ -249,21 +247,20 @@ export function FilterSheet({
           Manage presets
         </button>
 
-        <div className="filter-sheet-actions">
+        <div className="filter-actions">
           {/* Reset clears the filters, not the source — you chose the wheel
               you are on, so resetting shouldn't move you off it. */}
           <button
             type="button"
-            className="action-button"
+            className="btn-field"
             onClick={() => onChange({ ...DEFAULT_FILTERS, source: filters.source })}
           >
             Clear all
           </button>
-          <button type="button" className="action-button primary" onClick={onClose}>
-            Done
+          <button type="button" className="btn-primary" onClick={onClose}>
+            Show {matchCount} film{matchCount === 1 ? '' : 's'}
           </button>
         </div>
-      </div>
-    </div>
+    </Screen>
   )
 }

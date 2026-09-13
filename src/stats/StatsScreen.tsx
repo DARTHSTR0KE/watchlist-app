@@ -8,6 +8,7 @@ import {
   TallyBars,
 } from './StatBits'
 import { personColor } from './palette'
+import { Screen, ScreenHead } from '../ui/Screen'
 import {
   computeTogether,
   computeViewing,
@@ -62,10 +63,10 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
   if (loading) return null
   if (failed || !raw) {
     return (
-      <div className="list-screen">
-        <h2 className="list-screen-title">Stats</h2>
+      <Screen>
+        <ScreenHead title="Stats" />
         <StatEmpty>Couldn't load your stats. Check your connection and try again.</StatEmpty>
-      </div>
+      </Screen>
     )
   }
 
@@ -86,8 +87,8 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
   })()
 
   return (
-    <div className="list-screen">
-      <h2 className="list-screen-title">Stats</h2>
+    <Screen>
+      <ScreenHead title="Stats" status={`${viewing.filmCount + viewing.showCount} watched`} />
 
       {/* ---------------- Viewing ---------------- */}
       <StatSection title="Viewing">
@@ -367,6 +368,6 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
           </>
         )}
       </StatSection>
-    </div>
+    </Screen>
   )
 }

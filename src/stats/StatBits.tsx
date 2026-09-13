@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Bar, BarChart, Cell, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 import type { Tally } from './statsData'
 import { categoryColors, palette } from './palette'
+import { SectionLabel } from '../ui/Screen'
 
 // A number you can read at arm's length, with a label that doesn't compete
 // with it.
@@ -25,10 +26,12 @@ export function Figure({
   )
 }
 
+// The same label as every other section, so stats reads as part of the
+// app rather than a dashboard bolted on the side.
 export function StatSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="stat-section">
-      <h3 className="stat-section-title">{title}</h3>
+      <SectionLabel>{title}</SectionLabel>
       {children}
     </section>
   )
@@ -37,7 +40,7 @@ export function StatSection({ title, children }: { title: string; children: Reac
 // Every section can be empty on a new account, and an empty section has to
 // say what would fill it rather than rendering nothing.
 export function StatEmpty({ children }: { children: ReactNode }) {
-  return <p className="stat-empty">{children}</p>
+  return <p className="screen-empty">{children}</p>
 }
 
 export function TallyBars({
