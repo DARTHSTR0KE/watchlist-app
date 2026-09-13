@@ -3,13 +3,37 @@ import type { FormEvent } from 'react'
 import { buildPosterUrl } from './posters'
 import { loadWatchedPicker, loadWatchlistPicker } from './customWheels'
 import type { PickerFilm } from './customWheels'
-import { searchTmdb } from '../import/tmdbSearch'
-import type { ManualResult } from '../import/tmdbSearch'
-import { resolveCandidate } from '../import/matching'
-import { upsertFilm } from '../import/watchlistWrites'
+import {
+  loadFilmography,
+  searchPeopleByName,
+  searchTmdb,
+  topByPopularity,
+} from '../import/tmdbSearch'
+import type {
+  CreditResult,
+  Filmography,
+  ManualResult,
+  PersonResult,
+} from '../import/tmdbSearch'
+import { ensureFilmStored, loadWatchlistFilmIds } from '../import/watchlistWrites'
 import { buildFilmId } from '../lib/tmdbClient'
 
-type AddSource = 'search' | 'watchlist' | 'watched' | 'partner'
+type AddSource = 'search' | 'people' | 'watchlist' | 'watched' | 'partner'
+
+// A film chosen but not yet acted on. `source` is present when it may not
+// be in the films table, so a caller can enrich it at the moment it
+// commits rather than on every search result.
+export interface PickedFilm {
+  filmId: string
+  title: string
+  year: number | null
+  posterPath: string | null
+  source: { mediaType: 'movie' | 'tv'; tmdbId: number } | null
+}
+
+// One tap adds a person's best work. A custom wheel holds twelve, so
+// there is no point offering more.
+const TOP_N = 12
 
 interface FilmPickerProps {
   userId: string
@@ -25,7 +49,11 @@ interface FilmPickerProps {
   title?: string
   actionLabel?: string
   doneLabel?: string
-  onAdd: (filmId: string) => Promise<void>
+  // Adding acts immediately. Selecting hands the film back and does
+  // nothing else — no enrichment, no write — for flows that ask another
+  // question before committing.
+  onAdd?: (filmId: string) => Promise<void>
+  onSelect?: (film: PickedFilm) => void
 }
 
 function PosterThumb({ posterPath }: { posterPath: string | null }) {
@@ -51,6 +79,7 @@ export function FilmPicker({
   actionLabel = 'Add',
   doneLabel = 'Added',
   onAdd,
+  onSelect,
 }: FilmPickerProps) {
   const [addSource, setAddSource] = useState<AddSource>('search')
   const [query, setQuery] = useState('')
@@ -60,6 +89,10 @@ export function FilmPicker({
   const [pickerLoading, setPickerLoading] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [people, setPeople] = useState<PersonResult[]>([])
+  const [person, setPerson] = useState<PersonResult | null>(null)
+  const [filmography, setFilmography] = useState<Filmography | null>(null)
+  const [onWatchlist, setOnWatchlist] = useState<ReadonlySet<string>>(new Set())
 
   // Switching tab clears and flags the list; the effect below fills it.
   // Only the TMDB tab waits for a query — the rest are plain table reads.
@@ -67,8 +100,11 @@ export function FilmPicker({
     if (next === addSource) return
     setAddSource(next)
     setPicker([])
-    setPickerLoading(next !== 'search')
+    setPickerLoading(next !== 'search' && next !== 'people')
     setMessage(null)
+    setPeople([])
+    setPerson(null)
+    setFilmography(null)
   }
 
   useEffect(() => {
@@ -94,6 +130,21 @@ export function FilmPicker({
     }
   }, [addSource, userId, partnerId])
 
+  // Only so a filmography can show what is already mine. Marking, never
+  // writing: nothing in this component touches a watchlist.
+  useEffect(() => {
+    if (addSource !== 'people') return
+    let cancelled = false
+    void loadWatchlistFilmIds(userId)
+      .catch(() => new Set<string>())
+      .then((ids) => {
+        if (!cancelled) setOnWatchlist(ids)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [addSource, userId])
+
   const handleSearch = async (event: FormEvent) => {
     event.preventDefault()
     if (!query.trim()) return
@@ -109,16 +160,27 @@ export function FilmPicker({
     return true
   }
 
-  // Straight from TMDB: enrich and write the film exactly as import does,
-  // but only onto this list — never onto a watchlist.
-  const handleAddFromSearch = async (result: ManualResult) => {
+  // A TMDB result is enriched only at the moment it is added. Selecting
+  // hands it back untouched — nothing is fetched or written for a film
+  // that is merely being looked at.
+  const handleTmdbResult = async (result: ManualResult) => {
+    const filmId = buildFilmId(result.mediaType, result.id)
+    if (onSelect) {
+      onSelect({
+        filmId,
+        title: result.title,
+        year: result.year,
+        posterPath: result.posterPath,
+        source: { mediaType: result.mediaType, tmdbId: result.id },
+      })
+      return
+    }
     if (guardFull()) return
-    setBusyId(buildFilmId(result.mediaType, result.id))
+    setBusyId(filmId)
     setMessage(null)
     try {
-      const film = await resolveCandidate(result.mediaType, result.id)
-      await upsertFilm(film)
-      await onAdd(film.id)
+      const stored = await ensureFilmStored(result.mediaType, result.id)
+      await onAdd?.(stored)
       setMessage(`${doneLabel} "${result.title}".`)
     } catch {
       setMessage(`Couldn't do that with "${result.title}".`)
@@ -127,11 +189,21 @@ export function FilmPicker({
   }
 
   const handleAddExisting = async (film: PickerFilm) => {
+    if (onSelect) {
+      onSelect({
+        filmId: film.id,
+        title: film.title,
+        year: film.year,
+        posterPath: film.posterPath,
+        source: null,
+      })
+      return
+    }
     if (guardFull()) return
     setBusyId(film.id)
     setMessage(null)
     try {
-      await onAdd(film.id)
+      await onAdd?.(film.id)
       setMessage(`${doneLabel} "${film.title}".`)
     } catch {
       setMessage(`Couldn't do that with "${film.title}".`)
@@ -139,8 +211,51 @@ export function FilmPicker({
     setBusyId(null)
   }
 
+  const handlePersonSearch = async (event: FormEvent) => {
+    event.preventDefault()
+    if (!query.trim()) return
+    setSearching(true)
+    setMessage(null)
+    setPerson(null)
+    setFilmography(null)
+    setPeople(await searchPeopleByName(query).catch(() => [] as PersonResult[]))
+    setSearching(false)
+  }
+
+  const openPerson = async (choice: PersonResult) => {
+    setPerson(choice)
+    setFilmography(null)
+    setMessage(null)
+    setFilmography(await loadFilmography(choice.id).catch(() => ({ acting: [], directing: [] })))
+  }
+
+  // The whole point of the shortcut: a wheel holds twelve, so offer the
+  // twelve that matter. Only what fits is added, and only those are
+  // enriched.
+  const addTopTwelve = async () => {
+    if (!filmography || !onAdd) return
+    setBusyId('top')
+    setMessage(null)
+    const candidates = topByPopularity(filmography, TOP_N).filter(
+      (c) => !existingIds.has(buildFilmId(c.mediaType, c.id)),
+    )
+    let added = 0
+    for (const credit of candidates) {
+      try {
+        const stored = await ensureFilmStored(credit.mediaType, credit.id)
+        await onAdd(stored)
+        added += 1
+      } catch {
+        break
+      }
+    }
+    setMessage(added === 0 ? 'Nothing new to add.' : `${doneLabel} ${added} films.`)
+    setBusyId(null)
+  }
+
   const sources: { value: AddSource; label: string; available: boolean }[] = [
     { value: 'search', label: 'Search TMDB', available: true },
+    { value: 'people', label: 'By person', available: true },
     { value: 'watchlist', label: 'My watchlist', available: true },
     { value: 'watched', label: 'My history', available: true },
     {
@@ -149,6 +264,31 @@ export function FilmPicker({
       available: partnerId !== null,
     },
   ]
+
+  const creditRow = (credit: CreditResult) => {
+    const filmId = buildFilmId(credit.mediaType, credit.id)
+    return (
+      <li className="picker-row" key={filmId}>
+        <PosterThumb posterPath={credit.posterPath} />
+        <span className="picker-title">
+          {credit.title}
+          <span className="picker-year">
+            {credit.year ? ` ${credit.year}` : ''} · {credit.mediaType === 'tv' ? 'TV' : 'Film'}
+          </span>
+          {/* Marking only — this never adds to a watchlist. */}
+          {onWatchlist.has(filmId) && <span className="picker-flag">On my watchlist</span>}
+        </span>
+        <button
+          type="button"
+          className="wheel-row-action"
+          disabled={existingIds.has(filmId) || full || busyId === filmId}
+          onClick={() => void handleTmdbResult(credit)}
+        >
+          {addLabel(filmId)}
+        </button>
+      </li>
+    )
+  }
 
   const addLabel = (filmId: string) =>
     existingIds.has(filmId) ? doneLabel : busyId === filmId ? '…' : actionLabel
@@ -175,7 +315,97 @@ export function FilmPicker({
       {full && fullMessage && <p className="filter-hint">{fullMessage}</p>}
       {message && <p className="filter-hint">{message}</p>}
 
-      {addSource === 'search' ? (
+      {addSource === 'people' ? (
+        <>
+          <form className="filter-save-row filter-chips-tight" onSubmit={handlePersonSearch}>
+            <input
+              className="filter-preset-input"
+              type="search"
+              placeholder="Search actors and directors"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+            <button type="submit" className="filter-save-button" disabled={searching}>
+              {searching ? 'Searching…' : 'Search'}
+            </button>
+          </form>
+
+          {person === null ? (
+            <ul className="picker-list picker-list-tall">
+              {people.map((entry) => (
+                <li className="picker-row" key={entry.id}>
+                  <PosterThumb posterPath={entry.profilePath} />
+                  <span className="picker-title">
+                    {entry.name}
+                    {entry.department && <span className="picker-year"> {entry.department}</span>}
+                  </span>
+                  <button
+                    type="button"
+                    className="wheel-row-action"
+                    onClick={() => void openPerson(entry)}
+                  >
+                    Films
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <>
+              <div className="picker-person-head">
+                <span className="picker-person-name">{person.name}</span>
+                <button
+                  type="button"
+                  className="onboard-quiet"
+                  onClick={() => {
+                    setPerson(null)
+                    setFilmography(null)
+                  }}
+                >
+                  Someone else
+                </button>
+              </div>
+
+              {filmography === null ? (
+                <p className="preset-empty">Loading their films…</p>
+              ) : filmography.acting.length === 0 && filmography.directing.length === 0 ? (
+                <p className="preset-empty">TMDB lists no films for them.</p>
+              ) : (
+                <>
+                  {onAdd && (
+                    <button
+                      type="button"
+                      className="action-button settings-wide"
+                      disabled={full || busyId === 'top'}
+                      onClick={() => void addTopTwelve()}
+                    >
+                      {busyId === 'top' ? 'Adding…' : `Add their top ${TOP_N}`}
+                    </button>
+                  )}
+
+                  {/* Both groups when they both exist, each labelled, so a
+                      person who acts and directs reads as one person. */}
+                  {filmography.acting.length > 0 && (
+                    <>
+                      <p className="picker-group-title">As actor</p>
+                      <ul className="picker-list picker-list-tall">
+                        {filmography.acting.map(creditRow)}
+                      </ul>
+                    </>
+                  )}
+                  {filmography.directing.length > 0 && (
+                    <>
+                      <p className="picker-group-title">As director</p>
+                      <ul className="picker-list picker-list-tall">
+                        {filmography.directing.map(creditRow)}
+                      </ul>
+                    </>
+                  )}
+                </>
+              )}
+            </>
+          )}
+        </>
+      ) : addSource === 'search' ? (
         <>
           <form className="filter-save-row filter-chips-tight" onSubmit={handleSearch}>
             <input
@@ -206,7 +436,7 @@ export function FilmPicker({
                     type="button"
                     className="wheel-row-action"
                     disabled={existingIds.has(filmId) || full || busyId === filmId}
-                    onClick={() => void handleAddFromSearch(result)}
+                    onClick={() => void handleTmdbResult(result)}
                   >
                     {addLabel(filmId)}
                   </button>

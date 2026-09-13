@@ -53,6 +53,42 @@ export async function searchTv(query: string, firstAirDateYear?: number): Promis
   return data.results
 }
 
+export interface TmdbPerson {
+  id: number
+  name: string
+  profile_path: string | null
+  known_for_department: string | null
+  popularity: number
+}
+
+export async function searchPeople(query: string): Promise<TmdbPerson[]> {
+  const data = await tmdbFetch<TmdbSearchResponse<TmdbPerson>>('/search/person', { query })
+  return data.results
+}
+
+// One credit from a person's filmography. Enough to list it without a
+// second call per film — nothing here is enriched until it is added.
+export interface TmdbCredit {
+  id: number
+  media_type: 'movie' | 'tv'
+  title?: string
+  name?: string
+  release_date?: string
+  first_air_date?: string
+  poster_path: string | null
+  popularity?: number
+  job?: string
+}
+
+export interface TmdbCombinedCredits {
+  cast?: TmdbCredit[]
+  crew?: TmdbCredit[]
+}
+
+export async function getCombinedCredits(personId: number): Promise<TmdbCombinedCredits> {
+  return tmdbFetch<TmdbCombinedCredits>(`/person/${personId}/combined_credits`, {})
+}
+
 interface TmdbGenre {
   id: number
   name: string

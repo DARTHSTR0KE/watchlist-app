@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { buildPosterUrl } from '../wheel/posters'
 import { FilmPicker } from '../wheel/FilmPicker'
+import type { PickedFilm } from '../wheel/FilmPicker'
 import {
   loadRecommendationsForMe,
   loadRecommendationsSent,
@@ -9,7 +10,7 @@ import {
   sendRecommendation,
 } from './recommendations'
 import type { Recommendation } from './recommendations'
-import { addExistingFilmToWatchlist } from '../import/watchlistWrites'
+import { addExistingFilmToWatchlist, ensureFilmStored } from '../import/watchlistWrites'
 
 interface RecommendedScreenProps {
   userId: string
@@ -62,6 +63,10 @@ export function RecommendedScreen({
   const [loading, setLoading] = useState(true)
   const [sentOpen, setSentOpen] = useState(false)
   const [note, setNote] = useState('')
+  // Step one picks the film; step two writes about it. Nothing about the
+  // note is on screen until there is a film for it to be about.
+  const [chosen, setChosen] = useState<PickedFilm | null>(null)
+  const [sending, setSending] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
 
@@ -132,13 +137,27 @@ export function RecommendedScreen({
     setBusyId(null)
   }
 
-  const handleSend = async (filmId: string) => {
-    if (!partnerId) return
-    await sendRecommendation(userId, partnerId, filmId, note)
-    setNote('')
-    const outgoing = await loadRecommendationsSent(userId).catch(() => sent)
-    setSent(outgoing)
-    setSentOpen(true)
+  const handleSend = async () => {
+    if (!partnerId || !chosen) return
+    setSending(true)
+    setMessage(null)
+    try {
+      // Enriched here, at the point of committing — not when it was
+      // merely tapped in a list of results.
+      const filmId = chosen.source
+        ? await ensureFilmStored(chosen.source.mediaType, chosen.source.tmdbId)
+        : chosen.filmId
+      await sendRecommendation(userId, partnerId, filmId, note)
+      setMessage(`Sent "${chosen.title}".`)
+      setChosen(null)
+      setNote('')
+      const outgoing = await loadRecommendationsSent(userId).catch(() => sent)
+      setSent(outgoing)
+      setSentOpen(true)
+    } catch {
+      setMessage(`Couldn't send "${chosen.title}".`)
+    }
+    setSending(false)
   }
 
   if (loading) return null
@@ -164,7 +183,9 @@ export function RecommendedScreen({
     <div className="list-screen">
       <h2 className="list-screen-title">{them}</h2>
 
-      {message && <p className="filter-hint">{message}</p>}
+      {/* One place for every message on this screen, rather than one
+          buried between a set of tabs and a search box. */}
+      {message && <p className="filter-hint rec-message">{message}</p>}
 
       <section className="rec-section">
         <h3 className="stat-section-title">From {them}</h3>
@@ -233,29 +254,70 @@ export function RecommendedScreen({
 
       <section className="rec-section">
         <h3 className="stat-section-title">Recommend a film to {them}</h3>
-        <input
-          className="filter-preset-input rec-note-input"
-          type="text"
-          placeholder={`What made you think of it for ${them}?`}
-          value={note}
-          onChange={(event) => setNote(event.target.value)}
-        />
-        <p className="stat-note">
-          Optional, but a line of why lands better than a bare title.
-        </p>
-        <FilmPicker
-          userId={userId}
-          partnerId={partnerId}
-          partnerName={partnerName}
-          // Sending the same film twice is allowed; nothing is "already there".
-          existingIds={new Set<string>()}
-          full={false}
-          fullMessage={null}
-          title="Find something"
-          actionLabel="Send"
-          doneLabel="Sent"
-          onAdd={handleSend}
-        />
+
+        {chosen === null ? (
+          <FilmPicker
+            userId={userId}
+            partnerId={partnerId}
+            partnerName={partnerName}
+            // Recommending the same film twice is allowed, so nothing here
+            // is ever "already there".
+            existingIds={new Set<string>()}
+            full={false}
+            fullMessage={null}
+            title="Find it"
+            actionLabel="Choose"
+            onSelect={setChosen}
+          />
+        ) : (
+          <>
+            <div className="rec-chosen">
+              {buildPosterUrl(chosen.posterPath) ? (
+                <img
+                  className="rec-chosen-poster"
+                  src={buildPosterUrl(chosen.posterPath)!}
+                  alt=""
+                  aria-hidden="true"
+                />
+              ) : (
+                <span className="rec-chosen-poster picker-poster-fallback" aria-hidden="true" />
+              )}
+              <div className="rec-chosen-body">
+                <p className="rec-title">
+                  {chosen.title}
+                  <span className="picker-year">{chosen.year ? ` ${chosen.year}` : ''}</span>
+                </p>
+                <button
+                  type="button"
+                  className="onboard-quiet rec-chosen-change"
+                  onClick={() => setChosen(null)}
+                >
+                  Choose a different film
+                </button>
+              </div>
+            </div>
+
+            <input
+              className="filter-preset-input rec-note-input"
+              type="text"
+              autoFocus
+              placeholder={`What made you think of it for ${them}?`}
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+            />
+            <p className="stat-note">
+              Optional, but a line of why lands better than a bare title.
+            </p>
+            <button
+              type="button"
+              className="action-button primary settings-wide"
+              disabled={sending}
+              onClick={() => void handleSend()}
+            >
+              {sending ? 'Sending…' : `Send to ${them}`}
+            </button>
+          </>
+        )}
       </section>
     </div>
   )

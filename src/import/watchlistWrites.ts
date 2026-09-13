@@ -1,5 +1,7 @@
 import { supabase } from '../lib/supabaseClient'
+import { buildFilmId } from '../lib/tmdbClient'
 import type { NormalizedFilm, TopCastMember } from '../lib/tmdbClient'
+import { resolveCandidate } from './matching'
 
 export async function upsertFilm(film: NormalizedFilm): Promise<void> {
   const { error } = await supabase.from('films').upsert(
@@ -49,6 +51,52 @@ export async function addExistingFilmToWatchlist(
     return { error: error.message }
   }
   return { error: null }
+}
+
+/**
+ * Which of these films the table already holds. A prolific actor's page
+ * lists well over a hundred credits, and re-fetching one that is already
+ * stored would be work for nothing.
+ */
+export async function findStoredFilmIds(filmIds: string[]): Promise<Set<string>> {
+  if (filmIds.length === 0) return new Set()
+  const found = new Set<string>()
+  const BATCH = 200
+  for (let i = 0; i < filmIds.length; i += BATCH) {
+    const { data, error } = await supabase
+      .from('films')
+      .select('id')
+      .in('id', filmIds.slice(i, i + BATCH))
+    if (error) throw error
+    for (const row of data ?? []) found.add(row.id)
+  }
+  return found
+}
+
+// Enriches from TMDB only when the film isn't stored already. Returns the
+// composite id either way, so callers don't care which happened.
+export async function ensureFilmStored(
+  mediaType: 'movie' | 'tv',
+  tmdbId: number,
+): Promise<string> {
+  const filmId = buildFilmId(mediaType, tmdbId)
+  const stored = await findStoredFilmIds([filmId])
+  if (stored.has(filmId)) return filmId
+
+  const film = await resolveCandidate(mediaType, tmdbId)
+  await upsertFilm(film)
+  return film.id
+}
+
+// Which films are on this user's watchlist, so a filmography can show what
+// is already theirs. Ids only — nothing here needs the rest of the row.
+export async function loadWatchlistFilmIds(userId: string): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from('watchlist_items')
+    .select('film_id')
+    .eq('user_id', userId)
+  if (error) throw error
+  return new Set((data ?? []).map((row) => row.film_id))
 }
 
 export async function hasWatchlistItems(userId: string): Promise<boolean> {
