@@ -7,6 +7,7 @@ import {
   loadRecommendationsForMe,
   loadRecommendationsSent,
   markRecommendationsSeen,
+  partnerHasWatched,
   respondToRecommendation,
   sendRecommendation,
 } from './recommendations'
@@ -37,6 +38,9 @@ export function RecommendedScreen({
   const [note, setNote] = useState('')
   const [chosen, setChosen] = useState<PickedFilm | null>(null)
   const [composing, setComposing] = useState(false)
+  // Asked once, for the film just chosen. 'unknown' covers the lookup
+  // failing, which must not be mistaken for "they haven't seen it".
+  const [seenByThem, setSeenByThem] = useState<'unknown' | 'yes' | 'no'>('unknown')
   const [sending, setSending] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
@@ -99,6 +103,16 @@ export function RecommendedScreen({
     setBusyId(null)
   }
 
+  // One call, for one film, at the moment it is picked — never while
+  // building a list.
+  const handleChoose = (film: PickedFilm) => {
+    setChosen(film)
+    setSeenByThem('unknown')
+    void partnerHasWatched(film.filmId)
+      .then((seen) => setSeenByThem(seen ? 'yes' : 'no'))
+      .catch(() => setSeenByThem('unknown'))
+  }
+
   const handleSend = async () => {
     if (!partnerId || !chosen) return
     setSending(true)
@@ -110,6 +124,7 @@ export function RecommendedScreen({
       await sendRecommendation(userId, partnerId, filmId, note)
       setMessage(`Sent "${chosen.title}".`)
       setChosen(null)
+      setSeenByThem('unknown')
       setNote('')
       setComposing(false)
       setSent(await loadRecommendationsSent(userId).catch(() => sent))
@@ -218,13 +233,12 @@ export function RecommendedScreen({
             <FilmPicker
               userId={userId}
               partnerId={partnerId}
-              partnerName={partnerName}
               existingIds={new Set<string>()}
               full={false}
               fullMessage={null}
               title="Find it"
               actionLabel="Choose"
-              onSelect={setChosen}
+              onSelect={handleChoose}
             />
           ) : (
             <>
@@ -240,12 +254,25 @@ export function RecommendedScreen({
                   name={chosen.title}
                   meta={chosen.year ? String(chosen.year) : undefined}
                   actions={
-                    <button type="button" className="btn-row" onClick={() => setChosen(null)}>
+                    <button
+                      type="button"
+                      className="btn-row"
+                      onClick={() => {
+                        setChosen(null)
+                        setSeenByThem('unknown')
+                      }}
+                    >
                       Choose a different film
                     </button>
                   }
                 />
               </Rows>
+              {/* Before the note is written, not after — a rewatch is a
+                  fine thing to recommend, but knowing changes what you
+                  would say about it. */}
+              {seenByThem === 'yes' && (
+                <p className="notice">{them} has already seen this.</p>
+              )}
               <input
                 className="filter-preset-input rec-note-input"
                 type="text"

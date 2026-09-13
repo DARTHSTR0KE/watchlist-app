@@ -3068,3 +3068,15 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* Something worth knowing before you act, not a warning. */
+.notice {
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  border-left: 3px solid var(--sand);
+  background-color: rgba(194, 168, 120, 0.12);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--bone);
+}

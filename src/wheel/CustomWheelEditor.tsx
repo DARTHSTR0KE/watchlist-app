@@ -10,7 +10,6 @@ interface CustomWheelEditorProps {
   films: WheelItem[]
   userId: string
   partnerId: string | null
-  partnerName: string | null
   onAddFilmId: (filmId: string) => Promise<void>
   onRemoveFilmId: (filmId: string) => void
   // The name is the heading, so renaming belongs here now that the list
@@ -24,7 +23,6 @@ export function CustomWheelEditor({
   films,
   userId,
   partnerId,
-  partnerName,
   onAddFilmId,
   onRemoveFilmId,
   onRename,
@@ -117,7 +115,6 @@ export function CustomWheelEditor({
       <FilmPicker
         userId={userId}
         partnerId={partnerId}
-        partnerName={partnerName}
         existingIds={onWheel}
         full={full}
         fullMessage={`A wheel holds ${CUSTOM_WHEEL_MAX} films. Remove one to add another.`}

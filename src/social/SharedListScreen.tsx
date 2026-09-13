@@ -10,14 +10,12 @@ const MIN_TO_SPIN = 2
 interface SharedListScreenProps {
   userId: string
   partnerId: string | null
-  partnerName: string | null
   onSpinList: () => void
 }
 
 export function SharedListScreen({
   userId,
   partnerId,
-  partnerName,
   onSpinList,
 }: SharedListScreenProps) {
   const [entries, setEntries] = useState<SharedListEntry[]>([])
@@ -98,7 +96,6 @@ export function SharedListScreen({
           <FilmPicker
             userId={userId}
             partnerId={partnerId}
-            partnerName={partnerName}
             existingIds={existingIds}
             full={false}
             fullMessage={null}

@@ -78,9 +78,10 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
   const recommenderLine = (() => {
     if (!partnerId) return null
     if (together.betterRecommender === null) {
-      return `Not enough rated recommendations yet to say who picks better for whom.`
+      return `Not enough answered recommendations yet to say who picks better for whom.`
     }
-    if (together.betterRecommender === 'tie') return 'Too close to call — you recommend about as well as each other.'
+    if (together.betterRecommender === 'tie')
+      return 'Too close to call — you recommend about as well as each other.'
     return together.betterRecommender === 'me'
       ? `You are the better recommender.`
       : `${them} is the better recommender.`
@@ -140,7 +141,7 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
                       value={
                         viewing.theirAverage === null ? '—' : `★ ${round(viewing.theirAverage, 2)}`
                       }
-                      label={`${them}'s average`}
+                      label={`${them}'s average, shared films`}
                       tone="them"
                     />
                   )}
@@ -178,10 +179,14 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
           </StatEmpty>
         ) : (
           <>
+            <p className="stat-note">
+              Only films you watched together. Anything either of you watched alone is private to
+              that person, so it can't be compared here.
+            </p>
             {together.bothRatedCount === 0 ? (
               <StatEmpty>
-                Nothing you have both rated yet. Once you have each scored the same film, your
-                agreement shows up here.
+                Nothing you have both rated from a film you watched together yet. Once you have
+                each scored one, your agreement shows up here.
               </StatEmpty>
             ) : (
               <>
@@ -231,15 +236,7 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
                     label={`yours ${them} watched`}
                     tone="me"
                   />
-                  <Figure
-                    value={
-                      together.myRecommending.average === null
-                        ? '—'
-                        : `★ ${round(together.myRecommending.average, 2)}`
-                    }
-                    label="what they averaged"
-                    tone="me"
-                  />
+                  <Figure value={together.myRecommending.passed} label="they passed on" tone="me" />
                 </div>
                 <div className="figure-row">
                   <Figure
@@ -248,15 +245,15 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
                     tone="them"
                   />
                   <Figure
-                    value={
-                      together.theirRecommending.average === null
-                        ? '—'
-                        : `★ ${round(together.theirRecommending.average, 2)}`
-                    }
-                    label="what you averaged"
+                    value={together.theirRecommending.passed}
+                    label="you passed on"
                     tone="them"
                   />
                 </div>
+                <p className="stat-note">
+                  Counted from what each of you did with a recommendation, not from how you rated
+                  it — a rating on a film watched alone is private.
+                </p>
                 {recommenderLine && <p className="stat-verdict">{recommenderLine}</p>}
               </>
             )}

@@ -80,6 +80,18 @@ export async function markRecommendationsSeen(userId: string): Promise<void> {
 }
 
 
+/**
+ * Whether the other person has already seen one specific film. Called once,
+ * for a film deliberately chosen to recommend, so the answer is about
+ * something already on screen rather than a way to inspect their history.
+ * Never call this while building a list.
+ */
+export async function partnerHasWatched(filmId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('partner_has_watched', { p_film_id: filmId })
+  if (error) throw error
+  return data === true
+}
+
 // Sending never touches a watchlist: a recommendation is a suggestion,
 // and whether it becomes something to watch is the recipient's call.
 export async function sendRecommendation(

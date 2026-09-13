@@ -31,7 +31,14 @@ export interface StatsRaw {
   films: Map<string, FilmFacts>
   watchlist: { filmId: string; addedAt: string | null }[]
   spins: { filmId: string | null; outcome: string | null; createdAt: string | null; filters: WheelFilters | null }[]
-  recommendations: { fromUser: string; toUser: string; filmId: string; createdAt: string | null }[]
+  recommendations: {
+    fromUser: string
+    toUser: string
+    filmId: string
+    createdAt: string | null
+    status: 'queued' | 'passed' | 'watched'
+    respondedAt: string | null
+  }[]
   presets: { name: string; filters: WheelFilters }[]
 }
 
@@ -96,7 +103,9 @@ export async function loadStatsRaw(userId: string, partnerId: string | null): Pr
       .select('film_id, added_at, films(title, year, runtime, genres, original_language, media_type)')
       .eq('user_id', userId),
     supabase.from('spins').select('film_id, outcome, created_at, filters').eq('user_id', userId),
-    supabase.from('recommendations').select('from_user, to_user, film_id, created_at'),
+    supabase
+      .from('recommendations')
+      .select('from_user, to_user, film_id, created_at, status, responded_at'),
     // Not one of the four tables, but a preset can't be named without it.
     supabase.from('filter_presets').select('name, filters').eq('user_id', userId),
   ])
@@ -125,6 +134,8 @@ export async function loadStatsRaw(userId: string, partnerId: string | null): Pr
       toUser: row.to_user,
       filmId: row.film_id,
       createdAt: row.created_at,
+      status: row.status,
+      respondedAt: row.responded_at,
     })),
     presets: (presets.data ?? []).map((row) => ({
       name: row.name,
@@ -250,7 +261,7 @@ export interface Disagreement {
 export interface RecommenderRecord {
   sent: number
   watched: number
-  average: number | null
+  passed: number
 }
 
 export interface TogetherStats {
@@ -265,6 +276,13 @@ export interface TogetherStats {
   betterRecommender: 'me' | 'them' | 'tie' | null
   picks: { label: string; count: number }[]
 }
+
+/**
+ * Everything comparing the two of us can only see films we watched
+ * together: a watched row is private unless together is true. These are
+ * honest numbers about a smaller set, not the whole picture, and the
+ * screen says so rather than showing a quietly thinner list.
+ */
 
 export function computeTogether(
   raw: StatsRaw,
@@ -298,34 +316,41 @@ export function computeTogether(
 
   disagreements.sort((a, b) => b.gap - a.gap || a.title.localeCompare(b.title))
 
+  /**
+   * Read from the recommendations table alone — the status and the reply,
+   * which are facts about an exchange both of us are party to. It used to
+   * read the recipient's watched rows, which is exactly the private data
+   * this is no longer entitled to. The cost is that "what they thought of
+   * it" is gone: the rating lived in their row, and there is no way to
+   * rebuild it from what I can see.
+   */
   const recordFor = (fromUser: string, toUser: string): RecommenderRecord => {
     const sent = raw.recommendations.filter(
       (rec) => rec.fromUser === fromUser && rec.toUser === toUser,
     )
-    const recipientWatched = toUser === userId ? mineById : theirsById
-    // The watched table is the truth, not the recommendation's own status —
-    // the recipient may have watched it without ever opening the screen.
-    const landed = sent.filter((rec) => recipientWatched.has(rec.filmId))
-    const ratings = landed
-      .map((rec) => recipientWatched.get(rec.filmId)!.rating)
-      .filter((value): value is number => value !== null)
-    return { sent: sent.length, watched: landed.length, average: average(ratings) }
+    return {
+      sent: sent.length,
+      watched: sent.filter((rec) => rec.status === 'watched').length,
+      passed: sent.filter((rec) => rec.status === 'passed').length,
+    }
   }
 
-  const myRecommending = partnerId
-    ? recordFor(userId, partnerId)
-    : { sent: 0, watched: 0, average: null }
-  const theirRecommending = partnerId
-    ? recordFor(partnerId, userId)
-    : { sent: 0, watched: 0, average: null }
+  const empty: RecommenderRecord = { sent: 0, watched: 0, passed: 0 }
+  const myRecommending = partnerId ? recordFor(userId, partnerId) : empty
+  const theirRecommending = partnerId ? recordFor(partnerId, userId) : empty
 
-  // Judged on what the other person actually thought of them. Without a
-  // rating on each side there is nothing to compare, and saying so is
-  // better than crowning someone on one data point.
+  // Judged now on how often a recommendation was taken up rather than on
+  // what it was scored, since the score is no longer visible. Both sides
+  // need something answered before it means anything.
+  const hitRate = (record: RecommenderRecord): number | null =>
+    record.sent === 0 ? null : record.watched / record.sent
+  const mineRate = hitRate(myRecommending)
+  const theirsRate = hitRate(theirRecommending)
+
   let betterRecommender: TogetherStats['betterRecommender'] = null
-  if (myRecommending.average !== null && theirRecommending.average !== null) {
-    const difference = myRecommending.average - theirRecommending.average
-    betterRecommender = Math.abs(difference) < 0.25 ? 'tie' : difference > 0 ? 'me' : 'them'
+  if (mineRate !== null && theirsRate !== null) {
+    const difference = mineRate - theirsRate
+    betterRecommender = Math.abs(difference) < 0.1 ? 'tie' : difference > 0 ? 'me' : 'them'
   }
 
   // One row per film rather than per person, so a shared watch logged by

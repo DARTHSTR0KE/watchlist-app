@@ -38,7 +38,6 @@ const TOP_N = 12
 interface FilmPickerProps {
   userId: string
   partnerId: string | null
-  partnerName: string | null
   // What is already there, so it can be shown as such rather than offered.
   existingIds: ReadonlySet<string>
   // Set when the destination can take no more; the message says why.
@@ -71,7 +70,6 @@ function PosterThumb({ posterPath }: { posterPath: string | null }) {
 export function FilmPicker({
   userId,
   partnerId,
-  partnerName,
   existingIds,
   full,
   fullMessage,
@@ -114,6 +112,8 @@ export function FilmPicker({
     const load = (): Promise<PickerFilm[]> => {
       if (addSource === 'watchlist') return loadWatchlistPicker(userId)
       if (addSource === 'watched') return loadWatchedPicker(userId)
+      // Returns only what we watched together — the policy filters the
+      // rest out server-side rather than this asking for less.
       return partnerId ? loadWatchedPicker(partnerId) : Promise.resolve([])
     }
 
@@ -258,11 +258,10 @@ export function FilmPicker({
     { value: 'people', label: 'By person', available: true },
     { value: 'watchlist', label: 'My watchlist', available: true },
     { value: 'watched', label: 'My history', available: true },
-    {
-      value: 'partner',
-      label: partnerName ? `${partnerName}'s history` : 'Their history',
-      available: partnerId !== null,
-    },
+    // Not "their history" any more: a watched row is private unless it
+    // was watched together, so this can only ever be the shared part. The
+    // label says what it is rather than what it used to be.
+    { value: 'partner', label: 'Watched together', available: partnerId !== null },
   ]
 
   const creditRow = (credit: CreditResult) => {
@@ -449,7 +448,11 @@ export function FilmPicker({
         <ul className="picker-list picker-list-tall">
           {pickerLoading && <li className="preset-empty">Loading…</li>}
           {!pickerLoading && picker.length === 0 && (
-            <li className="preset-empty">Nothing here yet.</li>
+            <li className="preset-empty">
+              {addSource === 'partner'
+                ? 'Nothing you have watched together yet.'
+                : 'Nothing here yet.'}
+            </li>
           )}
           {picker.map((film) => (
             <li className="picker-row" key={film.id}>

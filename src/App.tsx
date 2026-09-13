@@ -678,7 +678,6 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
         films={editorFilms}
         userId={userId}
         partnerId={partner?.id ?? null}
-        partnerName={partner?.displayName ?? null}
         onAddFilmId={async (filmId) => {
           await addFilmToWheel(editorWheel.id, filmId)
           await refreshWheelFilms(editorWheel.id)
@@ -976,7 +975,6 @@ function AuthenticatedApp() {
           <SharedListScreen
             userId={userId}
             partnerId={partnerId}
-            partnerName={partnerName}
             onSpinList={() => {
               setWheelSource('shared')
               setScreen('wheel')

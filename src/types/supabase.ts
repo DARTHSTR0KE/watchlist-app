@@ -378,7 +378,18 @@ export interface Database {
       }
     }
     Views: Record<never, never>
-    Functions: Record<never, never>
+    Functions: {
+      /**
+       * Security definer, one film at a time. It answers a single yes/no
+       * about a film already chosen — it is not a way to read, browse or
+       * enumerate the other person's history, and must never be called in
+       * a loop over a list.
+       */
+      partner_has_watched: {
+        Args: { p_film_id: string }
+        Returns: boolean
+      }
+    }
     Enums: Record<never, never>
     CompositeTypes: Record<never, never>
   }

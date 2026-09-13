@@ -171,8 +171,9 @@ export async function loadWatchlistPicker(userId: string): Promise<PickerFilm[]>
   return toPicker(data ?? [])
 }
 
-// Used for both this user's history and their partner's, which RLS allows
-// any signed-in user to read.
+// This user's own history in full. Passed a partner id it returns only
+// what the two of them watched together — the policy on watched keeps
+// anything either watched alone private to that person.
 export async function loadWatchedPicker(userId: string): Promise<PickerFilm[]> {
   const { data, error } = await supabase
     .from('watched')
