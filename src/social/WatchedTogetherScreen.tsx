@@ -5,30 +5,29 @@ import type { WatchedSplit } from './pendingWatches'
 
 interface WatchedScreenProps {
   userId: string
-  partnerId: string | null
   partnerName: string | null
 }
 
-export function WatchedTogetherScreen({ userId, partnerId, partnerName }: WatchedScreenProps) {
+export function WatchedTogetherScreen({ userId, partnerName }: WatchedScreenProps) {
   const [split, setSplit] = useState<WatchedSplit | null>(null)
   const [aloneOpen, setAloneOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
-    void loadWatchedSplit(userId, partnerId)
-      .catch(() => ({ together: [], alone: [] }) as WatchedSplit)
+    void loadWatchedSplit(userId)
+      .catch(() => ({ together: [], alone: [], aloneTotal: 0 }) as WatchedSplit)
       .then((rows) => {
         if (!cancelled) setSplit(rows)
       })
     return () => {
       cancelled = true
     }
-  }, [userId, partnerId])
+  }, [userId])
 
   if (split === null) return null
 
   const them = partnerName ?? 'them'
-  const total = split.together.length + split.alone.length
+  const total = split.together.length + split.aloneTotal
 
   return (
     <Screen>
@@ -66,7 +65,7 @@ export function WatchedTogetherScreen({ userId, partnerId, partnerName }: Watche
             aria-expanded={aloneOpen}
             onClick={() => setAloneOpen((open) => !open)}
           >
-            <span className="section-label tone-amber">On your own · {split.alone.length}</span>
+            <span className="section-label tone-amber">On your own · {split.aloneTotal}</span>
             <span className="disclosure-mark" aria-hidden="true">
               {aloneOpen ? '−' : '+'}
             </span>
@@ -75,11 +74,17 @@ export function WatchedTogetherScreen({ userId, partnerId, partnerName }: Watche
             (split.alone.length === 0 ? (
               <Empty>Nothing here — everything you have watched was together.</Empty>
             ) : (
-              <PosterGrid>
-                {split.alone.map((film) => (
-                  <PosterCell key={film.filmId} posterPath={film.posterPath} title={film.title} />
-                ))}
-              </PosterGrid>
+              <>
+                <PosterGrid>
+                  {split.alone.map((film) => (
+                    <PosterCell key={film.filmId} posterPath={film.posterPath} title={film.title} />
+                  ))}
+                </PosterGrid>
+                {/* Said out loud rather than quietly showing a shorter list. */}
+                {split.alone.length < split.aloneTotal && (
+                  <Empty>Showing the most recent {split.alone.length}.</Empty>
+                )}
+              </>
             ))}
         </>
       )}

@@ -151,6 +151,28 @@ export async function loadStatsRaw(userId: string, partnerId: string | null): Pr
   }
 }
 
+/**
+ * Everything I have watched, resolved per film rather than per row. My own
+ * rows, plus any film either of us marked as watched together — a film we
+ * sat through together is one I have seen whether or not I ever logged a
+ * row of my own for it.
+ *
+ * Counting raw.mine instead is how the same four together films read as
+ * four for one of us and one for the other: each of us was counting only
+ * the rows we happened to own.
+ */
+function resolvedWatched(raw: StatsRaw): WatchedRecord[] {
+  const byFilm = new Map<string, WatchedRecord>()
+  // Mine first: where both of us have a row, my own answer is the one that
+  // carries my rating and my account of who picked it.
+  for (const record of raw.mine) byFilm.set(record.filmId, record)
+  for (const record of raw.theirs) {
+    if (!raw.togetherFilmIds.has(record.filmId)) continue
+    if (!byFilm.has(record.filmId)) byFilm.set(record.filmId, record)
+  }
+  return [...byFilm.values()]
+}
+
 /* ------------------------------------------------------------------ */
 /* Viewing                                                             */
 /* ------------------------------------------------------------------ */
@@ -204,7 +226,9 @@ export function computeViewing(raw: StatsRaw, languageName: (code: string) => st
   let togetherCount = 0
   let aloneCount = 0
 
-  for (const record of raw.mine) {
+  const watched = resolvedWatched(raw)
+
+  for (const record of watched) {
     const film = raw.films.get(record.filmId)
     // The shared fact decides, not my own row's answer: if either of us
     // said together, it was together.
@@ -251,7 +275,9 @@ export function computeViewing(raw: StatsRaw, languageName: (code: string) => st
     ratedCount: myRatings.length,
     togetherCount,
     aloneCount,
-    unansweredCount: raw.mine.length - togetherCount - aloneCount,
+    // What is left once both answers are accounted for. The three add up
+    // to the same total the Watched screen shows.
+    unansweredCount: watched.length - togetherCount - aloneCount,
   }
 }
 
@@ -516,7 +542,9 @@ function monthsBetween(from: string, to: number): number {
 }
 
 export function computeWatchlist(raw: StatsRaw, now = Date.now()): WatchlistStats {
-  const watchedIds = new Set(raw.mine.map((r) => r.filmId))
+  // Together counts as seen: a film we watched together is off the backlog
+  // even when the row recording it is theirs.
+  const watchedIds = new Set(resolvedWatched(raw).map((r) => r.filmId))
   const cutoff = now - RATE_WINDOW_MONTHS * MS_PER_MONTH
 
   const addedRecently = raw.watchlist.filter(

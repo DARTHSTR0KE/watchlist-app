@@ -4,11 +4,14 @@ import { ensureAudioContext, playTick, useMuted } from '../wheel/tickSound'
 import { NoRowsAffected, saveDisplayName } from '../onboarding/onboardingState'
 import { BirthdayVideo } from '../birthday/BirthdayVideo'
 import { Empty, Row, Rows, Screen, ScreenHead, SectionLabel } from '../ui/Screen'
+import { ClearAllData } from './ClearAllData'
 import { loadWatchlistSummary } from '../import/watchlistWrites'
 import type { WatchlistSummary } from '../import/watchlistWrites'
 
 interface SettingsScreenProps {
   userId: string
+  partnerId: string | null
+  partnerName: string | null
   displayName: string | null
   // 'unreadable' is a real condition worth naming: it means the profile
   // row is missing or unreadable, which an empty field would disguise as
@@ -19,15 +22,20 @@ interface SettingsScreenProps {
   onDisplayNameChange: (name: string) => void
   onReplayWalkthrough: () => void
   onGoToImport: () => void
+  // Everything the shell is holding describes data that no longer exists.
+  onDataCleared: () => void
 }
 
 export function SettingsScreen({
   userId,
+  partnerId,
+  partnerName,
   displayName,
   profileStatus,
   onDisplayNameChange,
   onReplayWalkthrough,
   onGoToImport,
+  onDataCleared,
 }: SettingsScreenProps) {
   const { signOut } = useAuth()
   const [muted, toggleMuted] = useMuted()
@@ -178,6 +186,14 @@ export function SettingsScreen({
           Sign out
         </button>
       </section>
+
+      {/* Last on the screen, and the only thing here that can't be undone. */}
+      <ClearAllData
+        userId={userId}
+        partnerId={partnerId}
+        partnerName={partnerName}
+        onCleared={onDataCleared}
+      />
 
       {/* Replaying from here never records the day as spent, so it can't
           stop the real one firing. */}

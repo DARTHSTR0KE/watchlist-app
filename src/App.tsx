@@ -1028,11 +1028,7 @@ function AuthenticatedApp() {
           </Suspense>
         )}
         {screen === 'watched-together' && (
-          <WatchedTogetherScreen
-            userId={userId}
-            partnerId={partnerId}
-            partnerName={partnerName}
-          />
+          <WatchedTogetherScreen userId={userId} partnerName={partnerName} />
         )}
         {screen === 'together' &&
           (editingSharedList ? (
@@ -1065,11 +1061,25 @@ function AuthenticatedApp() {
         {screen === 'settings' && (
           <SettingsScreen
             userId={userId}
+            partnerId={partnerId}
+            partnerName={partnerName}
             displayName={myName}
             profileStatus={profileStatus}
             onDisplayNameChange={setMyName}
             onReplayWalkthrough={() => setNeedsOnboarding(true)}
             onGoToImport={() => setScreen('import')}
+            onDataCleared={() => {
+              // Nothing the shell is holding survived the wipe: the queue
+              // is empty, the shared list is empty, and an account with no
+              // watchlist belongs on the import screen again.
+              setPendingWatches([])
+              setSharedCount(0)
+              setUnseenRecommendations(0)
+              setWheelSource(null)
+              setWheelTogetherMode(null)
+              setNeedsOnboarding(true)
+              setScreen('import')
+            }}
           />
         )}
         {screen === 'recommended' && (

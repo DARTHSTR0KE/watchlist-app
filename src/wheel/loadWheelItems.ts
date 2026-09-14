@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient'
+import { loadTogetherFilmIds } from '../social/pendingWatches'
 import type { TopCastMember } from '../lib/tmdbClient'
 import type { WheelItem } from './titles'
 
@@ -48,11 +49,21 @@ export async function loadWheelItems(userId: string): Promise<WheelItem[]> {
     })
 }
 
-// Which of this user's films are already watched, for the exclude toggle.
+/**
+ * Which films are already watched, for the exclude toggle. My own rows,
+ * plus anything either of us marked as watched together — a film we sat
+ * through together should not come back round on my wheel just because
+ * they were the one who answered the prompt.
+ */
 export async function loadWatchedFilmIds(userId: string): Promise<Set<string>> {
-  const { data, error } = await supabase.from('watched').select('film_id').eq('user_id', userId)
-  if (error) throw error
-  return new Set((data ?? []).map((row) => row.film_id))
+  const [own, together] = await Promise.all([
+    supabase.from('watched').select('film_id').eq('user_id', userId),
+    loadTogetherFilmIds(),
+  ])
+  if (own.error) throw own.error
+  const ids = new Set(together)
+  for (const row of own.data ?? []) ids.add(row.film_id)
+  return ids
 }
 
 // The same film columns the wheel needs, shared by every source.

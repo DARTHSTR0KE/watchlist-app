@@ -113,9 +113,7 @@ export const WATCHED_LIMIT = 300
  * Watched together is one fact about a film, not two opinions about it.
  * The policy lets either of us read any row where together is true, so a
  * single query with no user filter returns every such row from both
- * people — we both run it and both get the same answer. Merging two
- * per-person results would leave each side counting mostly its own, which
- * is how the same films came to read 3 for one of us and 1 for the other.
+ * people — we both run it and both get the same answer.
  *
  * If we disagree, together wins: one of us remembers sitting there.
  */
@@ -127,11 +125,45 @@ export async function loadTogetherFilmIds(): Promise<Set<string>> {
 
 interface WatchedRow {
   film_id: string
+  user_id?: string
   watched_on: string | null
   together: boolean | null
   films: { title: string; year: number | null; poster_path: string | null } | null
 }
 
+/**
+ * The together half, as films rather than ids. Deliberately its own query:
+ * picking these out of the per-person reads meant a film only appeared if
+ * somebody's row for it happened to fall inside their newest WATCHED_LIMIT,
+ * so whoever had the longer history lost their own together films from the
+ * list. Four rows read as four for one of us and one for the other.
+ *
+ * No user filter, so there is no "my side" and "their side" to get wrong,
+ * and the same LIMIT applies to the same rows for both of us.
+ */
+async function fetchTogetherWatched(): Promise<WatchedRow[]> {
+  const { data, error } = await supabase
+    .from('watched')
+    .select('film_id, user_id, watched_on, together, films(title, year, poster_path)')
+    .eq('together', true)
+    .order('watched_on', { ascending: false, nullsFirst: false })
+    .limit(WATCHED_LIMIT)
+  if (error) throw error
+  return ((data ?? []) as unknown as WatchedRow[]).filter((row) => row.films !== null)
+}
+
+// Null rather than a guess when the count can't be read: a wrong total is
+// worse than falling back to the length of the list.
+async function countWatched(userId: string): Promise<number | null> {
+  const { count, error } = await supabase
+    .from('watched')
+    .select('film_id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+  if (error) return null
+  return count
+}
+
+// My own history, newest first. Only ever used for the alone half now.
 async function fetchWatched(userId: string): Promise<WatchedRow[]> {
   const { data, error } = await supabase
     .from('watched')
@@ -147,8 +179,13 @@ export interface WatchedSplit {
   // The shared fact, identical for both of us.
   together: WatchedFilm[]
   // Only ever my own rows: a film watched alone is private to whoever
-  // watched it, so this can never contain theirs.
+  // watched it, so this can never contain theirs. Capped at WATCHED_LIMIT
+  // — the screen shows the recent end of a long history.
   alone: WatchedFilm[]
+  // How many there really are. The count shown has to be a fact about the
+  // history and not a fact about the cap, or a 305-film history reads as
+  // exactly 300 and looks like a coincidence nobody can explain.
+  aloneTotal: number
 }
 
 function toFilm(row: WatchedRow, together: boolean): WatchedFilm {
@@ -162,37 +199,51 @@ function toFilm(row: WatchedRow, together: boolean): WatchedFilm {
   }
 }
 
+const newestFirst = (a: WatchedFilm, b: WatchedFilm) =>
+  (b.watchedOn ?? '').localeCompare(a.watchedOn ?? '')
+
 /**
- * Everything visible to me, split by the shared fact. Rows come from two
- * reads: my own history, and every together row from either of us — the
- * second is what makes the together half the same for both people.
+ * A film is in the together half when ANY row for it says together, whoever
+ * owns that row — which is a question about the film, not about whose list
+ * it came from. There is no partner id here on purpose: the moment this
+ * reasons about "my rows" and "their rows" as two sets to merge, the two of
+ * us start seeing different answers.
+ *
+ * Deduplicated by film_id throughout, and the two halves are disjoint, so
+ * alone is exactly my own films minus the resolved together set.
  */
-export async function loadWatchedSplit(
-  userId: string,
-  partnerId: string | null,
-): Promise<WatchedSplit> {
-  const [mine, theirs, togetherIds] = await Promise.all([
+export async function loadWatchedSplit(userId: string): Promise<WatchedSplit> {
+  const [togetherRows, mine, mineCount] = await Promise.all([
+    fetchTogetherWatched(),
     fetchWatched(userId),
-    partnerId ? fetchWatched(partnerId) : Promise.resolve([] as WatchedRow[]),
-    loadTogetherFilmIds(),
+    countWatched(userId),
   ])
 
-  const byFilm = new Map<string, WatchedFilm>()
-  for (const row of [...mine, ...theirs]) {
-    const shared = togetherIds.has(row.film_id)
-    const existing = byFilm.get(row.film_id)
-    if (existing) {
-      if ((row.watched_on ?? '') > (existing.watchedOn ?? '')) existing.watchedOn = row.watched_on
+  const together = new Map<string, WatchedFilm>()
+  for (const row of togetherRows) {
+    const existing = together.get(row.film_id)
+    if (!existing) {
+      together.set(row.film_id, toFilm(row, true))
       continue
     }
-    byFilm.set(row.film_id, toFilm(row, shared))
+    // Two rows for one film: the later sitting is the one to show.
+    if ((row.watched_on ?? '') > (existing.watchedOn ?? '')) existing.watchedOn = row.watched_on
   }
 
-  const newestFirst = (a: WatchedFilm, b: WatchedFilm) =>
-    (b.watchedOn ?? '').localeCompare(a.watchedOn ?? '')
-  const all = [...byFilm.values()]
+  const alone = new Map<string, WatchedFilm>()
+  for (const row of mine) {
+    if (together.has(row.film_id) || alone.has(row.film_id)) continue
+    alone.set(row.film_id, toFilm(row, false))
+  }
+
+  // Everything of mine that isn't in the together set, counted rather than
+  // listed, so the cap on the grid never becomes the number on the screen.
+  const myTogetherRows = togetherRows.filter((row) => row.user_id === userId).length
+  const aloneTotal = mineCount === null ? alone.size : Math.max(alone.size, mineCount - myTogetherRows)
+
   return {
-    together: all.filter((film) => film.together).sort(newestFirst),
-    alone: all.filter((film) => !film.together).sort(newestFirst),
+    together: [...together.values()].sort(newestFirst),
+    alone: [...alone.values()].sort(newestFirst),
+    aloneTotal,
   }
 }

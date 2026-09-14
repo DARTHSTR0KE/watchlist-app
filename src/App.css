@@ -548,6 +548,7 @@
 
 .filter-save-row {
   display: flex;
+  align-items: stretch;
   gap: 0.5rem;
 }
 
@@ -566,7 +567,7 @@
   font-weight: 600;
   padding: 0.5rem 1rem;
   border-radius: 10px;
-  border: none;
+  border: 1px solid transparent;
   background-color: var(--amber);
   color: var(--ink);
   cursor: pointer;
@@ -1949,7 +1950,7 @@
 /* Stats ---------------------------------------------------------------- */
 
 .stat-section {
-  margin-bottom: 2.25rem;
+  margin-bottom: 0;
 }
 
 .stat-section-title {
@@ -2796,16 +2797,39 @@
   color: var(--dimension);
 }
 
+/* A label belongs to what comes after it, so it sits about three times
+   further from the section above than from its own first element. */
 .section-label {
-  margin: 1.75rem 0 0.6rem;
+  margin: 2.25rem 0 0.75rem;
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
-.section-label:first-child {
+/* Only the first label on a screen loses its lead-in. This was a bare
+   :first-child, which matched every label — each section wraps its own —
+   and so zeroed the gap above all of them, leaving every label closer to
+   the section above than to the content it introduces. */
+.screen > .section-label:first-child,
+.screen-head + .section-label,
+.screen-head + section > .section-label:first-child {
   margin-top: 0;
+}
+
+/* The first thing under a label brings no margin of its own: the label
+   has already set that distance. */
+.section-label + * {
+  margin-top: 0;
+}
+
+/* Label to first element, and element to element, are the same gap. */
+.screen-empty + .filter-save-row,
+.btn-primary + .btn-primary,
+.btn-primary + .btn-field,
+.btn-field + .btn-field,
+.btn-field + .btn-primary {
+  margin-top: 0.75rem;
 }
 
 /* A heading that happens to open. It reads as the section label it sits
@@ -2817,8 +2841,8 @@
   justify-content: space-between;
   gap: 0.75rem;
   width: 100%;
-  margin: 1.75rem 0 0.6rem;
-  padding: 0.6rem 0 0;
+  margin: 2.25rem 0 0.75rem;
+  padding: 0.75rem 0 0;
   border: 0;
   border-top: 1px solid rgba(245, 245, 245, 0.1);
   background: none;
@@ -3025,6 +3049,8 @@
 
 .screen-empty {
   margin: 0.5rem 0 0;
+  /* Overridden above when it follows a label; the gap to whatever it
+     introduces is set by the pair rule, not by the field. */
   font-size: 0.85rem;
   line-height: 1.5;
   color: var(--text-dim);
@@ -3039,7 +3065,7 @@
   display: block;
   width: 100%;
   padding: 0.85rem 1rem;
-  margin-top: 1rem;
+  margin-top: 0.75rem;
   border-radius: 14px;
   font-family: inherit;
   font-size: 0.92rem;
@@ -3063,6 +3089,29 @@
   border-color: var(--rust);
   color: var(--rust);
   background: none;
+}
+
+/* Sign out is bordered in rust because leaving again is a tap away. This
+   isn't: it takes the one red the rest of the app never uses. */
+.btn-destructive {
+  border-color: var(--danger);
+  color: var(--danger-soft);
+  background: none;
+}
+
+.clear-confirm-label {
+  display: block;
+  margin-top: 1.25rem;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+/* Spaced out, so the word is read while it is typed rather than pattern
+   matched against the button above it. */
+.clear-confirm-input {
+  width: 100%;
+  margin-top: 0.5rem;
+  letter-spacing: 0.2em;
 }
 
 .btn-primary:disabled,
