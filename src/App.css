@@ -2808,6 +2808,36 @@
   margin-top: 0;
 }
 
+/* A heading that happens to open. It reads as the section label it sits
+   in place of, so it carries no button chrome — only the mark on the
+   right says there is more behind it. */
+.disclosure {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  margin: 1.75rem 0 0.6rem;
+  padding: 0.6rem 0 0;
+  border: 0;
+  border-top: 1px solid rgba(245, 245, 245, 0.1);
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.disclosure .section-label {
+  margin: 0;
+}
+
+.disclosure-mark {
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--text-dim);
+}
+
 /* Rows ------------------------------------------------------------------ */
 
 .rows {

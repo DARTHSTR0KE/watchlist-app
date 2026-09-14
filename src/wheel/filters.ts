@@ -1,8 +1,14 @@
 import type { WheelItem } from './titles'
 
 // Which pool the wheel draws from. 'watchlist' is the films still to see;
-// 'custom' and 'shared' are hand-picked, which no filter touches.
+// 'custom' and 'shared' are hand-picked, which no filter touches. 'shared'
+// is not offered under the wheel — the Together tab builds one and hands
+// it over.
 export type WheelSource = 'watchlist' | 'custom' | 'shared'
+
+// Which of the four ways a shared wheel was built. Kept in the filters so
+// reloading the pool rebuilds the same kind of wheel.
+export type TogetherMode = 'ours' | 'theirs' | 'mine' | 'mix'
 
 export interface WheelFilters {
   source: WheelSource
@@ -17,6 +23,7 @@ export interface WheelFilters {
   // Which hand-built wheel is selected. Only meaningful when source is
   // 'custom'; null there means one still has to be chosen.
   customWheelId: string | null
+  togetherMode: TogetherMode | null
 }
 
 export const DEFAULT_FILTERS: WheelFilters = {
@@ -29,6 +36,7 @@ export const DEFAULT_FILTERS: WheelFilters = {
   decadeTo: null,
   excludeWatched: false,
   customWheelId: null,
+  togetherMode: null,
 }
 
 export const RUNTIME_STEP = 15

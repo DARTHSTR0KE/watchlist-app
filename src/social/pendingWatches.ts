@@ -109,6 +109,22 @@ export interface WatchedFilm {
 // A Letterboxd history runs to thousands; the screen shows the recent end.
 export const WATCHED_LIMIT = 300
 
+/**
+ * Watched together is one fact about a film, not two opinions about it.
+ * The policy lets either of us read any row where together is true, so a
+ * single query with no user filter returns every such row from both
+ * people — we both run it and both get the same answer. Merging two
+ * per-person results would leave each side counting mostly its own, which
+ * is how the same films came to read 3 for one of us and 1 for the other.
+ *
+ * If we disagree, together wins: one of us remembers sitting there.
+ */
+export async function loadTogetherFilmIds(): Promise<Set<string>> {
+  const { data, error } = await supabase.from('watched').select('film_id').eq('together', true)
+  if (error) throw error
+  return new Set((data ?? []).map((row) => row.film_id))
+}
+
 interface WatchedRow {
   film_id: string
   watched_on: string | null
@@ -127,35 +143,56 @@ async function fetchWatched(userId: string): Promise<WatchedRow[]> {
   return ((data ?? []) as unknown as WatchedRow[]).filter((row) => row.films !== null)
 }
 
-// Everything either of us has watched, newest first, one entry per film.
-// A film counts as together if either of us said so — null is unanswered,
-// which is not the same as no.
-export async function loadWatchedFilms(
+export interface WatchedSplit {
+  // The shared fact, identical for both of us.
+  together: WatchedFilm[]
+  // Only ever my own rows: a film watched alone is private to whoever
+  // watched it, so this can never contain theirs.
+  alone: WatchedFilm[]
+}
+
+function toFilm(row: WatchedRow, together: boolean): WatchedFilm {
+  return {
+    filmId: row.film_id,
+    title: row.films!.title,
+    year: row.films!.year,
+    posterPath: row.films!.poster_path,
+    watchedOn: row.watched_on,
+    together,
+  }
+}
+
+/**
+ * Everything visible to me, split by the shared fact. Rows come from two
+ * reads: my own history, and every together row from either of us — the
+ * second is what makes the together half the same for both people.
+ */
+export async function loadWatchedSplit(
   userId: string,
   partnerId: string | null,
-): Promise<WatchedFilm[]> {
-  const [mine, theirs] = await Promise.all([
+): Promise<WatchedSplit> {
+  const [mine, theirs, togetherIds] = await Promise.all([
     fetchWatched(userId),
     partnerId ? fetchWatched(partnerId) : Promise.resolve([] as WatchedRow[]),
+    loadTogetherFilmIds(),
   ])
 
   const byFilm = new Map<string, WatchedFilm>()
   for (const row of [...mine, ...theirs]) {
+    const shared = togetherIds.has(row.film_id)
     const existing = byFilm.get(row.film_id)
     if (existing) {
       if ((row.watched_on ?? '') > (existing.watchedOn ?? '')) existing.watchedOn = row.watched_on
-      existing.together = existing.together || row.together === true
       continue
     }
-    byFilm.set(row.film_id, {
-      filmId: row.film_id,
-      title: row.films!.title,
-      year: row.films!.year,
-      posterPath: row.films!.poster_path,
-      watchedOn: row.watched_on,
-      together: row.together === true,
-    })
+    byFilm.set(row.film_id, toFilm(row, shared))
   }
 
-  return [...byFilm.values()].sort((a, b) => (b.watchedOn ?? '').localeCompare(a.watchedOn ?? ''))
+  const newestFirst = (a: WatchedFilm, b: WatchedFilm) =>
+    (b.watchedOn ?? '').localeCompare(a.watchedOn ?? '')
+  const all = [...byFilm.values()]
+  return {
+    together: all.filter((film) => film.together).sort(newestFirst),
+    alone: all.filter((film) => !film.together).sort(newestFirst),
+  }
 }

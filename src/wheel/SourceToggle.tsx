@@ -1,7 +1,9 @@
 import { SOURCE_LABELS } from './filters'
 import type { WheelSource } from './filters'
 
-const SOURCES: WheelSource[] = ['watchlist', 'shared', 'custom']
+// Together is no longer a source you switch to — it is a way in from the
+// nav, which builds a wheel and hands it over already spinning-ready.
+const SOURCES: WheelSource[] = ['watchlist', 'custom']
 
 interface SourceToggleProps {
   source: WheelSource

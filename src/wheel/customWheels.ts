@@ -174,6 +174,18 @@ export async function loadWatchlistPicker(userId: string): Promise<PickerFilm[]>
 // This user's own history in full. Passed a partner id it returns only
 // what the two of them watched together — the policy on watched keeps
 // anything either watched alone private to that person.
+// Every film either of us marked as watched together — the same set both
+// of us see, rather than one person's half of it.
+export async function loadTogetherPicker(): Promise<PickerFilm[]> {
+  const { data, error } = await supabase
+    .from('watched')
+    .select('film_id, films(title, year, poster_path)')
+    .eq('together', true)
+  if (error) throw error
+  const seen = new Set<string>()
+  return toPicker((data ?? []).filter((row) => (seen.has(row.film_id) ? false : seen.add(row.film_id))))
+}
+
 export async function loadWatchedPicker(userId: string): Promise<PickerFilm[]> {
   const { data, error } = await supabase
     .from('watched')

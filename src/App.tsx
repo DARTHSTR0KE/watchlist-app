@@ -58,6 +58,10 @@ import { Onboarding } from './onboarding/Onboarding'
 import { loadMyProfile, markOnboarded } from './onboarding/onboardingState'
 import { countUnseenRecommendations } from './social/recommendations'
 import { SharedListScreen } from './social/SharedListScreen'
+import { TogetherChooser } from './social/TogetherChooser'
+import { buildTogetherWheel } from './social/togetherWheels'
+import { loadSharedList } from './social/sharedList'
+import type { TogetherMode } from './wheel/filters'
 // Split out on its own: recharts is large, and it is only needed here.
 const StatsScreen = lazy(() =>
   import('./stats/StatsScreen').then((m) => ({ default: m.StatsScreen })),
@@ -127,7 +131,13 @@ function usePrefersReducedMotion(): boolean {
   return reduced
 }
 
-function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
+function WheelScreen({
+  startSource,
+  startTogetherMode,
+}: {
+  startSource: WheelSource | null
+  startTogetherMode: TogetherMode | null
+}) {
   const { session } = useAuth()
   const userId = session?.user.id ?? ''
 
@@ -151,17 +161,23 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
   const [filters, setFilters] = useState<WheelFilters>(() => ({
     ...DEFAULT_FILTERS,
     source: startSource ?? DEFAULT_FILTERS.source,
+    togetherMode: startTogetherMode,
   }))
   // Both forms are needed: the id drives the toggle's disabled state, the
   // ref lets the pool loader read it without reloading when it resolves.
   const [partner, setPartner] = useState<Partner | null>(null)
   const partnerRef = useRef<Partner | null>(null)
+  // "Nobody linked" and "not looked yet" need different answers: a wheel
+  // drawn from their watchlist must wait for the second, not act on it.
+  const [partnerLoaded, setPartnerLoaded] = useState(false)
   const [customWheels, setCustomWheels] = useState<CustomWheel[]>([])
   const [editorWheel, setEditorWheel] = useState<CustomWheel | null>(null)
   const [editorFilms, setEditorFilms] = useState<WheelItem[]>([])
   // A source switch keeps the old wheel on screen rather than blanking the
   // app, so it needs its own flag to hold the spin until the pool lands.
   const [switchingSource, setSwitchingSource] = useState(false)
+  // Set when Mix could not take an even half from each side.
+  const [togetherNote, setTogetherNote] = useState<string | null>(null)
   // Vetoed titles leave the wheel for the session, and each person spends
   // one veto per session. Both reset when the source changes, since that
   // starts a new sitting.
@@ -190,6 +206,7 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
       setPresets(savedPresets)
       partnerRef.current = loadedPartner
       setPartner(loadedPartner)
+      setPartnerLoaded(true)
       setHasWatchedEver(watchedBefore)
 
       // Needs the partner first, to pick up any wheel they've shared.
@@ -221,14 +238,35 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
   // than filtering what's already in hand.
   const source = filters.source
   const customWheelId = filters.customWheelId
+  const togetherMode = filters.togetherMode
+  const needsPartner = source === 'shared' && togetherMode !== null && togetherMode !== 'ours'
   useEffect(() => {
+    // The partner arrives on its own schedule. Loading before it lands
+    // would quietly draw the shared list instead of their watchlist, so
+    // hold — the effect runs again the moment it resolves.
+    if (needsPartner && !partnerLoaded) return
     let cancelled = false
+    // Carried out of load() so it lands with the pool it describes, rather
+    // than a render ahead of it.
+    let note: string | null = null
 
     const load = (): Promise<WheelItem[]> => {
       if (source === 'custom') {
         return customWheelId ? loadCustomWheelItems(customWheelId) : Promise.resolve([])
       }
-      if (source === 'shared') return loadSharedListItems()
+      if (source === 'shared') {
+        const linked = partnerRef.current
+        if (!togetherMode || togetherMode === 'ours' || !linked) return loadSharedListItems()
+        return buildTogetherWheel(
+          togetherMode,
+          userId,
+          linked.id,
+          linked.displayName ?? 'them',
+        ).then((built) => {
+          note = built.note
+          return built.items
+        })
+      }
       return loadWheelItems(userId)
     }
 
@@ -257,12 +295,13 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
         setVetoesSpent(new Set())
         setLoadingItems(false)
         setSwitchingSource(false)
+        setTogetherNote(note)
       })
 
     return () => {
       cancelled = true
     }
-  }, [userId, source, customWheelId])
+  }, [userId, source, customWheelId, togetherMode, needsPartner, partnerLoaded])
 
   // Only the drawn titles are preloaded now — the pool behind them can run
   // to hundreds, and gating the spin on all of those would be a long wait.
@@ -807,6 +846,7 @@ function WheelScreen({ startSource }: { startSource: WheelSource | null }) {
             spinDisabled={spinDisabled}
           />
 
+          {togetherNote && <p className="empty-state">{togetherNote}</p>}
           {tooFewMatches ? (
             <p className="empty-state">{emptyReason()}</p>
           ) : (
@@ -893,6 +933,11 @@ function AuthenticatedApp() {
   // Set only by "Spin this list"; cleared by any ordinary navigation, so
   // the wheel doesn't keep reopening on the shared list afterwards.
   const [wheelSource, setWheelSource] = useState<WheelSource | null>(null)
+  const [wheelTogetherMode, setWheelTogetherMode] = useState<TogetherMode | null>(null)
+  const [sharedCount, setSharedCount] = useState<number | null>(null)
+  // The shared list is edited from the chooser rather than being it, so
+  // it needs its own way in.
+  const [editingSharedList, setEditingSharedList] = useState(false)
   // Watches recorded but not yet asked about. Dismissing hides the prompt
   // for this session only; the rows stay unanswered and come back next
   // time the app opens.
@@ -931,6 +976,20 @@ function AuthenticatedApp() {
     }
   }, [userId])
 
+  // Counted again on the way back from the editor, so the chooser doesn't
+  // keep quoting a number from before you added to it.
+  useEffect(() => {
+    let cancelled = false
+    void loadSharedList()
+      .catch(() => [])
+      .then((rows) => {
+        if (!cancelled) setSharedCount(rows.length)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [editingSharedList])
+
   const handleWatchAnswer = (watch: PendingWatch, answer: WatchAnswer) => {
     // Off the queue straight away: a failed write leaves the row
     // unanswered, so it simply comes back next time rather than stalling
@@ -955,10 +1014,14 @@ function AuthenticatedApp() {
           unseenRecommendations={unseenRecommendations}
           onNavigate={(next) => {
             setWheelSource(null)
+            setWheelTogetherMode(null)
+            setEditingSharedList(false)
             setScreen(next)
           }}
         />
-        {screen === 'wheel' && <WheelScreen startSource={wheelSource} />}
+        {screen === 'wheel' && (
+          <WheelScreen startSource={wheelSource} startTogetherMode={wheelTogetherMode} />
+        )}
         {screen === 'stats' && (
           <Suspense fallback={null}>
             <StatsScreen userId={userId} partnerId={partnerId} partnerName={partnerName} />
@@ -971,16 +1034,33 @@ function AuthenticatedApp() {
             partnerName={partnerName}
           />
         )}
-        {screen === 'together' && (
-          <SharedListScreen
-            userId={userId}
-            partnerId={partnerId}
-            onSpinList={() => {
-              setWheelSource('shared')
-              setScreen('wheel')
-            }}
-          />
-        )}
+        {screen === 'together' &&
+          (editingSharedList ? (
+            <SharedListScreen
+              userId={userId}
+              partnerId={partnerId}
+              onSpinList={() => {
+                setEditingSharedList(false)
+                setWheelSource('shared')
+                setWheelTogetherMode('ours')
+                setScreen('wheel')
+              }}
+            />
+          ) : (
+            <TogetherChooser
+              partnerId={partnerId}
+              partnerName={partnerName}
+              sharedCount={sharedCount}
+              // Picking builds the wheel and goes to it: one tap for one
+              // intention, rather than choosing a mode and then navigating.
+              onChoose={(mode) => {
+                setWheelSource('shared')
+                setWheelTogetherMode(mode)
+                setScreen('wheel')
+              }}
+              onEditSharedList={() => setEditingSharedList(true)}
+            />
+          ))}
         {screen === 'import' && <ImportScreen onGoToWheel={() => setScreen('wheel')} />}
         {screen === 'settings' && (
           <SettingsScreen

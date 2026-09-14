@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Empty, PosterCell, PosterGrid, Screen, ScreenHead, SectionLabel } from '../ui/Screen'
-import { loadWatchedFilms } from './pendingWatches'
-import type { WatchedFilm } from './pendingWatches'
+import { loadWatchedSplit } from './pendingWatches'
+import type { WatchedSplit } from './pendingWatches'
 
 interface WatchedScreenProps {
   userId: string
@@ -10,52 +10,77 @@ interface WatchedScreenProps {
 }
 
 export function WatchedTogetherScreen({ userId, partnerId, partnerName }: WatchedScreenProps) {
-  const [films, setFilms] = useState<WatchedFilm[]>([])
-  const [loading, setLoading] = useState(true)
+  const [split, setSplit] = useState<WatchedSplit | null>(null)
+  const [aloneOpen, setAloneOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
-    void loadWatchedFilms(userId, partnerId)
-      .catch(() => [] as WatchedFilm[])
+    void loadWatchedSplit(userId, partnerId)
+      .catch(() => ({ together: [], alone: [] }) as WatchedSplit)
       .then((rows) => {
-        if (cancelled) return
-        setFilms(rows)
-        setLoading(false)
+        if (!cancelled) setSplit(rows)
       })
     return () => {
       cancelled = true
     }
   }, [userId, partnerId])
 
-  if (loading) return null
+  if (split === null) return null
 
   const them = partnerName ?? 'them'
-  const togetherCount = films.filter((film) => film.together).length
+  const total = split.together.length + split.alone.length
 
   return (
     <Screen>
-      <ScreenHead title="Watched" status={`${films.length}`} />
+      <ScreenHead title="Watched" status={`${total}`} />
 
-      {films.length === 0 ? (
+      {total === 0 ? (
         <Empty>Nothing watched yet. Films land here once one of you logs one.</Empty>
       ) : (
         <>
-          {/* One grid, marked, rather than two tabs holding the same films
-              split by a single fact about them. */}
+          {/* The shared half leads: it is the same list and the same count
+              for both of us, whoever answered the prompt. */}
           <SectionLabel tone="sage">
-            ★ {togetherCount} watched with {them}
+            Together · {split.together.length}
           </SectionLabel>
-          <PosterGrid>
-            {films.map((film) => (
-              <PosterCell
-                key={film.filmId}
-                posterPath={film.posterPath}
-                title={film.title}
-                marked={film.together}
-                markLabel={`Watched with ${them}`}
-              />
+          {split.together.length === 0 ? (
+            <Empty>Nothing you have watched together yet.</Empty>
+          ) : (
+            <PosterGrid>
+              {split.together.map((film) => (
+                <PosterCell
+                  key={film.filmId}
+                  posterPath={film.posterPath}
+                  title={film.title}
+                  marked
+                  markLabel={`Watched with ${them}`}
+                />
+              ))}
+            </PosterGrid>
+          )}
+
+          {/* Folded away: only ever my own, and the part I look at least. */}
+          <button
+            type="button"
+            className="disclosure"
+            aria-expanded={aloneOpen}
+            onClick={() => setAloneOpen((open) => !open)}
+          >
+            <span className="section-label tone-amber">On your own · {split.alone.length}</span>
+            <span className="disclosure-mark" aria-hidden="true">
+              {aloneOpen ? '−' : '+'}
+            </span>
+          </button>
+          {aloneOpen &&
+            (split.alone.length === 0 ? (
+              <Empty>Nothing here — everything you have watched was together.</Empty>
+            ) : (
+              <PosterGrid>
+                {split.alone.map((film) => (
+                  <PosterCell key={film.filmId} posterPath={film.posterPath} title={film.title} />
+                ))}
+              </PosterGrid>
             ))}
-          </PosterGrid>
         </>
       )}
     </Screen>

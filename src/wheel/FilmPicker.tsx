@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { buildPosterUrl } from './posters'
-import { loadWatchedPicker, loadWatchlistPicker } from './customWheels'
+import { loadTogetherPicker, loadWatchedPicker, loadWatchlistPicker } from './customWheels'
 import type { PickerFilm } from './customWheels'
 import {
   loadFilmography,
@@ -112,9 +112,8 @@ export function FilmPicker({
     const load = (): Promise<PickerFilm[]> => {
       if (addSource === 'watchlist') return loadWatchlistPicker(userId)
       if (addSource === 'watched') return loadWatchedPicker(userId)
-      // Returns only what we watched together — the policy filters the
-      // rest out server-side rather than this asking for less.
-      return partnerId ? loadWatchedPicker(partnerId) : Promise.resolve([])
+      // The shared set, from both our rows, not just theirs.
+      return partnerId ? loadTogetherPicker() : Promise.resolve([])
     }
 
     void load()

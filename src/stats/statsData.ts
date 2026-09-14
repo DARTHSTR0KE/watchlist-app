@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabaseClient'
 import type { WheelFilters } from '../wheel/filters'
+import { loadTogetherFilmIds } from '../social/pendingWatches'
 
 /**
  * Everything the stats page needs, fetched raw and reduced in the app.
@@ -26,6 +27,9 @@ export interface FilmFacts {
 }
 
 export interface StatsRaw {
+  // Every film either of us marked as watched together. One shared fact,
+  // read with no user filter, so both of us see the same number.
+  togetherFilmIds: Set<string>
   mine: WatchedRecord[]
   theirs: WatchedRecord[]
   films: Map<string, FilmFacts>
@@ -95,9 +99,11 @@ function toRecord(row: WatchedJoinRow): WatchedRecord {
 }
 
 export async function loadStatsRaw(userId: string, partnerId: string | null): Promise<StatsRaw> {
-  const [mineRows, theirRows, watchlist, spins, recommendations, presets] = await Promise.all([
+  const [mineRows, theirRows, togetherFilmIds, watchlist, spins, recommendations, presets] =
+    await Promise.all([
     fetchWatched(userId),
     partnerId ? fetchWatched(partnerId) : Promise.resolve([] as WatchedJoinRow[]),
+    loadTogetherFilmIds().catch(() => new Set<string>()),
     supabase
       .from('watchlist_items')
       .select('film_id, added_at, films(title, year, runtime, genres, original_language, media_type)')
@@ -116,6 +122,7 @@ export async function loadStatsRaw(userId: string, partnerId: string | null): Pr
   collectFilms((watchlist.data ?? []) as unknown as WatchedJoinRow[], films)
 
   return {
+    togetherFilmIds,
     mine: mineRows.map(toRecord),
     theirs: theirRows.map(toRecord),
     films,
@@ -199,7 +206,9 @@ export function computeViewing(raw: StatsRaw, languageName: (code: string) => st
 
   for (const record of raw.mine) {
     const film = raw.films.get(record.filmId)
-    if (record.together === true) togetherCount += 1
+    // The shared fact decides, not my own row's answer: if either of us
+    // said together, it was together.
+    if (raw.togetherFilmIds.has(record.filmId)) togetherCount += 1
     else if (record.together === false) aloneCount += 1
     if (!film) continue
 
