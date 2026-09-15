@@ -42,7 +42,6 @@ export function TogetherChooser({
           : `${sharedCount} film${sharedCount === 1 ? '' : 's'} you have both added`,
     },
     { mode: 'theirs', name: `From ${them}'s watchlist`, meta: 'Something they are waiting on' },
-    { mode: 'mine', name: 'From my watchlist', meta: 'Something you are waiting on' },
     { mode: 'mix', name: 'Mix', meta: 'Half each, drawn from both watchlists' },
   ]
 

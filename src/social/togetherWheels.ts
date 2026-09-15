@@ -42,9 +42,6 @@ export async function buildTogetherWheel(
   if (mode === 'ours') {
     return { items: await loadSharedListItems(), note: null }
   }
-  if (mode === 'mine') {
-    return { items: weightedSample(await loadWatchlistOf(userId), WHEEL_DRAW_SIZE), note: null }
-  }
   if (mode === 'theirs') {
     return { items: weightedSample(await loadWatchlistOf(partnerId), WHEEL_DRAW_SIZE), note: null }
   }

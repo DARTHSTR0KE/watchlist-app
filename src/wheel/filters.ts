@@ -8,7 +8,7 @@ export type WheelSource = 'watchlist' | 'custom' | 'shared'
 
 // Which of the four ways a shared wheel was built. Kept in the filters so
 // reloading the pool rebuilds the same kind of wheel.
-export type TogetherMode = 'ours' | 'theirs' | 'mine' | 'mix'
+export type TogetherMode = 'ours' | 'theirs' | 'mix'
 
 export interface WheelFilters {
   source: WheelSource
