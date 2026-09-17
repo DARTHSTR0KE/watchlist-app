@@ -48,11 +48,13 @@ export interface Database {
           providers: Json | null
           providers_at: string | null
           enriched_at: string | null
+          letterboxd_uri: string | null
         }
         Insert: {
           id: string
           media_type: 'movie' | 'tv'
           title: string
+          letterboxd_uri?: string | null
           year?: number | null
           runtime?: number | null
           overview?: string | null
@@ -71,6 +73,7 @@ export interface Database {
           id?: string
           media_type?: 'movie' | 'tv'
           title?: string
+          letterboxd_uri?: string | null
           year?: number | null
           runtime?: number | null
           overview?: string | null

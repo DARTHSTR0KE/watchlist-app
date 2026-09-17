@@ -20,7 +20,7 @@ export function SignInScreen() {
 
   return (
     <div className="signin-screen">
-      <h1 className="signin-title">Spin the Watchlist</h1>
+      <h1 className="signin-title">Chhobidam</h1>
       <form className="signin-form" onSubmit={handleSubmit}>
         <label className="signin-label" htmlFor="signin-email">
           Email

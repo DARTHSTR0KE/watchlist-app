@@ -9,8 +9,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Spin the Watchlist',
-        short_name: 'Spin',
+        name: 'Chhobidam',
+        short_name: 'Chhobidam',
         display: 'standalone',
         orientation: 'portrait',
         theme_color: '#101014',

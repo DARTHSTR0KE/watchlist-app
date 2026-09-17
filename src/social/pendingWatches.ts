@@ -19,6 +19,9 @@ export interface PendingWatch {
   // The added_at the film had on the watchlist before it was watched, kept
   // so "didn't watch it" can put it back with the age it really had.
   prevAddedAt: string | null
+  // Read from films, not from the watchlist row — that row is already gone
+  // by the time this question is asked.
+  letterboxdUri: string | null
 }
 
 interface PendingRow {
@@ -30,6 +33,7 @@ interface PendingRow {
     year: number | null
     poster_path: string | null
     backdrop_path: string | null
+    letterboxd_uri: string | null
   } | null
 }
 
@@ -37,7 +41,9 @@ interface PendingRow {
 export async function loadPendingWatches(userId: string): Promise<PendingWatch[]> {
   const { data, error } = await supabase
     .from('watched')
-    .select('film_id, watched_on, prev_added_at, films(title, year, poster_path, backdrop_path)')
+    .select(
+      'film_id, watched_on, prev_added_at, films(title, year, poster_path, backdrop_path, letterboxd_uri)',
+    )
     .eq('user_id', userId)
     .is('together', null)
     .order('watched_on', { ascending: true })
@@ -53,6 +59,7 @@ export async function loadPendingWatches(userId: string): Promise<PendingWatch[]
       backdropPath: row.films!.backdrop_path,
       watchedOn: row.watched_on,
       prevAddedAt: row.prev_added_at,
+      letterboxdUri: row.films!.letterboxd_uri,
     }))
 }
 

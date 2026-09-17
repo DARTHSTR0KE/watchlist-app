@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient'
+import { asyncPool } from '../lib/asyncPool'
 import { buildFilmId } from '../lib/tmdbClient'
 import type { NormalizedFilm, TopCastMember } from '../lib/tmdbClient'
 import { resolveCandidate } from './matching'
@@ -173,6 +174,36 @@ export async function computeWatchlistDiff(userId: string, csvFilmIds: Set<strin
   return { newFilmIds, missingItems, unchangedCount, alreadyWatchedFilmIds }
 }
 
+/**
+ * Letterboxd URIs land on films, not on watchlist_items. The URI identifies
+ * the film itself, and the watchlist row is deleted the moment "Watch this"
+ * is tapped — which is the one moment the link is wanted.
+ *
+ * Only films that don't already have one are written, so a re-import of the
+ * same export costs nothing.
+ */
+export async function saveLetterboxdUris(uriByFilmId: Map<string, string>): Promise<void> {
+  const ids = [...uriByFilmId.keys()]
+  if (ids.length === 0) return
+
+  const needing: string[] = []
+  for (let start = 0; start < ids.length; start += 200) {
+    const { data, error } = await supabase
+      .from('films')
+      .select('id')
+      .in('id', ids.slice(start, start + 200))
+      .is('letterboxd_uri', null)
+    if (error) throw error
+    for (const row of data ?? []) needing.push(row.id)
+  }
+
+  await asyncPool(5, needing, async (filmId) => {
+    const uri = uriByFilmId.get(filmId)
+    if (!uri) return
+    await supabase.from('films').update({ letterboxd_uri: uri }).eq('id', filmId)
+  })
+}
+
 export interface WatchlistCsvEntry {
   filmId: string
   addedAt: string
@@ -189,7 +220,6 @@ export async function insertNewWatchlistItems(userId: string, entries: Watchlist
     user_id: userId,
     film_id: entry.filmId,
     source: 'letterboxd',
-    letterboxd_uri: entry.letterboxdUri,
     added_at: entry.addedAt,
   }))
   const { error } = await supabase.from('watchlist_items').insert(rows)

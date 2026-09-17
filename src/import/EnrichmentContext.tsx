@@ -9,6 +9,7 @@ import {
   computeWatchlistDiff,
   insertNewWatchlistItems,
   recordImport,
+  saveLetterboxdUris,
   upsertFilm,
   upsertWatchedEntries,
 } from './watchlistWrites'
@@ -176,7 +177,12 @@ export function EnrichmentProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState)
 
   const runWatchedPhase = useCallback(
-    async (userId: string, watchedEntries: WatchedCandidate[], cache: Map<string, string>) => {
+    async (
+      userId: string,
+      watchedEntries: WatchedCandidate[],
+      cache: Map<string, string>,
+      uriByKey: Map<string, string>,
+    ) => {
       if (watchedEntries.length === 0) return
       dispatch({ type: 'watched-start', total: watchedEntries.length })
 
@@ -194,9 +200,12 @@ export function EnrichmentProvider({ children }: { children: ReactNode }) {
 
       const watchedRows: WatchedCsvEntry[] = []
       const newReviewItems: ReviewItem[] = []
+      const uriByFilmId = new Map<string, string>()
       for (const result of results) {
         if (!result) continue
         if (result.filmId !== null) {
+          const uri = uriByKey.get(makeKey(result.entry.name, result.entry.year))
+          if (uri) uriByFilmId.set(result.filmId, uri)
           watchedRows.push({ filmId: result.filmId, rating: result.entry.rating, watchedOn: result.entry.watchedOn })
         } else if (result.outcome?.status === 'unmatched') {
           newReviewItems.push({
@@ -210,6 +219,7 @@ export function EnrichmentProvider({ children }: { children: ReactNode }) {
       }
 
       await upsertWatchedEntries(userId, watchedRows)
+      await saveLetterboxdUris(uriByFilmId).catch(() => {})
       if (newReviewItems.length > 0) dispatch({ type: 'merge-review-items', items: newReviewItems })
       dispatch({ type: 'watched-done' })
     },
@@ -235,6 +245,18 @@ export function EnrichmentProvider({ children }: { children: ReactNode }) {
         letterboxdUri: row['Letterboxd URI'] || null,
       })
       const watchlistRows = parsed.watchlist.map(toRow)
+
+      /**
+       * Where the film pages come from. watchlist.csv and ratings.csv point
+       * at the film itself; diary.csv points at one diary entry, which is a
+       * different page and wrong for this. The parser never reads diary.csv,
+       * and watched.csv is left out too — these two are the named sources.
+       */
+      const uriByKey = new Map<string, string>()
+      for (const row of [...parsed.watchlist, ...parsed.ratings]) {
+        const uri = row['Letterboxd URI']
+        if (uri) uriByKey.set(makeKey(row.Name, parseYear(row.Year)), uri)
+      }
 
       // ratings.csv rows are merged in after watched.csv so a shared film's
       // rating wins over the ratingless watched.csv entry for the same key.
@@ -301,6 +323,13 @@ export function EnrichmentProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      const watchlistUris = new Map<string, string>()
+      for (const result of watchlistResults) {
+        if (!result?.filmId || !result.row.letterboxdUri) continue
+        watchlistUris.set(result.filmId, result.row.letterboxdUri)
+      }
+      await saveLetterboxdUris(watchlistUris).catch(() => {})
+
       const diff = await computeWatchlistDiff(userId, csvFilmIds)
       // Only the genuinely new-to-the-app films count toward "new" once
       // already-on-the-list titles are excluded (computeWatchlistDiff already
@@ -329,7 +358,7 @@ export function EnrichmentProvider({ children }: { children: ReactNode }) {
 
       // Kicked off now, not gated on the user confirming the watchlist diff —
       // watched-table writes are independent of that confirmation.
-      void runWatchedPhase(userId, [...watchedMap.values()], cache)
+      void runWatchedPhase(userId, [...watchedMap.values()], cache, uriByKey)
     },
     [runWatchedPhase],
   )

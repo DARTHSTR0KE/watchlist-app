@@ -354,6 +354,13 @@
   cursor: pointer;
 }
 
+/* Filled while it is the one in force, so there is something to tap off. */
+.preset-chip-on {
+  border-color: var(--amber);
+  background-color: var(--amber);
+  color: var(--on-accent);
+}
+
 /* Filter sheet */
 
 .filter-sheet-overlay {
@@ -2389,6 +2396,15 @@
   font-weight: 600;
   line-height: 1.3;
   cursor: pointer;
+}
+
+/* The rating step's primary is an anchor, not a button, so Android can
+   hand the link to the Letterboxd app. It still has to be the same row. */
+a.pending-action {
+  display: block;
+  box-sizing: border-box;
+  text-align: center;
+  text-decoration: none;
 }
 
 .pending-action:disabled {

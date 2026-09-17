@@ -3,7 +3,7 @@ import './App.css'
 import { SpinWheel } from './wheel/SpinWheel'
 import { ResultModal } from './wheel/ResultModal'
 import type { WheelItem } from './wheel/titles'
-import { getSegmentIndexAtPointer } from './wheel/wheelMath'
+import { getSegmentIndexAtPointer, pickSegment, rotationForSegment } from './wheel/wheelMath'
 import { usePosterImages } from './wheel/usePosterImages'
 import { loadPartner, loadWatchedFilmIds, loadWheelItems } from './wheel/loadWheelItems'
 import type { Partner } from './wheel/loadWheelItems'
@@ -67,6 +67,7 @@ const StatsScreen = lazy(() =>
   import('./stats/StatsScreen').then((m) => ({ default: m.StatsScreen })),
 )
 import { PendingWatchPrompt } from './social/PendingWatchPrompt'
+import { LetterboxdPrompt } from './social/LetterboxdPrompt'
 import type { WatchAnswer } from './social/PendingWatchPrompt'
 import { WatchedTogetherScreen } from './social/WatchedTogetherScreen'
 import { answerWatch, loadPendingWatches, undoWatch } from './social/pendingWatches'
@@ -185,6 +186,10 @@ function WheelScreen({
   const [vetoesSpent, setVetoesSpent] = useState<Set<string>>(new Set())
   const [sheet, setSheet] = useState<'none' | 'filters' | 'presets'>('none')
   const [presets, setPresets] = useState<FilterPreset[]>([])
+  // Which preset the current filters came from. Without this there is no
+  // such thing as an applied preset to undo — applying one only copied its
+  // filters in and left nothing behind saying where they came from.
+  const [activePresetId, setActivePresetId] = useState<string | null>(null)
   const [deletedPreset, setDeletedPreset] = useState<FilterPreset | null>(null)
   const presetUndoTimerRef = useRef<number | undefined>(undefined)
   const spinIdRef = useRef<string | null>(null)
@@ -364,9 +369,12 @@ function WheelScreen({
       // one starts.
       if (isReroll) closeSpin('rerolled')
 
-      const extraSpins = 4 + Math.random() * 2 // 4-6 full rotations
-      const nextRotation = rotation + 360 * extraSpins
-      const index = getSegmentIndexAtPointer(nextRotation, list.length)
+      // Spin again must not land back on the film it is replacing.
+      const index = pickSegment(
+        list.map((item) => item.id),
+        result?.id ?? null,
+      )
+      const nextRotation = rotationForSegment(rotation, index, list.length)
       pendingResultRef.current = list[index] ?? null
 
       setResult(null)
@@ -385,7 +393,7 @@ function WheelScreen({
         fallbackTimerRef.current = window.setTimeout(finishSpin, SPIN_DURATION_MS + 150)
       }
     },
-    [spinning, rerollsUsed, rotation, reduceMotion, finishSpin, postersReady, closeSpin],
+    [spinning, rerollsUsed, rotation, reduceMotion, finishSpin, postersReady, closeSpin, result],
   )
 
   const spin = useCallback(
@@ -457,8 +465,12 @@ function WheelScreen({
     drawFromPool(matchingPool, filters.source)
   }
 
-  const handleFiltersChange = (next: WheelFilters) => {
+  // fromPreset is passed only by a chip. Every other route through here —
+  // the filter sheet, Clear all, a source switch — leaves no preset
+  // applied, which is what makes the chip and the Clear button agree.
+  const handleFiltersChange = (next: WheelFilters, fromPreset: string | null = null) => {
     closeSpin('abandoned')
+    setActivePresetId(fromPreset)
     setFilters(next)
     // A new source means a different table; the loader draws once it lands,
     // and drawing from the outgoing pool here would only flash the wrong
@@ -745,7 +757,7 @@ function WheelScreen({
   return (
     <div className="app">
       <FilmBackdrop backdropPath={displayedBackdrop} />
-      <h1 className="app-title">Spin the Watchlist</h1>
+      <h1 className="app-title">Chhobidam</h1>
 
       <div className="wheel-controls">
         <SourceToggle source={filters.source} onChange={handleSourceChange} />
@@ -810,16 +822,32 @@ function WheelScreen({
         {/* Presets describe filters, which a hand-built wheel ignores. */}
         {!inPlacePanel && !isCustomSource(filters.source) && starredPresets.length > 0 && (
           <div className="preset-chips">
-            {starredPresets.map((preset) => (
-              <button
-                key={preset.id}
-                type="button"
-                className="preset-chip"
-                onClick={() => handleFiltersChange(preset.filters)}
-              >
-                {preset.name}
-              </button>
-            ))}
+            {starredPresets.map((preset) => {
+              const active = preset.id === activePresetId
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  className={`preset-chip${active ? ' preset-chip-on' : ''}`}
+                  aria-pressed={active}
+                  // Tapping the one already on takes it off. The way back
+                  // to no preset was otherwise unpicking every filter by
+                  // hand, one at a time.
+                  onClick={() =>
+                    active
+                      ? handleFiltersChange({
+                          ...DEFAULT_FILTERS,
+                          source: filters.source,
+                          customWheelId: filters.customWheelId,
+                          togetherMode: filters.togetherMode,
+                        })
+                      : handleFiltersChange(preset.filters, preset.id)
+                  }
+                >
+                  {preset.name}
+                </button>
+              )
+            })}
           </div>
         )}
       </div>
@@ -943,6 +971,9 @@ function AuthenticatedApp() {
   // time the app opens.
   const [pendingWatches, setPendingWatches] = useState<PendingWatch[]>([])
   const [promptDismissed, setPromptDismissed] = useState(false)
+  // The film just answered for, held while its Letterboxd step is up. The
+  // queue has already moved on underneath it.
+  const [ratePrompt, setRatePrompt] = useState<PendingWatch | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -1001,6 +1032,9 @@ function AuthenticatedApp() {
       return
     }
     void answerWatch(userId, watch.filmId, answer === 'together').catch(() => {})
+    // Having just said you watched it, the next thing you would do is rate
+    // it. Only after a yes — nothing to rate if it went back on the list.
+    setRatePrompt(watch)
   }
 
   if (checkingWatchlist) return null
@@ -1110,14 +1144,20 @@ function AuthenticatedApp() {
 
         {/* The walkthrough comes first: a new account has nothing to be
             asked about anyway. */}
-        {!needsOnboarding && !promptDismissed && (
-          <PendingWatchPrompt
-            pending={pendingWatches}
-            partnerName={partnerName}
-            onAnswer={handleWatchAnswer}
-            onDismiss={() => setPromptDismissed(true)}
-          />
-        )}
+        {!needsOnboarding &&
+          !promptDismissed &&
+          // One at a time: the rating step stands in front of the next
+          // film's question until it is answered either way.
+          (ratePrompt ? (
+            <LetterboxdPrompt watch={ratePrompt} onDone={() => setRatePrompt(null)} />
+          ) : (
+            <PendingWatchPrompt
+              pending={pendingWatches}
+              partnerName={partnerName}
+              onAnswer={handleWatchAnswer}
+              onDismiss={() => setPromptDismissed(true)}
+            />
+          ))}
       </div>
     </EnrichmentProvider>
   )

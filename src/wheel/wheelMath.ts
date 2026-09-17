@@ -69,6 +69,61 @@ export function describeRingSlicePath(
 // clockwise. A CSS `rotate(deg)` transform on the wheel is also clockwise, so
 // the segment now sitting under the fixed top pointer is whichever original
 // segment ends up at "angle from top" 0 after subtracting the rotation.
+// Four full turns before the wheel is allowed to stop, plus up to one
+// more, so a target sitting just ahead doesn't cut the spin short.
+const MIN_SPIN_TURNS = 4
+
+/**
+ * Which segment the next spin should stop on.
+ *
+ * Spinning to a random angle and reading off whatever segment it landed on
+ * leaves nothing to constrain — "not that one again" cannot be said about a
+ * result that does not exist until after the spin has been decided. So the
+ * segment is chosen here, first, and the rotation worked out to reach it.
+ *
+ * Never the film already showing, unless it is the only one on the wheel.
+ */
+export function pickSegment(
+  ids: string[],
+  currentId: string | null,
+  random: () => number = Math.random,
+): number {
+  if (ids.length === 0) return -1
+  let candidates = ids.map((_, index) => index)
+  if (currentId !== null) {
+    const elsewhere = candidates.filter((index) => ids[index] !== currentId)
+    // One film on the wheel has nowhere else to go.
+    if (elsewhere.length > 0) candidates = elsewhere
+  }
+  return candidates[Math.floor(random() * candidates.length)] ?? candidates[0]
+}
+
+/**
+ * A rotation that lands the pointer on a chosen segment.
+ *
+ * Spinning to a random angle and reading off whatever segment it landed on
+ * leaves nothing to constrain — "not that one again" cannot be expressed
+ * about a result that does not exist until after the spin is decided. So
+ * the segment is chosen first and the rotation worked out to reach it.
+ */
+export function rotationForSegment(
+  currentRotation: number,
+  index: number,
+  segmentCount: number,
+  random: () => number = Math.random,
+): number {
+  if (segmentCount <= 0) return currentRotation
+  const segmentAngle = 360 / segmentCount
+  // Somewhere inside the segment rather than on its edge, where rounding
+  // decides which side of the line the pointer is counted on.
+  const angleFromTop = (index + 0.15 + random() * 0.7) * segmentAngle
+  const target = ((360 - angleFromTop) % 360 + 360) % 360
+  const base = currentRotation + 360 * MIN_SPIN_TURNS
+  const baseAngle = ((base % 360) + 360) % 360
+  const delta = ((target - baseAngle) % 360 + 360) % 360
+  return base + delta + 360 * Math.floor(random() * 2)
+}
+
 export function getSegmentIndexAtPointer(rotationDeg: number, segmentCount: number): number {
   if (segmentCount <= 0) return -1
   const segmentAngle = 360 / segmentCount
