@@ -349,6 +349,30 @@ export interface Database {
         }
         Relationships: []
       }
+      nudges: {
+        Row: {
+          from_user: string
+          to_user: string
+          message: string
+          dismissed: boolean
+          created_at: string | null
+        }
+        Insert: {
+          from_user: string
+          to_user: string
+          message: string
+          dismissed?: boolean
+          created_at?: string | null
+        }
+        Update: {
+          from_user?: string
+          to_user?: string
+          message?: string
+          dismissed?: boolean
+          created_at?: string | null
+        }
+        Relationships: []
+      }
       imports: {
         Row: {
           id: string

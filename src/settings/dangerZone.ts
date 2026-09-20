@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient'
+import { clearPlayedRecord } from '../birthday/birthdayDate'
 
 /**
  * Clearing everything, for both accounts.
@@ -72,6 +73,8 @@ export interface ClearResult {
   remaining: DataCounts
   survivors: string[]
   onboardingReset: boolean
+  // The birthday video's record lives in localStorage, not the database.
+  birthdayReset: boolean
 }
 
 const LABELS: Record<keyof DataCounts, string> = {
@@ -113,6 +116,9 @@ export async function clearAllData(userId: string, partnerId: string | null): Pr
     // Either direction: a recommendation is one record belonging to both.
     supabase.from('recommendations').delete().in('from_user', ids),
     supabase.from('recommendations').delete().in('to_user', ids),
+    // Not counted in the confirmation — a single pending line either way
+    // isn't a number worth quoting — but it goes with everything else.
+    supabase.from('nudges').delete().in('from_user', ids),
   ])
   await supabase.from('custom_wheels').delete().in('user_id', ids)
 
@@ -124,10 +130,14 @@ export async function clearAllData(userId: string, partnerId: string | null): Pr
     .in('id', ids)
     .select('id')
 
+  // Not a table, but it is data about this account all the same, and a
+  // wipe that left it behind would quietly skip the video on the day.
+  const birthdayReset = clearPlayedRecord()
+
   const remaining = await countEverything().catch(() => EMPTY_COUNTS)
   const survivors = (Object.keys(remaining) as (keyof DataCounts)[])
     .filter((key) => remaining[key] > 0)
     .map((key) => `${remaining[key]} in ${LABELS[key]}`)
 
-  return { remaining, survivors, onboardingReset: (reset ?? []).length > 0 }
+  return { remaining, survivors, onboardingReset: (reset ?? []).length > 0, birthdayReset }
 }

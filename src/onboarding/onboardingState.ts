@@ -33,7 +33,7 @@ export async function loadMyProfile(userId: string): Promise<MyProfile | null> {
 }
 
 // Skipping counts as done: being asked again after saying no is worse than
-// never asking. "Replay walkthrough" in settings is the way back in.
+// never asking. Clearing all data is the only way back to it.
 export async function markOnboarded(userId: string): Promise<void> {
   const { data, error } = await supabase
     .from('profiles')

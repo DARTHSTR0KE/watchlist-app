@@ -38,6 +38,22 @@ export function alreadyPlayedToday(now: Date = new Date()): boolean {
   }
 }
 
+/**
+ * Back to never-played. Clearing all data has to reach this too: the
+ * record lives in localStorage rather than the database, so a wipe that
+ * only emptied tables would leave the app believing the video had already
+ * run — and testing on the real date would then be silently skipped when
+ * the day actually came.
+ */
+export function clearPlayedRecord(): boolean {
+  try {
+    window.localStorage.removeItem(PLAYED_KEY)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export function markPlayedToday(now: Date = new Date()): void {
   try {
     window.localStorage.setItem(PLAYED_KEY, localDateKey(now))

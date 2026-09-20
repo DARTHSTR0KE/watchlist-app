@@ -34,7 +34,7 @@ export function WatchedTogetherScreen({ userId, partnerName }: WatchedScreenProp
       <ScreenHead title="Watched" status={`${total}`} />
 
       {total === 0 ? (
-        <Empty>Nothing watched yet. Films land here once one of you logs one.</Empty>
+        <Empty art="pair">Nothing watched yet. Films land here once one of you logs one.</Empty>
       ) : (
         <>
           {/* The shared half leads: it is the same list and the same count

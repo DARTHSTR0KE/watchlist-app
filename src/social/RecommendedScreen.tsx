@@ -13,6 +13,7 @@ import {
 } from './recommendations'
 import type { Recommendation } from './recommendations'
 import { addExistingFilmToWatchlist, ensureFilmStored } from '../import/watchlistWrites'
+import { NUDGE_MAX, sendNudge } from './nudges'
 
 interface RecommendedScreenProps {
   userId: string
@@ -38,6 +39,8 @@ export function RecommendedScreen({
   const [note, setNote] = useState('')
   const [chosen, setChosen] = useState<PickedFilm | null>(null)
   const [composing, setComposing] = useState(false)
+  const [nudge, setNudge] = useState('')
+  const [nudgeState, setNudgeState] = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle')
   // Asked once, for the film just chosen. 'unknown' covers the lookup
   // failing, which must not be mistaken for "they haven't seen it".
   const [seenByThem, setSeenByThem] = useState<'unknown' | 'yes' | 'no'>('unknown')
@@ -159,7 +162,7 @@ export function RecommendedScreen({
       {message && <Empty>{message}</Empty>}
 
       {received.length === 0 ? (
-        <Empty>Nothing yet. Anything {them} sends lands here.</Empty>
+        <Empty art="raccoon">Nothing yet. Anything {them} sends lands here.</Empty>
       ) : (
         <Rows>
           {waiting.map((item) => (
@@ -303,6 +306,46 @@ export function RecommendedScreen({
         <button type="button" className="btn-primary" onClick={() => setComposing(true)}>
           Recommend a film to {them}
         </button>
+      )}
+
+      {/* A message rather than a film. It waits until they next open the
+          app — nothing is pushed, and nothing asks for permission. */}
+      <SectionLabel tone="sage">Nudge {them}</SectionLabel>
+      <input
+        className="filter-preset-input rec-note-input"
+        type="text"
+        maxLength={NUDGE_MAX}
+        placeholder={`Say something to ${them}`}
+        value={nudge}
+        onChange={(event) => {
+          setNudge(event.target.value)
+          setNudgeState('idle')
+        }}
+      />
+      <button
+        type="button"
+        className="btn-field"
+        disabled={!partnerId || nudge.trim().length === 0 || nudgeState === 'sending'}
+        onClick={() => {
+          if (!partnerId) return
+          setNudgeState('sending')
+          void sendNudge(userId, partnerId, nudge)
+            .then(() => {
+              setNudge('')
+              setNudgeState('sent')
+            })
+            .catch(() => setNudgeState('failed'))
+        }}
+      >
+        {nudgeState === 'sending' ? 'Sending…' : 'Send nudge'}
+      </button>
+      {nudgeState === 'sent' && (
+        <Empty>Waiting for them. They'll see it next time they open the app.</Empty>
+      )}
+      {nudgeState === 'failed' && <Empty>That didn't send. Try again.</Empty>}
+      {/* One at a time, in each direction. */}
+      {nudgeState === 'idle' && nudge.trim().length > 0 && (
+        <Empty>Sending this replaces any nudge of yours they haven't seen yet.</Empty>
       )}
     </Screen>
   )

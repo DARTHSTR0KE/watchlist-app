@@ -20,7 +20,6 @@ interface SettingsScreenProps {
   // Lifts the new name to the shell so every screen showing it updates at
   // once, rather than each waiting for its own reload.
   onDisplayNameChange: (name: string) => void
-  onReplayWalkthrough: () => void
   onGoToImport: () => void
   // Everything the shell is holding describes data that no longer exists.
   onDataCleared: () => void
@@ -33,7 +32,6 @@ export function SettingsScreen({
   displayName,
   profileStatus,
   onDisplayNameChange,
-  onReplayWalkthrough,
   onGoToImport,
   onDataCleared,
 }: SettingsScreenProps) {
@@ -174,9 +172,6 @@ export function SettingsScreen({
         <SectionLabel>Help</SectionLabel>
         <button type="button" className="btn-field" onClick={() => setShowIntro(true)}>
           haaapppyyyy birthdayyyy
-        </button>
-        <button type="button" className="btn-field" onClick={onReplayWalkthrough}>
-          Replay walkthrough
         </button>
       </section>
 

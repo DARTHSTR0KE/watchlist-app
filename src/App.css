@@ -3193,3 +3193,183 @@ a.pending-action {
   line-height: 1.45;
   color: var(--bone);
 }
+
+/* Splash ---------------------------------------------------------------- */
+
+/* Over the app, never instead of it: everything underneath is already
+   mounting and fetching while this plays. */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5rem;
+  background-color: var(--ink);
+  animation: splash-out 180ms ease-in 1.17s forwards;
+}
+
+.splash-still {
+  animation: splash-out 120ms ease-in 280ms forwards;
+}
+
+.splash-stage {
+  width: min(78vw, 320px);
+}
+
+.splash-pair {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+/* The scoop, then the exit — one group so the fish cannot drift out of
+   the raccoon's arms partway across. */
+.splash-carry {
+  transform-origin: 130px 60px;
+}
+
+.splash-leaving .splash-carry {
+  animation: splash-carry-off 760ms cubic-bezier(0.4, 0, 0.5, 1) forwards;
+}
+
+.splash-leaving .splash-fish {
+  animation: splash-scoop 260ms ease-out forwards;
+}
+
+@keyframes splash-scoop {
+  to {
+    transform: translate(120px, 30px) scale(0.86);
+  }
+}
+
+@keyframes splash-carry-off {
+  0% {
+    transform: translateX(0) rotate(0deg);
+  }
+  18% {
+    transform: translateX(-10px) rotate(-2deg);
+  }
+  100% {
+    transform: translateX(150%) rotate(3deg);
+  }
+}
+
+/* The three lines leave as one piece, on the pair's heels. */
+.splash-words {
+  position: absolute;
+  bottom: 18%;
+  left: 0;
+  right: 0;
+  text-align: center;
+}
+
+.splash-leaving .splash-words {
+  animation: splash-words-off 620ms cubic-bezier(0.4, 0, 0.5, 1) 140ms forwards;
+}
+
+@keyframes splash-words-off {
+  to {
+    transform: translateX(150%);
+    opacity: 0;
+  }
+}
+
+@keyframes splash-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+.splash-name {
+  margin: 0;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 1.9rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+
+.splash-gloss {
+  margin: 0.3rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-faint);
+}
+
+.splash-tag {
+  margin: 0.55rem 0 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--amber);
+}
+
+/* Nothing moves at all when the system asks for stillness. */
+@media (prefers-reduced-motion: reduce) {
+  .splash,
+  .splash-carry,
+  .splash-fish,
+  .splash-words {
+    animation: none !important;
+  }
+}
+
+/* Empty states ---------------------------------------------------------- */
+
+/* The drawing sits with the sentence, not above it as a panel: an empty
+   screen has to say what would fill it, and the pair are part of that
+   line rather than an apology for it. */
+.screen-empty-art,
+.empty-state-art {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  text-align: left;
+}
+
+.screen-empty-words {
+  margin: 0;
+}
+
+.empty-art {
+  flex: 0 0 auto;
+  opacity: 0.9;
+}
+
+/* Nudge ----------------------------------------------------------------- */
+
+.nudge-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.7rem 1.25rem;
+  background-color: var(--field);
+  border-bottom: 1px solid rgba(245, 245, 245, 0.1);
+}
+
+.nudge-text {
+  flex: 1;
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: var(--text-soft);
+}
+
+.nudge-from {
+  font-weight: 700;
+  color: var(--amber);
+}
+
+.nudge-dismiss {
+  flex: 0 0 auto;
+  padding: 0 0.3rem;
+  border: 0;
+  background: none;
+  font-size: 1.25rem;
+  line-height: 1;
+  color: var(--text-faint);
+  cursor: pointer;
+}

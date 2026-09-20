@@ -64,7 +64,7 @@ export function SharedListScreen({
       {message && <Empty>{message}</Empty>}
 
       {entries.length === 0 ? (
-        <Empty>Nothing here yet. Anything either of you adds shows up for both.</Empty>
+        <Empty art="goldfish">Nothing here yet. Anything either of you adds shows up for both.</Empty>
       ) : (
         <PosterGrid>
           {entries.map((entry) => (

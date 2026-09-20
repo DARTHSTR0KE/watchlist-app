@@ -26,7 +26,7 @@ export function TogetherChooser({
     return (
       <Screen>
         <ScreenHead title="Together" />
-        <Empty>No partner is linked to this account, so there is nobody to watch with.</Empty>
+        <Empty art="raccoon">No partner is linked to this account, so there is nobody to watch with.</Empty>
       </Screen>
     )
   }

@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 import { buildPosterUrl } from '../wheel/posters'
+import { EmptyArt } from '../brand/EmptyArt'
+import type { EmptyArtKind } from '../brand/EmptyArt'
 
 /**
  * One pattern, used by every section. Rows for things you manage, grids
@@ -174,6 +176,17 @@ export function PosterCell({
   )
 }
 
-export function Empty({ children }: { children: ReactNode }) {
-  return <p className="screen-empty">{children}</p>
+/**
+ * `art` turns the line into an empty state proper — the drawing sits with
+ * the sentence rather than above it. Without it this stays the plain note
+ * it has always been, which is what most callers want.
+ */
+export function Empty({ children, art }: { children: ReactNode; art?: EmptyArtKind }) {
+  if (!art) return <p className="screen-empty">{children}</p>
+  return (
+    <div className="screen-empty screen-empty-art">
+      <EmptyArt kind={art} />
+      <p className="screen-empty-words">{children}</p>
+    </div>
+  )
 }

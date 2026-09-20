@@ -68,6 +68,12 @@ const StatsScreen = lazy(() =>
 )
 import { PendingWatchPrompt } from './social/PendingWatchPrompt'
 import { LetterboxdPrompt } from './social/LetterboxdPrompt'
+import { Splash } from './brand/Splash'
+import { EmptyArt } from './brand/EmptyArt'
+import { NudgeBanner } from './social/NudgeBanner'
+import { dismissNudge, loadNudge } from './social/nudges'
+import type { Nudge } from './social/nudges'
+import { claimColdStart } from './brand/coldStart'
 import type { WatchAnswer } from './social/PendingWatchPrompt'
 import { WatchedTogetherScreen } from './social/WatchedTogetherScreen'
 import { answerWatch, loadPendingWatches, undoWatch } from './social/pendingWatches'
@@ -670,6 +676,9 @@ function WheelScreen({
   // Fewer than two leaves nothing to decide between, so that's the point at
   // which the wheel gives up and explains itself.
   const tooFewMatches = matchingPool.length < 2
+  // A wheel with nothing on it and a filter that matched nothing are two
+  // different disappointments, so they don't get the same drawing.
+  const emptyArt = () => (masterItems.length === 0 ? 'raccoon' : 'goldfish')
   const emptyReason = (): string => {
     if (filters.source === 'shared' && masterItems.length === 0) {
       return 'Your watch together list is empty. Add films to it on the Together screen.'
@@ -876,7 +885,10 @@ function WheelScreen({
 
           {togetherNote && <p className="empty-state">{togetherNote}</p>}
           {tooFewMatches ? (
-            <p className="empty-state">{emptyReason()}</p>
+            <p className="empty-state empty-state-art">
+              <EmptyArt kind={emptyArt()} />
+              <span>{emptyReason()}</span>
+            </p>
           ) : (
             <div className="wheel-footer-row">
               <p className="wheel-remaining-count">
@@ -974,6 +986,8 @@ function AuthenticatedApp() {
   // The film just answered for, held while its Letterboxd step is up. The
   // queue has already moved on underneath it.
   const [ratePrompt, setRatePrompt] = useState<PendingWatch | null>(null)
+  // Whatever they left for me since I last had the app open.
+  const [nudge, setNudge] = useState<Nudge | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -1001,6 +1015,11 @@ function AuthenticatedApp() {
       // moment of watching.
       const queue = await loadPendingWatches(userId).catch(() => [] as PendingWatch[])
       if (!cancelled) setPendingWatches(queue)
+
+      // Never blocks anything: if the table isn't there yet this simply
+      // resolves to nothing and no banner appears.
+      const waiting = await loadNudge(userId).catch(() => null)
+      if (!cancelled) setNudge(waiting)
     })
     return () => {
       cancelled = true
@@ -1042,6 +1061,18 @@ function AuthenticatedApp() {
   return (
     <EnrichmentProvider>
       <div className="app-shell">
+        {/* Above everything, dismissible, never in the way. */}
+        {nudge && (
+          <NudgeBanner
+            nudge={nudge}
+            fromName={partnerName}
+            onDismiss={() => {
+              const from = nudge.fromUser
+              setNudge(null)
+              void dismissNudge(userId, from).catch(() => {})
+            }}
+          />
+        )}
         <Header
           screen={screen}
           displayName={myName}
@@ -1100,13 +1131,13 @@ function AuthenticatedApp() {
             displayName={myName}
             profileStatus={profileStatus}
             onDisplayNameChange={setMyName}
-            onReplayWalkthrough={() => setNeedsOnboarding(true)}
             onGoToImport={() => setScreen('import')}
             onDataCleared={() => {
               // Nothing the shell is holding survived the wipe: the queue
               // is empty, the shared list is empty, and an account with no
               // watchlist belongs on the import screen again.
               setPendingWatches([])
+              setNudge(null)
               setSharedCount(0)
               setUnseenRecommendations(0)
               setWheelSource(null)
@@ -1177,8 +1208,16 @@ function Gate() {
 }
 
 function App() {
+  // Claimed during the first render of the first mount and never again, so
+  // resuming a backgrounded app does not re-run it. Nothing here is
+  // awaited: the app mounts and loads underneath the splash.
+  const [splashing, setSplashing] = useState(claimColdStart)
+
   return (
     <AuthProvider>
+      {/* Nothing to do with the birthday video, which is a once-a-year
+          thing on one date. This one runs all year, on cold start. */}
+      {splashing && <Splash onDone={() => setSplashing(false)} />}
       {/* Above the auth gate deliberately: the video comes before the
           sign-in screen, so a first open isn't a password prompt. */}
       <BirthdayGate />
