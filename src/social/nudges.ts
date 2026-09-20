@@ -25,7 +25,16 @@ export async function sendNudge(userId: string, partnerId: string, message: stri
   const { error } = await supabase
     .from('nudges')
     .upsert(
-      { from_user: userId, to_user: partnerId, message: text, dismissed: false },
+      {
+        from_user: userId,
+        to_user: partnerId,
+        message: text,
+        dismissed: false,
+        // Sent explicitly: the default only applies on insert, so a
+        // replacement would otherwise keep the timestamp of the nudge it
+        // replaced and read as days old the moment it arrived.
+        created_at: new Date().toISOString(),
+      },
       { onConflict: 'from_user' },
     )
   if (error) throw error
