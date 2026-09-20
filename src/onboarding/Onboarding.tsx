@@ -2,6 +2,9 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 
 interface OnboardingProps {
+  // Read from profiles.display_name and passed down, never written into
+  // the copy: change the name in the database and this changes with it.
+  partnerName: string | null
   // Both finishing and skipping end it for good.
   onDone: () => void
   onGoToImport: () => void
@@ -18,110 +21,101 @@ interface Step {
  * Written for someone who has never seen the app and doesn't know what a
  * watchlist export is. No jargon that isn't explained in the same
  * sentence, and nothing that assumes a Letterboxd account already open.
+ *
+ * Built per render rather than declared as a constant because the other
+ * person's name belongs in it, and that name is only known at runtime.
  */
-const STEPS: Step[] = [
-  {
-    title: 'It picks the film',
-    body: (
-      <>
-        <p>
-          You know the hour you lose scrolling, reading the same descriptions, and going to bed
-          without watching anything? This is for that.
-        </p>
-        <p>
-          You put the films you mean to watch on a list. The app spins a wheel and picks one. You
-          watch it.
-        </p>
-      </>
-    ),
-  },
-  {
-    title: 'Fill the wheel',
-    body: (
-      <>
-        <p>
-          The wheel needs something to choose between, so the first job is getting your films in.
-        </p>
-        <p>
-          If you use Letterboxd, it can hand you a copy of your lists as a file. On the Letterboxd
-          website go to <strong>Settings</strong>, then <strong>Data</strong>, then{' '}
-          <strong>Export Your Data</strong>. It downloads one file ending in <code>.zip</code>.
-        </p>
-        <p>
-          Bring that file here and the app reads your watchlist out of it. You don't need to unpack
-          it or understand what's inside.
-        </p>
-      </>
-    ),
-    action: { label: 'Take me there', kind: 'import' },
-  },
-  {
-    title: 'Spinning',
-    body: (
-      <>
-        <p>Tap the middle of the wheel. It spins and stops on one film.</p>
-        <p>Then you have three choices:</p>
-        <ul className="onboard-list">
-          <li>
-            <strong>Watch this</strong> — you're going to watch it. It comes off your list.
-          </li>
-          <li>
-            <strong>Spin again</strong> — not that one. You get two of these.
-          </li>
-          <li>
-            <strong>Not tonight</strong> — sets it aside for this evening only. It's back next time.
-          </li>
-        </ul>
-        <p>
-          Filters narrow what the wheel can land on — only short films, say, or only things you
-          haven't seen.
-        </p>
-      </>
-    ),
-  },
-  {
-    title: 'Passing films to each other',
-    body: (
-      <>
-        <p>
-          When you come across something the other person would like, send it over with a line about
-          why you thought of them.
-        </p>
-        <p>
-          It arrives on their screen with your note. They can put it on their own list or pass on it.
-          Nothing is added to anyone's list without them saying so.
-        </p>
-      </>
-    ),
-  },
-  {
-    title: 'What you watched together',
-    body: (
-      <>
-        <p>
-          After you tap <strong>Watch this</strong>, the app says nothing else — you're about to
-          start a film.
-        </p>
-        <p>
-          The next time you open it, it asks one question: did you watch that together, on your own,
-          or not in the end? If you didn't, it goes back on your list exactly as it was.
-        </p>
-        <p>Everything you answer "together" to collects on its own screen.</p>
-      </>
-    ),
-  },
-]
+function buildSteps(partnerName: string | null): Step[] {
+  // An account with nobody linked yet still has to read as English.
+  const them = partnerName ?? 'the other person'
+  const bothOfYou = partnerName ? `you and ${partnerName}` : 'the two of you'
 
-export function Onboarding({ onDone, onGoToImport }: OnboardingProps) {
+  return [
+    {
+      title: 'It picks the film',
+      body: (
+        <>
+          <p>
+            This is the wheel. It fills with films from your watchlist, you spin it, and it decides.
+            That's the whole idea.
+          </p>
+          <p>No more twenty minutes of scrolling and then watching nothing.</p>
+        </>
+      ),
+    },
+    {
+      title: 'First, fill it up',
+      body: (
+        <>
+          <p>
+            Right now the wheel is empty. Go to <strong>Settings</strong> and tap{' '}
+            <strong>Import a watchlist</strong> — there's a link there that takes you straight to
+            Letterboxd's export page.
+          </p>
+          <p>
+            Download the zip it gives you, come back, and hand that zip to this app. Your watchlist,
+            everything you've watched and all your ratings come across in one go.
+          </p>
+          <p>You don't need to unzip it or know what's inside.</p>
+        </>
+      ),
+      action: { label: 'Take me there', kind: 'import' },
+    },
+    {
+      title: 'Narrow it down',
+      body: (
+        <>
+          <p>
+            Filters sit above the wheel. Only in the mood for something Malayalam? Under two hours?
+            Nothing scary tonight?
+          </p>
+          <p>Set it and the wheel only draws from what's left.</p>
+        </>
+      ),
+    },
+    {
+      title: 'Passing films to each other',
+      body: (
+        <>
+          <p>
+            <strong>For me</strong> is where anything {them} sends you turns up, with a line about
+            why they thought of it. You can send them back the same way.
+          </p>
+          <p>
+            And <strong>Together</strong> is for the ones you're saving to watch with each other.
+          </p>
+        </>
+      ),
+    },
+    {
+      title: "The stats Letterboxd won't give you",
+      body: (
+        <>
+          <p>
+            Letterboxd shows you numbers once a year and charges for the good ones. These are here
+            whenever you want them.
+          </p>
+          <p>
+            What you actually watch, which decades, how you rate things, and the films {bothOfYou}{' '}
+            disagree about most.
+          </p>
+        </>
+      ),
+    },
+  ]
+}
+
+export function Onboarding({ partnerName, onDone, onGoToImport }: OnboardingProps) {
   const [index, setIndex] = useState(0)
-  const step = STEPS[index]
-  const isLast = index === STEPS.length - 1
+  const steps = buildSteps(partnerName)
+  const step = steps[index]
+  const isLast = index === steps.length - 1
 
   return (
     <div className="onboard-overlay">
       <div className="onboard-card">
-        <div className="onboard-progress" aria-label={`Step ${index + 1} of ${STEPS.length}`}>
-          {STEPS.map((entry, i) => (
+        <div className="onboard-progress" aria-label={`Step ${index + 1} of ${steps.length}`}>
+          {steps.map((entry, i) => (
             <span
               key={entry.title}
               className={`onboard-dot${i === index ? ' onboard-dot-on' : ''}`}
@@ -144,7 +138,7 @@ export function Onboarding({ onDone, onGoToImport }: OnboardingProps) {
             className={`action-button${step.action ? '' : ' primary'}`}
             onClick={() => (isLast ? onDone() : setIndex((i) => i + 1))}
           >
-            {isLast ? 'Start' : 'Next'}
+            {isLast ? 'Go spin something' : 'Next'}
           </button>
           <div className="onboard-footer">
             {index > 0 && (
@@ -153,7 +147,7 @@ export function Onboarding({ onDone, onGoToImport }: OnboardingProps) {
               </button>
             )}
             {/* Skipping is final, same as finishing — settings has the way
-                back in. */}
+                back in. Present on every step, including the last. */}
             <button type="button" className="onboard-quiet" onClick={onDone}>
               Skip
             </button>

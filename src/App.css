@@ -2398,8 +2398,26 @@
   cursor: pointer;
 }
 
-/* The rating step's primary is an anchor, not a button, so Android can
-   hand the link to the Letterboxd app. It still has to be the same row. */
+/* Links that have to sit in a row the way a button does. */
+a.btn-field,
+a.pending-action {
+  display: block;
+  box-sizing: border-box;
+  text-align: center;
+  text-decoration: none;
+}
+
+/* The address as text, for when the link is taken by the app instead of a
+   browser. Selectable in one tap rather than word by word. */
+.import-export-url {
+  margin: 0.4rem 0 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+  color: var(--text-soft);
+  user-select: all;
+  overflow-wrap: anywhere;
+}
+
 a.pending-action {
   display: block;
   box-sizing: border-box;

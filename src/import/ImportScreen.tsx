@@ -104,9 +104,32 @@ export function ImportScreen({ onGoToWheel }: ImportScreenProps) {
       </div>
 
       <section className="import-file-picker">
+        {/* A real link, so whatever the phone has registered for
+            letterboxd.com gets first refusal on it. */}
+        <a
+          className="btn-field import-export-link"
+          href="https://letterboxd.com/settings/data"
+          target="_blank"
+          rel="noreferrer noopener"
+        >
+          Get your Letterboxd export
+        </a>
+        {/* Android hands letterboxd.com links to the Letterboxd app, which
+            has no export page at all — so the address is here as text to
+            be typed or copied when that happens. */}
         <p className="import-file-hint">
-          Export your data from Letterboxd: Settings, Data, Export Your Data. Select the .zip it downloads, or the
-          individual CSV files.
+          Export only works on the Letterboxd website, not in their app. If that button opens the
+          app instead, open this in a browser:
+        </p>
+        <p className="import-export-url">letterboxd.com/settings/data</p>
+        {/* Both outcomes are normal. Saying only one of them makes the
+            other look like a failure. */}
+        <p className="import-file-hint">
+          Letterboxd either downloads the zip straight away or emails you a link to it — it depends
+          on the account. If nothing downloads, check your email.
+        </p>
+        <p className="import-file-hint">
+          Then select the .zip here, or the individual CSV files.
         </p>
         <input
           ref={fileInputRef}

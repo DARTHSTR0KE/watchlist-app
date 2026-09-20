@@ -1128,6 +1128,7 @@ function AuthenticatedApp() {
 
         {needsOnboarding && (
           <Onboarding
+            partnerName={partnerName}
             onDone={() => {
               setNeedsOnboarding(false)
               // Finishing and skipping are the same commitment; a failed
