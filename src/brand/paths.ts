@@ -12,6 +12,13 @@ export const BRAND = {
   mask: '#2B2932',
   fish: '#E2743A',
   fin: '#B84A1E',
+  // Literals rather than CSS variables because the icon is rasterized
+  // through a canvas, where a var() resolves to nothing. Same values as
+  // the palette in theme.css.
+  amber: '#d9a441',
+  rust: '#b0705f',
+  slate: '#6e7ba6',
+  sand: '#c2a878',
 } as const
 
 // Front-facing raccoon on a 100x100 grid, ears from y=10.
@@ -77,4 +84,81 @@ export const RACCOON_SEATED = {
   headTransform: 'translate(24 -1) scale(0.72)',
   neck: { x: 60, y: 62 },
   shoulder: { x: 60, y: 78 },
+} as const
+
+// Glass reads as a pale wash over the dark ground rather than a colour of
+// its own — the palette has no glass in it, and adding one would put a
+// seventh colour into a five-colour brand.
+export const GLASS = {
+  body: 'rgba(237, 231, 218, 0.14)',
+  rim: 'rgba(237, 231, 218, 0.38)',
+  water: 'rgba(110, 123, 166, 0.42)',
+  waterLine: 'rgba(237, 231, 218, 0.30)',
+} as const
+
+/**
+ * The bowl, on a 100x100 grid with the fish swimming inside it. A round
+ * bowl with a flat base and a water line across it — the fish is drawn
+ * between the water and the glass so it reads as being in it.
+ */
+export const BOWL = {
+  viewBox: '0 0 100 100',
+  glass: 'M50 12 C74 12 92 32 92 56 C92 78 74 92 50 92 C26 92 8 78 8 56 C8 32 26 12 50 12 Z',
+  /**
+   * Filled to just under the rim and clipped to the glass. Drawn far
+   * wider and deeper than the bowl on purpose: the water counter-rotates
+   * to stay level while the glass tilts, and a rect that only just covered
+   * the glass would swing a corner off it and leave the bottom dry.
+   */
+  water: 'M-120 34 L220 34 L220 320 L-120 320 Z',
+  waterLine: 'M-120 34 L220 34',
+  base: { cx: 50, cy: 92, rx: 22, ry: 5 },
+  // Where the fish sits, and the circle it swims when it loops.
+  fishTransform: 'translate(18 44) scale(0.64)',
+} as const
+
+// The sack: a bandit's haul, filling up as the count climbs.
+export const SACK = {
+  viewBox: '0 0 100 100',
+  body: 'M22 44 C22 34 34 30 50 30 C66 30 78 34 78 44 C82 64 80 88 50 88 C20 88 18 64 22 44 Z',
+  neck: 'M36 32 C40 22 60 22 64 32 C58 28 42 28 36 32 Z',
+  tie: 'M34 34 L66 34 L64 40 L36 40 Z',
+  // Ten notches, revealed in order as the pile grows.
+  loot: [
+    { cx: 38, cy: 74, r: 5 },
+    { cx: 52, cy: 76, r: 5 },
+    { cx: 65, cy: 73, r: 5 },
+    { cx: 33, cy: 64, r: 5 },
+    { cx: 47, cy: 66, r: 5 },
+    { cx: 61, cy: 64, r: 5 },
+    { cx: 40, cy: 55, r: 5 },
+    { cx: 54, cy: 56, r: 5 },
+    { cx: 66, cy: 54, r: 5 },
+    { cx: 47, cy: 45, r: 5 },
+  ],
+} as const
+
+// The bin, with a raccoon head-first in it.
+export const BIN = {
+  viewBox: '0 0 120 100',
+  body: 'M24 34 L96 34 L88 94 L32 94 Z',
+  lid: 'M18 26 L102 26 L102 36 L18 36 Z',
+  ribs: ['M40 40 L36 88', 'M60 40 L60 88', 'M80 40 L84 88'],
+  // Hind legs and tail sticking out of the top.
+  legLeft: 'M46 32 L34 2',
+  legRight: 'M72 32 L86 4',
+  tail: 'M58 30 C50 6 74 -4 92 8',
+} as const
+
+export const MOON = {
+  viewBox: '0 0 100 100',
+  // A crescent as one path: a disc with a bite out of it.
+  crescent: 'M62 8 A44 44 0 1 0 62 92 A36 36 0 1 1 62 8 Z',
+} as const
+
+// Worn on 30 September, and only then.
+export const PARTY_HAT = {
+  cone: 'M50 2 L68 40 L32 40 Z',
+  pom: { cx: 50, cy: 3, r: 6 },
+  band: 'M34 36 L66 36 L68 40 L32 40 Z',
 } as const

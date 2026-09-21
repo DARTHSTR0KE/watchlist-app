@@ -15,18 +15,21 @@ export interface Database {
           display_name: string
           partner_id: string | null
           onboarded_at: string | null
+          mascot: 'raccoon' | 'goldfish' | null
         }
         Insert: {
           id: string
           display_name: string
           partner_id?: string | null
           onboarded_at?: string | null
+          mascot?: 'raccoon' | 'goldfish' | null
         }
         Update: {
           id?: string
           display_name?: string
           partner_id?: string | null
           onboarded_at?: string | null
+          mascot?: 'raccoon' | 'goldfish' | null
         }
         Relationships: []
       }

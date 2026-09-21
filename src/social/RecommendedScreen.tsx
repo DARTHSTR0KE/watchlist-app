@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { buildPosterUrl } from '../wheel/posters'
-import { Empty, PosterThumb, Row, Rows, Screen, ScreenHead, SectionLabel } from '../ui/Screen'
+import { Empty, Loading, PosterThumb, Row, Rows, Screen, ScreenHead, SectionLabel } from '../ui/Screen'
 import { FilmPicker } from '../wheel/FilmPicker'
 import type { PickedFilm } from '../wheel/FilmPicker'
 import {
@@ -14,12 +14,17 @@ import {
 import type { Recommendation } from './recommendations'
 import { addExistingFilmToWatchlist, ensureFilmStored } from '../import/watchlistWrites'
 import { NUDGE_MAX, sendNudge } from './nudges'
+import { Mascot } from '../brand/Mascot'
+import type { Mascot as MascotName } from '../brand/mascots'
 
 interface RecommendedScreenProps {
   userId: string
   partnerId: string | null
   // Read from profiles.display_name by the caller, never written down here.
   partnerName: string | null
+  // Their animal, read the same way from profiles.mascot.
+  partnerMascot: MascotName | null
+  myMascot: MascotName | null
   onSeen: () => void
 }
 
@@ -31,6 +36,8 @@ export function RecommendedScreen({
   userId,
   partnerId,
   partnerName,
+  partnerMascot,
+  myMascot,
   onSeen,
 }: RecommendedScreenProps) {
   const [received, setReceived] = useState<Recommendation[]>([])
@@ -137,7 +144,14 @@ export function RecommendedScreen({
     setSending(false)
   }
 
-  if (loading) return null
+  if (loading) {
+    return (
+      <Screen>
+        <ScreenHead title="Recommendations" />
+        <Loading>Seeing what's arrived…</Loading>
+      </Screen>
+    )
+  }
 
   if (!partnerId) {
     return (
@@ -157,7 +171,15 @@ export function RecommendedScreen({
 
   return (
     <Screen>
-      <ScreenHead title={`From ${them}`} status={`${waiting.length} waiting`} />
+      <ScreenHead
+        title={`From ${them}`}
+        status={
+          <>
+            <Mascot who={partnerMascot} size={22} bowl className="mascot-inline" />{' '}
+            {waiting.length} waiting
+          </>
+        }
+      />
 
       {message && <Empty>{message}</Empty>}
 
@@ -170,7 +192,12 @@ export function RecommendedScreen({
               key={item.id}
               art={<PosterThumb posterPath={item.posterPath} title={item.title} />}
               name={item.title}
-              meta={`${them}${yearSuffix(item.year)}`}
+              meta={
+                <>
+                  <Mascot who={partnerMascot} size={18} bowl className="mascot-inline" /> {them}
+                  {yearSuffix(item.year)}
+                </>
+              }
               actions={
                 <>
                   {/* On the row, so acting on one is a single tap from
@@ -213,7 +240,9 @@ export function RecommendedScreen({
         </Rows>
       )}
 
-      <SectionLabel>Sent to {them}</SectionLabel>
+      <SectionLabel>
+        <Mascot who={myMascot} size={20} bowl className="mascot-inline" /> Sent to {them}
+      </SectionLabel>
       {sent.length === 0 ? (
         <Empty>Nothing outstanding — {them} has answered everything.</Empty>
       ) : (
@@ -310,7 +339,9 @@ export function RecommendedScreen({
 
       {/* A message rather than a film. It waits until they next open the
           app — nothing is pushed, and nothing asks for permission. */}
-      <SectionLabel tone="sage">Nudge {them}</SectionLabel>
+      <SectionLabel tone="sage">
+        <Mascot who={myMascot} size={20} bowl className="mascot-inline" /> Nudge {them}
+      </SectionLabel>
       <input
         className="filter-preset-input rec-note-input"
         type="text"

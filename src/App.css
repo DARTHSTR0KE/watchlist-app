@@ -3222,36 +3222,60 @@ a.pending-action {
 }
 
 /* Everything below shares one five-second clock and differs only in the
-   percentages at which it moves. */
-.sp-troupe,
-.sp-arms,
-.sp-head,
-.sp-fish {
+   percentages at which it moves.
+   Scoped to .splash: sp-arms and sp-head are groups inside every seated
+   raccoon, so unscoped these rules had the import screen's bandit doing
+   the splash's reach. */
+.splash .sp-troupe,
+.splash .sp-arms,
+.splash .sp-head,
+.splash .sp-bowl {
   transform-box: view-box;
   animation-duration: 5s;
   animation-timing-function: linear;
   animation-fill-mode: forwards;
 }
 
-.sp-troupe {
+.splash .sp-troupe {
   animation-name: sp-walk;
 }
 
 /* Rotates at the shoulders: the reach is the arms swinging down and out
-   to where the fish is, not a different drawing of an arm. */
-.sp-arms {
+   to where the bowl is, not a different drawing of an arm. */
+.splash .sp-arms {
   transform-origin: 60px 78px;
   animation-name: sp-reach;
 }
 
-.sp-head {
+.splash .sp-head {
   transform-origin: 60px 62px;
   animation-name: sp-turn;
 }
 
-.sp-fish {
-  transform-origin: 147px 122px;
+.splash .sp-bowl {
+  transform-origin: 145px 111px;
   animation-name: sp-lift;
+}
+
+/* The bowl tilts as she lifts it; the water inside counter-rotates by the
+   same amount so its surface stays level, which is what water does. */
+.sp-bowl .bowl-water {
+  transform-box: view-box;
+  transform-origin: 145px 111px;
+  animation: sp-level 5s linear forwards;
+}
+
+@keyframes sp-level {
+  0%,
+  86% {
+    transform: rotate(0deg);
+  }
+  92% {
+    transform: rotate(18deg);
+  }
+  100% {
+    transform: rotate(15deg);
+  }
 }
 
 @keyframes sp-appear {
@@ -3303,13 +3327,13 @@ a.pending-action {
   86% {
     transform: translate(0, 0) rotate(0deg);
   }
-  /* Up to chest height and across, so it ends held against him rather
+  /* Up to chest height and across, so it ends held against her rather
      than travelling alongside. */
   92% {
-    transform: translate(-68px, -30px) rotate(-18deg);
+    transform: translate(-62px, -24px) rotate(-18deg);
   }
   100% {
-    transform: translate(-71px, -32px) rotate(-15deg);
+    transform: translate(-65px, -26px) rotate(-15deg);
   }
 }
 
@@ -3439,7 +3463,9 @@ a.pending-action {
 .splash-still .sp-troupe,
 .splash-still .sp-arms,
 .splash-still .sp-head,
-.splash-still .sp-fish {
+.splash-still .sp-bowl,
+.splash-still .bowl-water,
+.splash-still .bowl-fish {
   animation: none;
 }
 
@@ -3507,4 +3533,236 @@ a.pending-action {
   line-height: 1;
   color: var(--text-faint);
   cursor: pointer;
+}
+
+/* Mascots and moments ---------------------------------------------------- */
+
+/* Whose animal it is comes from the database; this only places it. */
+.mascot-inline {
+  flex: 0 0 auto;
+  vertical-align: middle;
+}
+
+.mascot-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* The fish circling inside its bowl. Clipped by the glass, so the path
+   can be loose without escaping. */
+.bowl-fish {
+  transform-box: view-box;
+  transform-origin: 50px 62px;
+}
+
+.bowl-fish-swim {
+  animation: bowl-swim 4.5s ease-in-out infinite;
+}
+
+/* One turn and settles, for the moment a film lands. */
+.bowl-fish-loop {
+  animation: bowl-loop 1.1s ease-in-out 1 forwards;
+}
+
+@keyframes bowl-swim {
+  0%,
+  100% {
+    transform: translate(0, 0) scaleX(1);
+  }
+  24% {
+    transform: translate(16px, -5px) scaleX(1);
+  }
+  48% {
+    transform: translate(20px, 4px) scaleX(-1);
+  }
+  74% {
+    transform: translate(2px, 6px) scaleX(-1);
+  }
+}
+
+@keyframes bowl-loop {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate(12px, -2px) rotate(180deg);
+  }
+  100% {
+    transform: translate(0, 0) rotate(360deg);
+  }
+}
+
+/* Knocked over, with what came out of it. */
+.bowl-tipped {
+  transform-box: view-box;
+  transform-origin: 50px 88px;
+  transform: rotate(-58deg) translate(-6px, 4px);
+}
+
+.bowl-spill {
+  opacity: 0.8;
+}
+
+.moment {
+  flex: 0 0 auto;
+  height: auto;
+  overflow: visible;
+}
+
+.moment-heist {
+  width: 130px;
+}
+
+.moment-bin {
+  width: 74px;
+}
+
+.moment-shrug {
+  width: 46px;
+}
+
+/* Off to the right with the haul, over and over while the import runs. */
+.heist-walk {
+  transform-box: view-box;
+  animation: heist-step 1.6s ease-in-out infinite;
+}
+
+@keyframes heist-step {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(4px, -3px);
+  }
+  50% {
+    transform: translate(8px, 0);
+  }
+  75% {
+    transform: translate(4px, -2px);
+  }
+}
+
+.bin-rummage {
+  transform-box: view-box;
+  transform-origin: 60px 90px;
+  animation: bin-shake 1.4s ease-in-out infinite;
+}
+
+@keyframes bin-shake {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  30% {
+    transform: rotate(-3.5deg);
+  }
+  65% {
+    transform: rotate(3deg);
+  }
+}
+
+.shrug-lift {
+  transform-box: view-box;
+  transform-origin: 50px 60px;
+  animation: shrug 2.4s ease-in-out infinite;
+}
+
+@keyframes shrug {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  40%,
+  60% {
+    transform: translateY(-4px);
+  }
+}
+
+/* Small hours, beside the wheel. */
+.moment-night {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.moment-moon {
+  width: 18px;
+}
+
+.moment-awake {
+  width: 24px;
+}
+
+/* A moment and the line it belongs to, side by side. */
+.moment-line {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  text-align: left;
+}
+
+.moment-words {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+/* Screen-level waits only. Never in front of anything. */
+.loading-line {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem 0;
+}
+
+/* The system setting wins over every moment above: the drawing stays, the
+   movement goes. */
+@media (prefers-reduced-motion: reduce) {
+  .bowl-fish-swim,
+  .bowl-fish-loop,
+  .heist-walk,
+  .bin-rummage,
+  .shrug-lift {
+    animation: none !important;
+  }
+}
+
+/* Moment placements ------------------------------------------------------ */
+
+.nudge-mascot {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  /* Leaning in from the edge of the screen rather than sitting in a
+     column of its own. */
+  margin-left: -0.35rem;
+}
+
+.empty-lead {
+  color: var(--text-soft);
+  font-weight: 600;
+}
+
+/* In the corner of the result, over the backdrop. */
+.modal-bowl {
+  position: absolute;
+  right: 0.9rem;
+  bottom: 0.9rem;
+  z-index: 2;
+}
+
+.reroll-status-done {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+}
+
+/* The heist sits above its own progress bar. */
+.moment-heist {
+  display: block;
+  margin: 0 auto 0.4rem;
 }

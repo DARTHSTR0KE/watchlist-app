@@ -1,4 +1,4 @@
-import { BRAND, GOLDFISH, RACCOON, RACCOON_SEATED } from './paths'
+import { BIN, BOWL, BRAND, GLASS, GOLDFISH, MOON, PARTY_HAT, RACCOON, RACCOON_SEATED, SACK } from './paths'
 
 /**
  * The two of them, drawn from the shared path data. Both are plain <g>
@@ -149,6 +149,109 @@ export function RaccoonSeatedShapes() {
           <RaccoonShapes />
         </g>
       </g>
+    </g>
+  )
+}
+
+/**
+ * The goldfish in its bowl. `swimming` sets it circling, `loop` sends it
+ * round once and settles — both are decoration on top of the same still
+ * picture, so reduced motion simply omits the class.
+ *
+ * Ids are suffixed because a page can hold several bowls at once and a
+ * duplicated clipPath id would make every bowl use the first one's shape.
+ */
+export function BowlShapes({
+  uid,
+  swimming = false,
+  loop = false,
+  tipped = false,
+}: {
+  uid: string
+  swimming?: boolean
+  loop?: boolean
+  tipped?: boolean
+}) {
+  const b = BOWL
+  const clip = `bowl-clip-${uid}`
+  const fishClass = loop ? 'bowl-fish bowl-fish-loop' : swimming ? 'bowl-fish bowl-fish-swim' : 'bowl-fish'
+
+  return (
+    <g className={tipped ? 'bowl bowl-tipped' : 'bowl'}>
+      <clipPath id={clip}>
+        <path d={b.glass} />
+      </clipPath>
+
+      <ellipse cx={b.base.cx} cy={b.base.cy} rx={b.base.rx} ry={b.base.ry} fill={GLASS.rim} />
+      <path d={b.glass} fill={GLASS.body} />
+
+      <g clipPath={`url(#${clip})`}>
+        {/* Held level by its own counter-rotation while the bowl moves:
+            water that tilts with the glass reads as jelly. */}
+        <g className="bowl-water">
+          <path d={b.water} fill={GLASS.water} />
+          <path d={b.waterLine} stroke={GLASS.waterLine} strokeWidth="2" fill="none" />
+        </g>
+        <g className={fishClass}>
+          <g transform={b.fishTransform}>
+            <GoldfishShapes />
+          </g>
+        </g>
+      </g>
+
+      <path d={b.glass} fill="none" stroke={GLASS.rim} strokeWidth="3" />
+    </g>
+  )
+}
+
+// The haul, filling as the count climbs. `filled` is 0-10.
+export function SackShapes({ filled }: { filled: number }) {
+  const s = SACK
+  return (
+    <g>
+      {/* Sackcloth rather than shadow: the mask colour on this ground was
+          a hole in the screen. */}
+      <path d={s.body} fill={BRAND.sand} />
+      <path d={s.neck} fill={BRAND.sand} />
+      <path d={s.tie} fill={BRAND.mask} />
+      {s.loot.slice(0, Math.max(0, Math.min(s.loot.length, filled))).map((piece) => (
+        <circle key={`${piece.cx}-${piece.cy}`} cx={piece.cx} cy={piece.cy} r={piece.r} fill={BRAND.mask} />
+      ))}
+    </g>
+  )
+}
+
+// Head-first in it, which is the whole joke.
+export function BinShapes() {
+  const b = BIN
+  return (
+    <g>
+      {/* Legs in fur, not mask: dark legs against a dark bin read as
+          nothing sticking out at all. */}
+      <path d={b.legLeft} stroke={BRAND.fur} strokeWidth="10" strokeLinecap="round" fill="none" />
+      <path d={b.legRight} stroke={BRAND.fur} strokeWidth="10" strokeLinecap="round" fill="none" />
+      <path d={b.tail} stroke={BRAND.fur} strokeWidth="11" strokeLinecap="round" fill="none" />
+      <path d={b.body} fill={BRAND.slate} opacity="0.75" />
+      <path d={b.lid} fill={BRAND.slate} />
+      {b.ribs.map((d) => (
+        <path key={d} d={d} stroke={BRAND.mask} strokeWidth="2.5" fill="none" opacity="0.5" />
+      ))}
+    </g>
+  )
+}
+
+export function MoonShapes() {
+  return <path d={MOON.crescent} fill={BRAND.sand} />
+}
+
+// Only ever rendered on 30 September.
+export function PartyHat() {
+  const h = PARTY_HAT
+  return (
+    <g>
+      <path d={h.cone} fill={BRAND.rust} />
+      <path d={h.band} fill={BRAND.amber} />
+      <circle cx={h.pom.cx} cy={h.pom.cy} r={h.pom.r} fill={BRAND.amber} />
     </g>
   )
 }

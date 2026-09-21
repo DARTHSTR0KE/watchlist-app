@@ -71,6 +71,8 @@ import { LetterboxdPrompt } from './social/LetterboxdPrompt'
 import { Splash } from './brand/Splash'
 import { EmptyArt } from './brand/EmptyArt'
 import { NudgeBanner } from './social/NudgeBanner'
+import { BinMoment, NightMoment } from './brand/Moments'
+import type { Mascot } from './brand/mascots'
 import { dismissNudge, loadNudge } from './social/nudges'
 import type { Nudge } from './social/nudges'
 import { claimColdStart } from './brand/coldStart'
@@ -664,6 +666,9 @@ function WheelScreen({
     customWheels.find((wheel) => wheel.id === filters.customWheelId) ?? null
 
   const rerollsRemaining = MAX_REROLLS - rerollsUsed
+  // Local hours, from local parts — the same rule every date fact here
+  // follows. Checked on render rather than held, so it can't go stale.
+  const smallHours = new Date().getHours() < 5
   const canRemoveFromWheel = items.length > MIN_WHEEL_SEGMENTS
   // Nothing to decide at one film, so the hub stops being a spin action.
   const spinDisabled =
@@ -677,8 +682,9 @@ function WheelScreen({
   // which the wheel gives up and explains itself.
   const tooFewMatches = matchingPool.length < 2
   // A wheel with nothing on it and a filter that matched nothing are two
-  // different disappointments, so they don't get the same drawing.
-  const emptyArt = () => (masterItems.length === 0 ? 'raccoon' : 'goldfish')
+  // different disappointments. Nothing matched means there is a pile to go
+  // through and nothing in it, which is what the bin is for.
+  const nothingMatched = masterItems.length > 0
   const emptyReason = (): string => {
     if (filters.source === 'shared' && masterItems.length === 0) {
       return 'Your watch together list is empty. Add films to it on the Together screen.'
@@ -886,14 +892,19 @@ function WheelScreen({
           {togetherNote && <p className="empty-state">{togetherNote}</p>}
           {tooFewMatches ? (
             <p className="empty-state empty-state-art">
-              <EmptyArt kind={emptyArt()} />
-              <span>{emptyReason()}</span>
+              {nothingMatched ? <BinMoment /> : <EmptyArt kind="raccoon" />}
+              <span>
+                {nothingMatched && <span className="empty-lead">Nothing in here. </span>}
+                {emptyReason()}
+              </span>
             </p>
           ) : (
             <div className="wheel-footer-row">
               <p className="wheel-remaining-count">
                 {items.length} title{items.length === 1 ? '' : 's'} on the wheel
               </p>
+              {/* Still up, and so is she. */}
+              {smallHours && <NightMoment />}
             </div>
           )}
         </>
@@ -988,6 +999,9 @@ function AuthenticatedApp() {
   const [ratePrompt, setRatePrompt] = useState<PendingWatch | null>(null)
   // Whatever they left for me since I last had the app open.
   const [nudge, setNudge] = useState<Nudge | null>(null)
+  // Both read from profiles.mascot, never decided here.
+  const [myMascot, setMyMascot] = useState<Mascot | null>(null)
+  const [partnerMascot, setPartnerMascot] = useState<Mascot | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -999,6 +1013,7 @@ function AuthenticatedApp() {
     ]).then(async ([has, profile, unseen, partner]) => {
       if (cancelled) return
       setMyName(profile?.displayName ?? null)
+      setMyMascot(profile?.mascot ?? null)
       setProfileStatus(profile ? 'ready' : 'unreadable')
       // A profile that can't be read is not evidence the walkthrough is
       // due, so it stays out of the way rather than showing on every open.
@@ -1008,6 +1023,7 @@ function AuthenticatedApp() {
       if (partner) {
         setPartnerName(partner.displayName)
         setPartnerId(partner.id)
+        setPartnerMascot(partner.mascot)
       }
       setCheckingWatchlist(false)
 
@@ -1066,6 +1082,7 @@ function AuthenticatedApp() {
           <NudgeBanner
             nudge={nudge}
             fromName={partnerName}
+            fromMascot={partnerMascot}
             onDismiss={() => {
               const from = nudge.fromUser
               setNudge(null)
@@ -1152,6 +1169,8 @@ function AuthenticatedApp() {
             userId={userId}
             partnerId={partnerId}
             partnerName={partnerName}
+            partnerMascot={partnerMascot}
+            myMascot={myMascot}
             onSeen={() => setUnseenRecommendations(0)}
           />
         )}

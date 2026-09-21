@@ -1,11 +1,11 @@
 import { useEffect } from 'react'
-import { GoldfishShapes, RaccoonSeatedShapes } from './mark'
+import { BowlShapes, RaccoonSeatedShapes } from './mark'
 import { prefersReducedMotion } from './coldStart'
 
 /**
- * One raccoon and one goldfish, from the first frame to the last. Nothing
- * crossfades into anything and no drawing is swapped for another version
- * of itself partway through.
+ * One raccoon and one goldfish in its bowl, from the first frame to the
+ * last. Nothing crossfades into anything and no drawing is swapped for
+ * another version of itself partway through.
  *
  * The whole thing runs off a single five-second clock: every element gets
  * the same duration and differs only in which percentages it moves at, so
@@ -16,9 +16,9 @@ import { prefersReducedMotion } from './coldStart'
  *   0.8-1.4  the name and the gloss fade in
  *   1.0      the skip hint appears
  *   1.4-2.0  the tagline fades in, and holds — ten words need reading time
- *   3.8-4.3  he turns and reaches
- *   4.3-4.6  the fish is lifted into his arms
- *   4.6-5.0  he walks off right carrying it; the text fades in place
+ *   3.8-4.3  she turns and reaches
+ *   4.3-4.6  the bowl is lifted against her chest, water staying level
+ *   4.6-5.0  she walks off right carrying it; the text fades in place
  *
  * It renders over the app, which is already mounted and loading
  * underneath, so nothing waits on it and there is no blank frame when it
@@ -52,10 +52,12 @@ export function Splash({ onDone }: { onDone: () => void }) {
               <RaccoonSeatedShapes />
             </g>
             {/* Placement inside, animation outside — a CSS transform
-                replaces the attribute rather than composing with it. */}
-            <g className="sp-fish">
-              <g transform="translate(118 104) scale(0.58)">
-                <GoldfishShapes />
+                replaces the attribute rather than composing with it.
+                She picks up the bowl, not the fish: the fish is swimming
+                in it from the first frame and never leaves it. */}
+            <g className="sp-bowl">
+              <g transform="translate(112 78) scale(0.66)">
+                <BowlShapes uid="splash" swimming />
               </g>
             </g>
           </g>
@@ -67,7 +69,7 @@ export function Splash({ onDone }: { onDone: () => void }) {
       <div className="splash-words">
         <p className="splash-name">Chhobidam</p>
         <p className="splash-gloss">chhobi + padam</p>
-        <p className="splash-tag">She says chhobi. He says padam. Neither says which one.</p>
+        <p className="splash-tag">Indecisive about films. Never about you :3</p>
       </div>
 
       {/* Five seconds is long enough that it needs saying. */}

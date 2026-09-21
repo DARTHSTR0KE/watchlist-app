@@ -8,7 +8,7 @@ import {
   TallyBars,
 } from './StatBits'
 import { personColor } from './palette'
-import { Screen, ScreenHead } from '../ui/Screen'
+import { ErrorLine, Loading, Screen, ScreenHead } from '../ui/Screen'
 import {
   computeTogether,
   computeViewing,
@@ -60,12 +60,19 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
     }
   }, [userId, partnerId])
 
-  if (loading) return null
+  if (loading) {
+    return (
+      <Screen>
+        <ScreenHead title="Stats" />
+        <Loading>Adding it all up…</Loading>
+      </Screen>
+    )
+  }
   if (failed || !raw) {
     return (
       <Screen>
         <ScreenHead title="Stats" />
-        <StatEmpty>Couldn't load your stats. Check your connection and try again.</StatEmpty>
+        <ErrorLine>Couldn't load your stats. Check your connection and try again.</ErrorLine>
       </Screen>
     )
   }

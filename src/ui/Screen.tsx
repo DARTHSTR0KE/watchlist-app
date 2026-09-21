@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { buildPosterUrl } from '../wheel/posters'
 import { EmptyArt } from '../brand/EmptyArt'
 import type { EmptyArtKind } from '../brand/EmptyArt'
+import { BowlMoment } from '../brand/Moments'
 
 /**
  * One pattern, used by every section. Rows for things you manage, grids
@@ -181,6 +182,30 @@ export function PosterCell({
  * the sentence rather than above it. Without it this stays the plain note
  * it has always been, which is what most callers want.
  */
+/**
+ * A screen-level wait. Only for the waits you actually see — putting this
+ * behind every await would flash it for eighty milliseconds and read as a
+ * fault rather than as loading.
+ */
+export function Loading({ children }: { children?: ReactNode }) {
+  return (
+    <div className="loading-line">
+      <BowlMoment mood="swim" size={40} />
+      <p className="screen-empty">{children ?? 'Loading…'}</p>
+    </div>
+  )
+}
+
+// Something went wrong: the bowl over, and what it was.
+export function ErrorLine({ children }: { children: ReactNode }) {
+  return (
+    <div className="loading-line">
+      <BowlMoment mood="tipped" size={40} />
+      <p className="screen-empty">{children}</p>
+    </div>
+  )
+}
+
 export function Empty({ children, art }: { children: ReactNode; art?: EmptyArtKind }) {
   if (!art) return <p className="screen-empty">{children}</p>
   return (

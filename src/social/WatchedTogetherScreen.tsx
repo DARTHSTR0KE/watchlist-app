@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Empty, PosterCell, PosterGrid, Screen, ScreenHead, SectionLabel } from '../ui/Screen'
+import { Empty, Loading, PosterCell, PosterGrid, Screen, ScreenHead, SectionLabel } from '../ui/Screen'
+import { BowlMoment, MomentLine } from '../brand/Moments'
+import { MascotPair } from '../brand/Mascot'
 import { loadWatchedSplit } from './pendingWatches'
 import type { WatchedSplit } from './pendingWatches'
 
@@ -24,7 +26,14 @@ export function WatchedTogetherScreen({ userId, partnerName }: WatchedScreenProp
     }
   }, [userId])
 
-  if (split === null) return null
+  if (split === null) {
+    return (
+      <Screen>
+        <ScreenHead title="Watched" />
+        <Loading>Counting what you've seen…</Loading>
+      </Screen>
+    )
+  }
 
   const them = partnerName ?? 'them'
   const total = split.together.length + split.aloneTotal
@@ -33,6 +42,11 @@ export function WatchedTogetherScreen({ userId, partnerName }: WatchedScreenProp
     <Screen>
       <ScreenHead title="Watched" status={`${total}`} />
 
+      {/* The joke picks the animal here, not the database. */}
+      <MomentLine art={<BowlMoment mood="swim" size={46} />}>
+        Three-second memory. That's why we keep a list.
+      </MomentLine>
+
       {total === 0 ? (
         <Empty art="pair">Nothing watched yet. Films land here once one of you logs one.</Empty>
       ) : (
@@ -40,7 +54,7 @@ export function WatchedTogetherScreen({ userId, partnerName }: WatchedScreenProp
           {/* The shared half leads: it is the same list and the same count
               for both of us, whoever answered the prompt. */}
           <SectionLabel tone="sage">
-            Together · {split.together.length}
+            <MascotPair size={22} /> Together · {split.together.length}
           </SectionLabel>
           {split.together.length === 0 ? (
             <Empty>Nothing you have watched together yet.</Empty>

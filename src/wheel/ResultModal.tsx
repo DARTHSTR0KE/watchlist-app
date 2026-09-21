@@ -3,6 +3,7 @@ import type { PointerEvent } from 'react'
 import type { WheelItem } from './titles'
 import { buildBackdropUrl, buildPosterUrl, buildProfileUrl } from './posters'
 import { useTopCast } from './useTopCast'
+import { BowlMoment, ShrugMoment } from '../brand/Moments'
 
 interface ResultModalProps {
   item: WheelItem
@@ -123,6 +124,9 @@ export function ResultModal({
           <div className="modal-header">
             {backdropUrl && <img className="modal-backdrop" src={backdropUrl} alt="" aria-hidden="true" />}
             <div className="modal-header-fade" />
+          {/* In the corner of the result: one quick turn as it lands, and
+              then it settles. Purely alongside — nothing waits on it. */}
+          <BowlMoment mood="loop" size={46} className="modal-bowl" />
             {posterUrl ? (
               <img className="modal-poster" src={posterUrl} alt={`${item.title} poster`} />
             ) : (
@@ -257,11 +261,17 @@ export function ResultModal({
             </div>
           )}
 
-          <p className="reroll-status">
-            {canReroll
-              ? `${rerollsRemaining} reroll${rerollsRemaining === 1 ? '' : 's'} remaining`
-              : "That's the one."}
-          </p>
+          {canReroll ? (
+            <p className="reroll-status">
+              {rerollsRemaining} reroll{rerollsRemaining === 1 ? '' : 's'} remaining
+            </p>
+          ) : (
+            /* Out of rerolls: a shrug, and the line it goes with. */
+            <p className="reroll-status reroll-status-done">
+              <ShrugMoment />
+              <span>That's the one.</span>
+            </p>
+          )}
         </div>
       </div>
     </div>

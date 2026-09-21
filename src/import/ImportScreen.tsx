@@ -6,6 +6,7 @@ import { ManualSearch } from './ManualSearch'
 import { WatchlistGrid } from './WatchlistGrid'
 import { MissingItemsPanel } from './MissingItemsPanel'
 import { formatRelativeTime } from '../utils/relativeTime'
+import { BowlMoment, HeistMoment } from '../brand/Moments'
 import { downloadLetterboxdCsv } from './letterboxdExport'
 import {
   getLastImportDate,
@@ -142,10 +143,18 @@ export function ImportScreen({ onGoToWheel }: ImportScreenProps) {
         />
       </section>
 
-      {error && <p className="import-error">{error}</p>}
+      {error && (
+        <div className="loading-line">
+          <BowlMoment mood="tipped" size={40} />
+          <p className="import-error">{error}</p>
+        </div>
+      )}
 
       {phase === 'enriching-watchlist' && watchlistProgress && (
         <div className="import-progress">
+          {/* A masked bandit making off with your films. The sack fills
+              with the count, not with a timer. */}
+          <HeistMoment done={watchlistProgress.completed} total={watchlistProgress.total} />
           <p className="import-progress-label">
             Matching your watchlist… {watchlistProgress.completed}/{watchlistProgress.total}
           </p>

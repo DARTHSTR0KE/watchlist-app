@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Empty, PosterCell, PosterGrid, Screen, ScreenHead, SectionLabel } from '../ui/Screen'
+import { Empty, Loading, PosterCell, PosterGrid, Screen, ScreenHead, SectionLabel } from '../ui/Screen'
 import { FilmPicker } from '../wheel/FilmPicker'
 import { addToSharedList, loadSharedList, removeFromSharedList } from './sharedList'
 import type { SharedListEntry } from './sharedList'
@@ -53,7 +53,14 @@ export function SharedListScreen({
     }
   }
 
-  if (loading) return null
+  if (loading) {
+    return (
+      <Screen>
+        <ScreenHead title="Watch together" />
+        <Loading>Fetching your list…</Loading>
+      </Screen>
+    )
+  }
 
   const existingIds = new Set(entries.map((entry) => entry.filmId))
 

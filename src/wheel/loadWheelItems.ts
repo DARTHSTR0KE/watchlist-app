@@ -1,4 +1,6 @@
 import { supabase } from '../lib/supabaseClient'
+import { parseMascot } from '../brand/mascots'
+import type { Mascot } from '../brand/mascots'
 import { loadTogetherFilmIds } from '../social/pendingWatches'
 import type { TopCastMember } from '../lib/tmdbClient'
 import type { WheelItem } from './titles'
@@ -118,6 +120,8 @@ export interface Partner {
   // Whatever profiles.display_name holds, read fresh. Null only when that
   // row can't be read — no name is ever written into the code.
   displayName: string | null
+  // Their animal, read the same way and just as never assumed.
+  mascot: Mascot | null
 }
 
 // Whoever this user is paired with, or null if the profile has no partner.
@@ -135,10 +139,14 @@ export async function loadPartner(userId: string): Promise<Partner | null> {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('display_name')
+    .select('display_name, mascot')
     .eq('id', partnerId)
     .maybeSingle()
-  return { id: partnerId, displayName: profile?.display_name ?? null }
+  return {
+    id: partnerId,
+    displayName: profile?.display_name ?? null,
+    mascot: parseMascot(profile?.mascot),
+  }
 }
 
 

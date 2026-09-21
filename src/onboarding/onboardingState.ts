@@ -1,9 +1,13 @@
 import { supabase } from '../lib/supabaseClient'
+import { parseMascot } from '../brand/mascots'
+import type { Mascot } from '../brand/mascots'
 
 export interface MyProfile {
   displayName: string | null
   // Null means the walkthrough has never been finished or skipped.
   onboardedAt: string | null
+  // Mine, for anywhere the app refers to me rather than to them.
+  mascot: Mascot | null
 }
 
 /**
@@ -24,12 +28,16 @@ export class NoRowsAffected extends Error {
 export async function loadMyProfile(userId: string): Promise<MyProfile | null> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('display_name, onboarded_at')
+    .select('display_name, onboarded_at, mascot')
     .eq('id', userId)
     .maybeSingle()
   if (error) throw error
   if (!data) return null
-  return { displayName: data.display_name, onboardedAt: data.onboarded_at }
+  return {
+    displayName: data.display_name,
+    onboardedAt: data.onboarded_at,
+    mascot: parseMascot(data.mascot),
+  }
 }
 
 // Skipping counts as done: being asked again after saying no is worse than
