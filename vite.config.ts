@@ -14,7 +14,9 @@ export default defineConfig({
         display: 'standalone',
         orientation: 'portrait',
         theme_color: '#101014',
-        background_color: '#101014',
+        // Matches the icon's own ground. When these differ, Android's
+        // splash draws the tile as a lighter box on a darker field.
+        background_color: '#121218',
         icons: [
           {
             src: 'icons/icon-192.png',

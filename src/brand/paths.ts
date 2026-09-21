@@ -44,3 +44,37 @@ export const GOLDFISH = {
   pelvic: 'M44 52 Q50 63 61 51 Q52 56 44 52 Z',
   eye: { cx: 78, cy: 29, r: 4.2 },
 } as const
+
+/**
+ * The seated raccoon, full-bodied, on a 120x140 grid. Only the splash uses
+ * this — at 34px an empty-state drawing needs to be a head and nothing
+ * else, and the launcher icon the same.
+ *
+ * Parts are kept apart rather than merged into one silhouette because he
+ * has to turn, reach and carry: a single path can't do any of that.
+ */
+export const RACCOON_SEATED = {
+  viewBox: '0 0 120 140',
+  // Curls out to his left and up, so the stripes read against the ground.
+  tail: 'M44 112 C14 116 0 88 13 65 C18 55 32 53 38 62 C25 74 23 94 35 103 Z',
+  tailStripes: [
+    'M2 94 L42 80 L47 94 L7 108 Z',
+    'M0 74 L36 60 L41 73 L5 87 Z',
+    'M4 56 L32 46 L37 58 L9 68 Z',
+  ],
+  body: 'M60 56 C83 56 93 78 93 99 C93 121 79 132 60 132 C41 132 27 121 27 99 C27 78 37 56 60 56 Z',
+  footLeft: { cx: 44, cy: 128, rx: 12.5, ry: 7 },
+  footRight: { cx: 76, cy: 128, rx: 12.5, ry: 7 },
+  // Drawn as thick round-capped strokes: one line each, which is what
+  // makes a reach a rotation rather than a redraw.
+  armLeft: 'M47 78 L34 103',
+  armRight: 'M73 78 L86 103',
+  armWidth: 13,
+  pawLeft: { cx: 43, cy: 105, r: 7 },
+  pawRight: { cx: 77, cy: 105, r: 7 },
+  // Where the head-only drawing sits on this body, and the pivots the
+  // splash rotates around.
+  headTransform: 'translate(24 -1) scale(0.72)',
+  neck: { x: 60, y: 62 },
+  shoulder: { x: 60, y: 78 },
+} as const

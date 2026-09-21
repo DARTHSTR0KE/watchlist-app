@@ -1,4 +1,4 @@
-import { BRAND, GOLDFISH, RACCOON } from './paths'
+import { BRAND, GOLDFISH, RACCOON, RACCOON_SEATED } from './paths'
 
 /**
  * The two of them, drawn from the shared path data. Both are plain <g>
@@ -79,5 +79,76 @@ export function Goldfish({ size, className }: { size: number; className?: string
     >
       <GoldfishShapes />
     </svg>
+  )
+}
+
+/**
+ * The seated raccoon, in named groups. The splash rotates `sp-head` about
+ * the neck and `sp-arms` about the shoulders; everything else stays put.
+ */
+export function RaccoonSeatedShapes() {
+  const r = RACCOON_SEATED
+  return (
+    <g>
+      <g className="sp-tail">
+        <path d={r.tail} fill={BRAND.fur} />
+        {/* Clipped to the tail so the bands stop at its edge instead of
+            running across the body behind it. */}
+        <clipPath id="sp-tail-clip">
+          <path d={r.tail} />
+        </clipPath>
+        <g clipPath="url(#sp-tail-clip)">
+          {r.tailStripes.map((d) => (
+            <path key={d} d={d} fill={BRAND.mask} />
+          ))}
+        </g>
+      </g>
+
+      <ellipse
+        cx={r.footLeft.cx}
+        cy={r.footLeft.cy}
+        rx={r.footLeft.rx}
+        ry={r.footLeft.ry}
+        fill={BRAND.mask}
+      />
+      <ellipse
+        cx={r.footRight.cx}
+        cy={r.footRight.cy}
+        rx={r.footRight.rx}
+        ry={r.footRight.ry}
+        fill={BRAND.mask}
+      />
+      <path d={r.body} fill={BRAND.fur} />
+
+      <g className="sp-arms">
+        {/* Dark, like the mask and the feet. Cream arms on a cream body
+            left only the paws showing, which read as two buttons on his
+            belly rather than as limbs that could pick anything up. */}
+        <path
+          d={r.armLeft}
+          stroke={BRAND.mask}
+          strokeWidth={r.armWidth}
+          strokeLinecap="round"
+          fill="none"
+        />
+        <path
+          d={r.armRight}
+          stroke={BRAND.mask}
+          strokeWidth={r.armWidth}
+          strokeLinecap="round"
+          fill="none"
+        />
+      </g>
+
+      {/* The animated group and the placement group are separate on
+          purpose: a CSS transform on an SVG element replaces the transform
+          attribute outright, so animating this one would otherwise throw
+          the head off the body. */}
+      <g className="sp-head">
+        <g transform={r.headTransform}>
+          <RaccoonShapes />
+        </g>
+      </g>
+    </g>
   )
 }

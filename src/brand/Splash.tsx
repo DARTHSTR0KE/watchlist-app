@@ -1,64 +1,77 @@
-import { useEffect, useState } from 'react'
-import { GoldfishShapes, RaccoonShapes } from './mark'
+import { useEffect } from 'react'
+import { GoldfishShapes, RaccoonSeatedShapes } from './mark'
 import { prefersReducedMotion } from './coldStart'
 
-// Everything below has to finish inside this. Held deliberately short:
-// a splash is a greeting, not a gate.
-const FULL_MS = 1350
-const STILL_MS = 400
-
 /**
- * The raccoon scoops the fish up and the pair leave together, taking the
- * wordmark with them.
+ * One raccoon and one goldfish, from the first frame to the last. Nothing
+ * crossfades into anything and no drawing is swapped for another version
+ * of itself partway through.
  *
- * It renders over the app rather than in front of it — the app is already
- * mounting and loading underneath, so this never delays anything. Tapping
- * anywhere ends it early.
+ * The whole thing runs off a single five-second clock: every element gets
+ * the same duration and differs only in which percentages it moves at, so
+ * the reach, the lift, the walk and the text can't drift apart the way
+ * separate timers would.
+ *
+ *   0.0-0.8  the pair fade in, already in position
+ *   0.8-1.4  the name and the gloss fade in
+ *   1.0      the skip hint appears
+ *   1.4-2.0  the tagline fades in, and holds — ten words need reading time
+ *   3.8-4.3  he turns and reaches
+ *   4.3-4.6  the fish is lifted into his arms
+ *   4.6-5.0  he walks off right carrying it; the text fades in place
+ *
+ * It renders over the app, which is already mounted and loading
+ * underneath, so nothing waits on it and there is no blank frame when it
+ * clears.
  */
+const FULL_MS = 5000
+
+// Long enough to take the composed picture in, and then out of the way.
+const STILL_MS = 1500
+
 export function Splash({ onDone }: { onDone: () => void }) {
   const reduced = prefersReducedMotion()
-  const [leaving, setLeaving] = useState(false)
 
   useEffect(() => {
-    if (reduced) {
-      const t = window.setTimeout(onDone, STILL_MS)
-      return () => window.clearTimeout(t)
-    }
-    // The beat before the scoop, then the exit.
-    const scoop = window.setTimeout(() => setLeaving(true), 520)
-    const done = window.setTimeout(onDone, FULL_MS)
-    return () => {
-      window.clearTimeout(scoop)
-      window.clearTimeout(done)
-    }
+    const t = window.setTimeout(onDone, reduced ? STILL_MS : FULL_MS)
+    return () => window.clearTimeout(t)
   }, [onDone, reduced])
 
   return (
     <div
-      className={`splash${leaving ? ' splash-leaving' : ''}${reduced ? ' splash-still' : ''}`}
-      onClick={onDone}
+      className={`splash${reduced ? ' splash-still' : ''}`}
+      onPointerDown={onDone}
       role="presentation"
     >
       <div className="splash-stage">
-        <svg className="splash-pair" viewBox="0 0 260 120" aria-hidden="true">
-          {/* One group, so the scoop carries the fish with the raccoon
-              rather than animating two things that have to agree. */}
-          <g className="splash-carry">
-            <g transform="translate(70 8) scale(1.02)">
-              <RaccoonShapes />
+        <svg className="splash-scene" viewBox="0 0 190 150" aria-hidden="true">
+          {/* One group for the pair: once the fish is in his arms it
+              travels with him rather than being animated alongside. */}
+          <g className="sp-troupe">
+            <g className="sp-raccoon">
+              <RaccoonSeatedShapes />
             </g>
-            <g className="splash-fish" transform="translate(146 62) scale(0.86)">
-              <GoldfishShapes />
+            {/* Placement inside, animation outside — a CSS transform
+                replaces the attribute rather than composing with it. */}
+            <g className="sp-fish">
+              <g transform="translate(118 104) scale(0.58)">
+                <GoldfishShapes />
+              </g>
             </g>
           </g>
         </svg>
       </div>
 
+      {/* Fades where it stands. Nothing here moves sideways, which is what
+          was clipping it mid-word against the edge of the screen. */}
       <div className="splash-words">
         <p className="splash-name">Chhobidam</p>
         <p className="splash-gloss">chhobi + padam</p>
-        <p className="splash-tag">A Bong-Mallu partnership</p>
+        <p className="splash-tag">She says chhobi. He says padam. Neither says which one.</p>
       </div>
+
+      {/* Five seconds is long enough that it needs saying. */}
+      <p className="splash-hint">tap to skip</p>
     </div>
   )
 }
