@@ -171,13 +171,11 @@ export function RecommendedScreen({
   const tooLongToSpeak = nudgeLength > NUDGE_SPOKEN_MAX
   const nudgeSendable = Boolean(partnerId) && nudgeLength > 0 && nudgeState !== 'sending'
 
-  // One path, called by both buttons — the only thing that differs is
-  // whether it is asking to be spoken.
-  const sendNudgeAs = (onSplash: boolean) => {
+  const sendNudgeNow = () => {
     if (!partnerId) return
     setNudgeState('sending')
     setNudgeError(null)
-    void sendNudge(userId, partnerId, nudge, onSplash)
+    void sendNudge(userId, partnerId, nudge)
       .then(() => {
         setNudge('')
         setNudgeState('sent')
@@ -395,23 +393,16 @@ export function RecommendedScreen({
           {nudgeLength} / {NUDGE_SPOKEN_MAX}
         </p>
 
-        {/* Two ways to send it, not a setting and then a send. Neither is
-            more the point than the other. */}
+        {/* The only way to send one. The banner is still how it arrives
+            when the splash doesn't get the chance — that is delivery, not
+            a choice made here. */}
         <button
           type="button"
           className="btn-field"
           disabled={!nudgeSendable || tooLongToSpeak}
-          onClick={() => sendNudgeAs(true)}
+          onClick={sendNudgeNow}
         >
           {nudgeState === 'sending' ? 'Sending…' : 'Say it on their splash'}
-        </button>
-        <button
-          type="button"
-          className="btn-field"
-          disabled={!nudgeSendable}
-          onClick={() => sendNudgeAs(false)}
-        >
-          {nudgeState === 'sending' ? 'Sending…' : 'Send as a message'}
         </button>
       </div>
       {nudgeState === 'sent' && (
