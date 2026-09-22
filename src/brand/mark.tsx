@@ -184,6 +184,8 @@ export function BowlShapes({
 
       <ellipse cx={b.base.cx} cy={b.base.cy} rx={b.base.rx} ry={b.base.ry} fill={GLASS.rim} />
       <path d={b.glass} fill={GLASS.body} />
+      {/* The far side of the rim, seen through the opening. */}
+      <ellipse cx={b.mouth.cx} cy={b.mouth.cy} rx={b.mouth.rx} ry={b.mouth.ry} fill={GLASS.body} />
 
       <g clipPath={`url(#${clip})`}>
         {/* Held level by its own counter-rotation while the bowl moves:
@@ -200,6 +202,17 @@ export function BowlShapes({
       </g>
 
       <path d={b.glass} fill="none" stroke={GLASS.rim} strokeWidth="3" />
+      {/* Thin, and over everything: this is the lip you would put a hand
+          over to carry it. */}
+      <ellipse
+        cx={b.mouth.cx}
+        cy={b.mouth.cy}
+        rx={b.mouth.rx}
+        ry={b.mouth.ry}
+        fill="none"
+        stroke={GLASS.rim}
+        strokeWidth="2.5"
+      />
     </g>
   )
 }

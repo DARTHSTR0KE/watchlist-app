@@ -359,6 +359,7 @@ export interface Database {
           message: string
           dismissed: boolean
           created_at: string | null
+          on_splash: boolean
         }
         Insert: {
           from_user: string
@@ -366,6 +367,7 @@ export interface Database {
           message: string
           dismissed?: boolean
           created_at?: string | null
+          on_splash?: boolean
         }
         Update: {
           from_user?: string
@@ -373,6 +375,7 @@ export interface Database {
           message?: string
           dismissed?: boolean
           created_at?: string | null
+          on_splash?: boolean
         }
         Relationships: []
       }

@@ -3226,7 +3226,7 @@ a.pending-action {
    Scoped to .splash: sp-arms and sp-head are groups inside every seated
    raccoon, so unscoped these rules had the import screen's bandit doing
    the splash's reach. */
-.splash .sp-troupe,
+.splash .sp-raccoon,
 .splash .sp-arms,
 .splash .sp-head,
 .splash .sp-bowl {
@@ -3236,7 +3236,8 @@ a.pending-action {
   animation-fill-mode: forwards;
 }
 
-.splash .sp-troupe {
+.splash .sp-raccoon {
+  transform-origin: 60px 120px;
   animation-name: sp-walk;
 }
 
@@ -3267,14 +3268,15 @@ a.pending-action {
 
 @keyframes sp-level {
   0%,
-  86% {
+  89% {
     transform: rotate(0deg);
   }
   92% {
-    transform: rotate(18deg);
+    transform: rotate(6deg);
   }
+  94%,
   100% {
-    transform: rotate(15deg);
+    transform: rotate(5deg);
   }
 }
 
@@ -3288,69 +3290,95 @@ a.pending-action {
 }
 
 /* He turns towards it, then back square as he stands with it. */
+/* Looking at the bowl on the way over, then forward again to leave. */
 @keyframes sp-turn {
   0%,
   76% {
     transform: rotate(0deg);
   }
-  86% {
-    transform: rotate(13deg);
+  85% {
+    transform: rotate(12deg);
   }
-  92% {
-    transform: rotate(6deg);
+  90% {
+    transform: rotate(16deg);
   }
+  94%,
   100% {
     transform: rotate(0deg);
   }
 }
 
+/* Both arms down to the bowl at the bend, then gathered in around it. */
 @keyframes sp-reach {
   0%,
-  76% {
+  85% {
     transform: rotate(0deg);
   }
-  /* Down and across to the fish. */
-  86% {
-    transform: rotate(-32deg);
+  89% {
+    transform: rotate(-38deg);
   }
-  /* Gathered back in, holding it against his chest. */
-  92%,
+  92% {
+    transform: rotate(-22deg);
+  }
+  94%,
   100% {
-    transform: rotate(-6deg);
+    transform: rotate(-9deg);
   }
 }
 
 /* Lifted out of the water line and into his arms, where it stays — from
    here the troupe moves as one. */
+/**
+ * Not a frame of movement before 89%: she crosses to it while it stands
+ * where it was. From there its translation tracks hers exactly — at 94%
+ * she is at 56px and it is at -29px; at 100% she has gone another 194px
+ * and so has it, to 165px.
+ */
 @keyframes sp-lift {
   0%,
-  86% {
+  89% {
     transform: translate(0, 0) rotate(0deg);
   }
-  /* Up to chest height and across, so it ends held against her rather
-     than travelling alongside. */
   92% {
-    transform: translate(-62px, -24px) rotate(-18deg);
+    transform: translate(-33px, -35px) rotate(-6deg);
+  }
+  94% {
+    transform: translate(-29px, -37px) rotate(-5deg);
   }
   100% {
-    transform: translate(-65px, -26px) rotate(-15deg);
+    transform: translate(165px, -39px) rotate(-5deg);
   }
 }
 
-/* Off to the right, with a walking bob. */
+/* Over to it, down to it, up with it, and away. */
 @keyframes sp-walk {
   0%,
-  92% {
-    transform: translate(0, 0);
+  76% {
+    transform: translate(0, 0) rotate(0deg);
   }
-  95% {
-    transform: translate(60px, -3px);
+  /* The walk across, with a step in it. */
+  80% {
+    transform: translate(26px, -3px) rotate(0deg);
+  }
+  85% {
+    transform: translate(52px, 0) rotate(0deg);
+  }
+  /* Bending to the bowl. */
+  89% {
+    transform: translate(52px, 7px) rotate(3deg);
+  }
+  /* Straightening with it. */
+  92% {
+    transform: translate(52px, 2px) rotate(1deg);
+  }
+  94% {
+    transform: translate(56px, 0) rotate(0deg);
   }
   97% {
-    transform: translate(120px, 1px);
+    transform: translate(150px, -3px) rotate(0deg);
   }
   100% {
-    transform: translate(240px, -2px);
+    transform: translate(250px, -1px) rotate(0deg);
   }
 }
 
@@ -3460,7 +3488,7 @@ a.pending-action {
   animation: none;
 }
 
-.splash-still .sp-troupe,
+.splash-still .sp-raccoon,
 .splash-still .sp-arms,
 .splash-still .sp-head,
 .splash-still .sp-bowl,
@@ -3765,4 +3793,71 @@ a.pending-action {
 .moment-heist {
   display: block;
   margin: 0 auto 0.4rem;
+}
+
+/* Spoken nudge ----------------------------------------------------------- */
+
+/* Above the stage, in the space over the animals' heads. */
+.splash-speech {
+  position: absolute;
+  top: 12%;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0 1.5rem;
+  opacity: 0;
+  /* Up with the tagline, down with it: one clock, same percentages. */
+  animation: sp-tag 5s linear forwards;
+}
+
+/* No clock to ride in the still frame — it is simply there. */
+.splash-speech-still {
+  opacity: 1;
+  animation: none;
+}
+
+.splash-speaker {
+  width: 34px;
+  height: auto;
+}
+
+.speech-bubble {
+  position: relative;
+  max-width: 17rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 14px;
+  background-color: var(--field);
+  border: 1px solid rgba(245, 245, 245, 0.16);
+}
+
+.speech-text {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  text-align: center;
+  color: var(--text);
+}
+
+/* The tail, pointing down at whoever is speaking. */
+.speech-tail {
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  transform: rotate(45deg);
+  background-color: var(--field);
+  border-right: 1px solid rgba(245, 245, 245, 0.16);
+  border-bottom: 1px solid rgba(245, 245, 245, 0.16);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash-speech {
+    opacity: 1;
+    animation: none !important;
+  }
 }

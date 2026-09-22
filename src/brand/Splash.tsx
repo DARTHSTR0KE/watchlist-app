@@ -1,6 +1,8 @@
-import { useEffect } from 'react'
-import { BowlShapes, RaccoonSeatedShapes } from './mark'
+import { useEffect, useRef } from 'react'
+import { BowlShapes, GoldfishShapes, RaccoonShapes, RaccoonSeatedShapes } from './mark'
 import { prefersReducedMotion } from './coldStart'
+import { SpeechBubble } from './SpeechBubble'
+import { SPOKEN_MIN_VISIBLE_MS, useSpokenNudge } from './useSpokenNudge'
 
 /**
  * One raccoon and one goldfish in its bowl, from the first frame to the
@@ -16,9 +18,14 @@ import { prefersReducedMotion } from './coldStart'
  *   0.8-1.4  the name and the gloss fade in
  *   1.0      the skip hint appears
  *   1.4-2.0  the tagline fades in, and holds — ten words need reading time
- *   3.8-4.3  she turns and reaches
- *   4.3-4.6  the bowl is lifted against her chest, water staying level
- *   4.6-5.0  she walks off right carrying it; the text fades in place
+ *   3.8-4.25 she walks over to the bowl
+ *   4.25-4.45 she bends to it and reaches down with both arms
+ *   4.45-4.6 she lifts it to her chest, the water staying level
+ *   4.6-5.0  she straightens and walks off right with it
+ *
+ * The bowl holds identity until the frame she has hold of it, so it is
+ * standing still for every frame before that — she goes to it, rather
+ * than it coming to her.
  *
  * It renders over the app, which is already mounted and loading
  * underneath, so nothing waits on it and there is no blank frame when it
@@ -26,16 +33,47 @@ import { prefersReducedMotion } from './coldStart'
  */
 const FULL_MS = 5000
 
+// When the bubble comes up, and so when its own clock can start.
+const BUBBLE_AT_MS = 1400
+
 // Long enough to take the composed picture in, and then out of the way.
 const STILL_MS = 1500
 
+/**
+ * With something to read in the still frame, 1.5s is the time the bubble
+ * needs on its own — leaving at exactly that moment would race the timer
+ * that marks it delivered, and lose the message half the time. The still
+ * holds a little longer when there is a bubble in it, and only then.
+ */
+const STILL_WITH_BUBBLE_MS = STILL_MS + SPOKEN_MIN_VISIBLE_MS
+
 export function Splash({ onDone }: { onDone: () => void }) {
   const reduced = prefersReducedMotion()
+  const { spoken, onVisible } = useSpokenNudge()
+  const visibleRef = useRef(false)
 
   useEffect(() => {
-    const t = window.setTimeout(onDone, reduced ? STILL_MS : FULL_MS)
+    const hold = reduced ? (spoken ? STILL_WITH_BUBBLE_MS : STILL_MS) : FULL_MS
+    const t = window.setTimeout(onDone, hold)
     return () => window.clearTimeout(t)
-  }, [onDone, reduced])
+  }, [onDone, reduced, spoken])
+
+  // The bubble's clock starts when it is on screen, not when the splash
+  // mounted — a nudge that arrives late gets its full reading time or none
+  // at all, and never a partial one that counts as delivered.
+  useEffect(() => {
+    if (!spoken || visibleRef.current) return
+    if (reduced) {
+      visibleRef.current = true
+      onVisible()
+      return
+    }
+    const t = window.setTimeout(() => {
+      visibleRef.current = true
+      onVisible()
+    }, BUBBLE_AT_MS)
+    return () => window.clearTimeout(t)
+  }, [spoken, reduced, onVisible])
 
   return (
     <div
@@ -43,10 +81,25 @@ export function Splash({ onDone }: { onDone: () => void }) {
       onPointerDown={onDone}
       role="presentation"
     >
+      {/* Above the speaker's head, in step with the tagline: up when it
+          comes up, gone when it goes. */}
+      {spoken && (
+        <div className={`splash-speech${reduced ? ' splash-speech-still' : ''}`}>
+          <SpeechBubble text={spoken.nudge.message} />
+          <svg
+            className="splash-speaker"
+            viewBox={spoken.speaker === 'goldfish' ? '0 0 100 64' : '0 0 100 100'}
+            aria-hidden="true"
+          >
+            {spoken.speaker === 'goldfish' ? <GoldfishShapes /> : <RaccoonShapes />}
+          </svg>
+        </div>
+      )}
+
       <div className="splash-stage">
         <svg className="splash-scene" viewBox="0 0 190 150" aria-hidden="true">
-          {/* One group for the pair: once the fish is in his arms it
-              travels with him rather than being animated alongside. */}
+          {/* Two independent actors on one clock. The bowl is not inside
+              anything that moves — it is on the ground where it was put. */}
           <g className="sp-troupe">
             <g className="sp-raccoon">
               <RaccoonSeatedShapes />

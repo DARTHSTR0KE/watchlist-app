@@ -23,6 +23,7 @@ export interface DataCounts {
   presets: number
   spins: number
   imports: number
+  nudges: number
 }
 
 export const EMPTY_COUNTS: DataCounts = {
@@ -34,6 +35,7 @@ export const EMPTY_COUNTS: DataCounts = {
   presets: 0,
   spins: 0,
   imports: 0,
+  nudges: 0,
 }
 
 // Every count is of what the policies actually let me see, which for the
@@ -49,7 +51,7 @@ async function countOf(table: string): Promise<number> {
 }
 
 export async function countEverything(): Promise<DataCounts> {
-  const [watchlist, watched, recommendations, wheels, sharedList, presets, spins, imports] =
+  const [watchlist, watched, recommendations, wheels, sharedList, presets, spins, imports, nudges] =
     await Promise.all([
       countOf('watchlist_items'),
       countOf('watched'),
@@ -59,8 +61,19 @@ export async function countEverything(): Promise<DataCounts> {
       countOf('filter_presets'),
       countOf('spins'),
       countOf('imports'),
+      countOf('nudges'),
     ])
-  return { watchlist, watched, recommendations, wheels, sharedList, presets, spins, imports }
+  return {
+    watchlist,
+    watched,
+    recommendations,
+    wheels,
+    sharedList,
+    presets,
+    spins,
+    imports,
+    nudges,
+  }
 }
 
 export function totalRecords(counts: DataCounts): number {
@@ -86,6 +99,7 @@ const LABELS: Record<keyof DataCounts, string> = {
   presets: 'filter presets',
   spins: 'spins',
   imports: 'import history',
+  nudges: 'nudges',
 }
 
 /**
@@ -116,8 +130,8 @@ export async function clearAllData(userId: string, partnerId: string | null): Pr
     // Either direction: a recommendation is one record belonging to both.
     supabase.from('recommendations').delete().in('from_user', ids),
     supabase.from('recommendations').delete().in('to_user', ids),
-    // Not counted in the confirmation — a single pending line either way
-    // isn't a number worth quoting — but it goes with everything else.
+    // Both directions at once: ids holds us both, and from_user is
+    // whoever sent it.
     supabase.from('nudges').delete().in('from_user', ids),
   ])
   await supabase.from('custom_wheels').delete().in('user_id', ids)

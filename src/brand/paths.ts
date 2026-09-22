@@ -103,18 +103,23 @@ export const GLASS = {
  */
 export const BOWL = {
   viewBox: '0 0 100 100',
-  glass: 'M50 12 C74 12 92 32 92 56 C92 78 74 92 50 92 C26 92 8 78 8 56 C8 32 26 12 50 12 Z',
+  // Cut across near the top: a sphere closed over the fish reads as a
+  // ball with something trapped in it, not as a bowl.
+  glass: 'M26 24 C10 34 6 56 12 70 C20 86 36 93 50 93 C64 93 80 86 88 70 C94 56 90 34 74 24 Z',
+  // The mouth, drawn as a full ellipse so the back of the rim shows
+  // through the opening.
+  mouth: { cx: 50, cy: 24, rx: 24, ry: 6.5 },
   /**
    * Filled to just under the rim and clipped to the glass. Drawn far
    * wider and deeper than the bowl on purpose: the water counter-rotates
    * to stay level while the glass tilts, and a rect that only just covered
    * the glass would swing a corner off it and leave the bottom dry.
    */
-  water: 'M-120 34 L220 34 L220 320 L-120 320 Z',
-  waterLine: 'M-120 34 L220 34',
-  base: { cx: 50, cy: 92, rx: 22, ry: 5 },
+  water: 'M-120 40 L220 40 L220 320 L-120 320 Z',
+  waterLine: 'M-120 40 L220 40',
+  base: { cx: 50, cy: 92, rx: 20, ry: 4.5 },
   // Where the fish sits, and the circle it swims when it loops.
-  fishTransform: 'translate(18 44) scale(0.64)',
+  fishTransform: 'translate(18 46) scale(0.62)',
 } as const
 
 // The sack: a bandit's haul, filling up as the count climbs.

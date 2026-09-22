@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import './App.css'
 import { SpinWheel } from './wheel/SpinWheel'
 import { ResultModal } from './wheel/ResultModal'
@@ -74,6 +74,7 @@ import { NudgeBanner } from './social/NudgeBanner'
 import { BinMoment, NightMoment } from './brand/Moments'
 import type { Mascot } from './brand/mascots'
 import { dismissNudge, loadNudge } from './social/nudges'
+import { deliverySnapshot, handledElsewhere, subscribeDelivery } from './social/nudgeDelivery'
 import type { Nudge } from './social/nudges'
 import { claimColdStart } from './brand/coldStart'
 import type { WatchAnswer } from './social/PendingWatchPrompt'
@@ -772,7 +773,7 @@ function WheelScreen({
   return (
     <div className="app">
       <FilmBackdrop backdropPath={displayedBackdrop} />
-      <h1 className="app-title">Chhobidam</h1>
+      <h1 className="app-title">Innu ki dekhbo?</h1>
 
       <div className="wheel-controls">
         <SourceToggle source={filters.source} onChange={handleSourceChange} />
@@ -999,6 +1000,12 @@ function AuthenticatedApp() {
   const [ratePrompt, setRatePrompt] = useState<PendingWatch | null>(null)
   // Whatever they left for me since I last had the app open.
   const [nudge, setNudge] = useState<Nudge | null>(null)
+  // Re-reads whenever the splash claims, speaks or releases one, so the
+  // banner appears the moment the splash decides not to deliver it.
+  useSyncExternalStore(subscribeDelivery, deliverySnapshot)
+  // Spoken on the splash means already delivered; the banner stays out of
+  // the way rather than showing the same message a second time.
+  const bannerNudge = handledElsewhere(nudge) ? null : nudge
   // Both read from profiles.mascot, never decided here.
   const [myMascot, setMyMascot] = useState<Mascot | null>(null)
   const [partnerMascot, setPartnerMascot] = useState<Mascot | null>(null)
@@ -1078,13 +1085,13 @@ function AuthenticatedApp() {
     <EnrichmentProvider>
       <div className="app-shell">
         {/* Above everything, dismissible, never in the way. */}
-        {nudge && (
+        {bannerNudge && (
           <NudgeBanner
-            nudge={nudge}
+            nudge={bannerNudge}
             fromName={partnerName}
             fromMascot={partnerMascot}
             onDismiss={() => {
-              const from = nudge.fromUser
+              const from = bannerNudge.fromUser
               setNudge(null)
               void dismissNudge(userId, from).catch(() => {})
             }}

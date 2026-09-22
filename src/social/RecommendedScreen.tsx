@@ -13,7 +13,7 @@ import {
 } from './recommendations'
 import type { Recommendation } from './recommendations'
 import { addExistingFilmToWatchlist, ensureFilmStored } from '../import/watchlistWrites'
-import { NUDGE_MAX, sendNudge } from './nudges'
+import { NUDGE_MAX, NUDGE_SPOKEN_MAX, NudgeSendError, sendNudge } from './nudges'
 import { Mascot } from '../brand/Mascot'
 import type { Mascot as MascotName } from '../brand/mascots'
 
@@ -48,6 +48,9 @@ export function RecommendedScreen({
   const [composing, setComposing] = useState(false)
   const [nudge, setNudge] = useState('')
   const [nudgeState, setNudgeState] = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle')
+  // What actually went wrong, rather than the fact that something did.
+  const [nudgeError, setNudgeError] = useState<string | null>(null)
+  const [onSplash, setOnSplash] = useState(false)
   // Asked once, for the film just chosen. 'unknown' covers the lookup
   // failing, which must not be mistaken for "they haven't seen it".
   const [seenByThem, setSeenByThem] = useState<'unknown' | 'yes' | 'no'>('unknown')
@@ -165,6 +168,7 @@ export function RecommendedScreen({
   }
 
   const them = partnerName ?? 'them'
+  const tooLongToSpeak = nudge.trim().length > NUDGE_SPOKEN_MAX
   const waiting = received.filter((item) => item.respondedAt === null)
   const answered = received.filter((item) => item.respondedAt !== null)
   const chosenPoster = chosen ? buildPosterUrl(chosen.posterPath) : null
@@ -340,7 +344,9 @@ export function RecommendedScreen({
       {/* A message rather than a film. It waits until they next open the
           app — nothing is pushed, and nothing asks for permission. */}
       <SectionLabel tone="sage">
-        <Mascot who={myMascot} size={20} bowl className="mascot-inline" /> Nudge {them}
+        {/* The label names them, so the animal beside it is theirs — mine
+            there reads as though they were the fish. */}
+        <Mascot who={partnerMascot} size={20} bowl className="mascot-inline" /> Nudge {them}
       </SectionLabel>
       <input
         className="filter-preset-input rec-note-input"
@@ -351,8 +357,27 @@ export function RecommendedScreen({
         onChange={(event) => {
           setNudge(event.target.value)
           setNudgeState('idle')
+          setNudgeError(null)
         }}
       />
+
+      {/* Only for something short enough to be read over an animal's head
+          in the seconds the splash is up. */}
+      <label className="filter-toggle">
+        <input
+          type="checkbox"
+          checked={onSplash && !tooLongToSpeak}
+          disabled={tooLongToSpeak}
+          onChange={(event) => setOnSplash(event.target.checked)}
+        />
+        Say it on their splash
+      </label>
+      {tooLongToSpeak && (
+        <Empty>
+          Too long to speak — {NUDGE_SPOKEN_MAX} characters at most, and that's{' '}
+          {nudge.trim().length}. It will still arrive as a banner.
+        </Empty>
+      )}
       <button
         type="button"
         className="btn-field"
@@ -360,12 +385,25 @@ export function RecommendedScreen({
         onClick={() => {
           if (!partnerId) return
           setNudgeState('sending')
-          void sendNudge(userId, partnerId, nudge)
+          setNudgeError(null)
+          void sendNudge(userId, partnerId, nudge, onSplash && !tooLongToSpeak)
             .then(() => {
               setNudge('')
+              setOnSplash(false)
               setNudgeState('sent')
             })
-            .catch(() => setNudgeState('failed'))
+            .catch((error: unknown) => {
+              // Reported, not swallowed: the code is what says whether the
+              // table is missing, a policy refused it, or a key dangled.
+              setNudgeError(
+                error instanceof NudgeSendError
+                  ? error.report
+                  : error instanceof Error
+                    ? error.message
+                    : 'Unknown error.',
+              )
+              setNudgeState('failed')
+            })
         }}
       >
         {nudgeState === 'sending' ? 'Sending…' : 'Send nudge'}
@@ -373,7 +411,9 @@ export function RecommendedScreen({
       {nudgeState === 'sent' && (
         <Empty>Waiting for them. They'll see it next time they open the app.</Empty>
       )}
-      {nudgeState === 'failed' && <Empty>That didn't send. Try again.</Empty>}
+      {nudgeState === 'failed' && (
+        <Empty>That didn't send. {nudgeError ?? 'No reason was given.'}</Empty>
+      )}
       {/* One at a time, in each direction. */}
       {nudgeState === 'idle' && nudge.trim().length > 0 && (
         <Empty>Sending this replaces any nudge of yours they haven't seen yet.</Empty>
