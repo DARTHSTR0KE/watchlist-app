@@ -3861,3 +3861,31 @@ a.pending-action {
     animation: none !important;
   }
 }
+
+/* Nudge compose ---------------------------------------------------------- */
+
+/* One gap value for the whole group — label to input, input to count,
+   count to buttons, and button to button are all the same distance, which
+   is the 0.75rem the rest of the app uses between stacked fields. */
+.nudge-compose {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Margins would compound with the gap above, so the buttons rely on it. */
+.nudge-compose .btn-field {
+  margin-top: 0;
+}
+
+.nudge-count {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+}
+
+/* Past the spoken limit: says why the first button has gone quiet. */
+.nudge-count-over {
+  color: var(--amber);
+}

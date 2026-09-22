@@ -50,7 +50,6 @@ export function RecommendedScreen({
   const [nudgeState, setNudgeState] = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle')
   // What actually went wrong, rather than the fact that something did.
   const [nudgeError, setNudgeError] = useState<string | null>(null)
-  const [onSplash, setOnSplash] = useState(false)
   // Asked once, for the film just chosen. 'unknown' covers the lookup
   // failing, which must not be mistaken for "they haven't seen it".
   const [seenByThem, setSeenByThem] = useState<'unknown' | 'yes' | 'no'>('unknown')
@@ -168,7 +167,34 @@ export function RecommendedScreen({
   }
 
   const them = partnerName ?? 'them'
-  const tooLongToSpeak = nudge.trim().length > NUDGE_SPOKEN_MAX
+  const nudgeLength = nudge.trim().length
+  const tooLongToSpeak = nudgeLength > NUDGE_SPOKEN_MAX
+  const nudgeSendable = Boolean(partnerId) && nudgeLength > 0 && nudgeState !== 'sending'
+
+  // One path, called by both buttons — the only thing that differs is
+  // whether it is asking to be spoken.
+  const sendNudgeAs = (onSplash: boolean) => {
+    if (!partnerId) return
+    setNudgeState('sending')
+    setNudgeError(null)
+    void sendNudge(userId, partnerId, nudge, onSplash)
+      .then(() => {
+        setNudge('')
+        setNudgeState('sent')
+      })
+      .catch((error: unknown) => {
+        // Reported, not swallowed: the code is what says whether the
+        // table is missing, a policy refused it, or a key dangled.
+        setNudgeError(
+          error instanceof NudgeSendError
+            ? error.report
+            : error instanceof Error
+              ? error.message
+              : 'Unknown error.',
+        )
+        setNudgeState('failed')
+      })
+  }
   const waiting = received.filter((item) => item.respondedAt === null)
   const answered = received.filter((item) => item.respondedAt !== null)
   const chosenPoster = chosen ? buildPosterUrl(chosen.posterPath) : null
@@ -348,66 +374,46 @@ export function RecommendedScreen({
             there reads as though they were the fish. */}
         <Mascot who={partnerMascot} size={20} bowl className="mascot-inline" /> Nudge {them}
       </SectionLabel>
-      <input
-        className="filter-preset-input rec-note-input"
-        type="text"
-        maxLength={NUDGE_MAX}
-        placeholder={`Say something to ${them}`}
-        value={nudge}
-        onChange={(event) => {
-          setNudge(event.target.value)
-          setNudgeState('idle')
-          setNudgeError(null)
-        }}
-      />
-
-      {/* Only for something short enough to be read over an animal's head
-          in the seconds the splash is up. */}
-      <label className="filter-toggle">
+      <div className="nudge-compose">
         <input
-          type="checkbox"
-          checked={onSplash && !tooLongToSpeak}
-          disabled={tooLongToSpeak}
-          onChange={(event) => setOnSplash(event.target.checked)}
+          className="filter-preset-input rec-note-input"
+          type="text"
+          maxLength={NUDGE_MAX}
+          placeholder={`Say something to ${them}`}
+          value={nudge}
+          onChange={(event) => {
+            setNudge(event.target.value)
+            setNudgeState('idle')
+            setNudgeError(null)
+          }}
         />
-        Say it on their splash
-      </label>
-      {tooLongToSpeak && (
-        <Empty>
-          Too long to speak — {NUDGE_SPOKEN_MAX} characters at most, and that's{' '}
-          {nudge.trim().length}. It will still arrive as a banner.
-        </Empty>
-      )}
-      <button
-        type="button"
-        className="btn-field"
-        disabled={!partnerId || nudge.trim().length === 0 || nudgeState === 'sending'}
-        onClick={() => {
-          if (!partnerId) return
-          setNudgeState('sending')
-          setNudgeError(null)
-          void sendNudge(userId, partnerId, nudge, onSplash && !tooLongToSpeak)
-            .then(() => {
-              setNudge('')
-              setOnSplash(false)
-              setNudgeState('sent')
-            })
-            .catch((error: unknown) => {
-              // Reported, not swallowed: the code is what says whether the
-              // table is missing, a policy refused it, or a key dangled.
-              setNudgeError(
-                error instanceof NudgeSendError
-                  ? error.report
-                  : error instanceof Error
-                    ? error.message
-                    : 'Unknown error.',
-              )
-              setNudgeState('failed')
-            })
-        }}
-      >
-        {nudgeState === 'sending' ? 'Sending…' : 'Send nudge'}
-      </button>
+
+        {/* Counted against the spoken limit rather than the field's, so
+            the reason the first button greys out is on screen before it
+            happens rather than after. */}
+        <p className={`nudge-count${tooLongToSpeak ? ' nudge-count-over' : ''}`}>
+          {nudgeLength} / {NUDGE_SPOKEN_MAX}
+        </p>
+
+        {/* Two ways to send it, not a setting and then a send. Neither is
+            more the point than the other. */}
+        <button
+          type="button"
+          className="btn-field"
+          disabled={!nudgeSendable || tooLongToSpeak}
+          onClick={() => sendNudgeAs(true)}
+        >
+          {nudgeState === 'sending' ? 'Sending…' : 'Say it on their splash'}
+        </button>
+        <button
+          type="button"
+          className="btn-field"
+          disabled={!nudgeSendable}
+          onClick={() => sendNudgeAs(false)}
+        >
+          {nudgeState === 'sending' ? 'Sending…' : 'Send as a message'}
+        </button>
+      </div>
       {nudgeState === 'sent' && (
         <Empty>Waiting for them. They'll see it next time they open the app.</Empty>
       )}
