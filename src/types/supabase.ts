@@ -48,6 +48,8 @@ export interface Database {
           vote_average: number | null
           trailer_key: string | null
           top_cast: Json | null
+          directors: Json | null
+          countries: string[] | null
           providers: Json | null
           providers_at: string | null
           enriched_at: string | null
@@ -68,6 +70,8 @@ export interface Database {
           vote_average?: number | null
           trailer_key?: string | null
           top_cast?: Json | null
+          directors?: Json | null
+          countries?: string[] | null
           providers?: Json | null
           providers_at?: string | null
           enriched_at?: string | null
@@ -87,6 +91,8 @@ export interface Database {
           vote_average?: number | null
           trailer_key?: string | null
           top_cast?: Json | null
+          directors?: Json | null
+          countries?: string[] | null
           providers?: Json | null
           providers_at?: string | null
           enriched_at?: string | null

@@ -8,33 +8,24 @@ export function palette(): Record<string, string> {
   const styles = getComputedStyle(document.documentElement)
   const read = (name: string) => styles.getPropertyValue(name).trim()
   cache = {
-    me: read('--me'),
-    them: read('--them'),
     axis: read('--text-muted'),
     label: read('--text-dim'),
-    neutral: read('--text-faintest'),
-    cat1: read('--cat-1'),
-    cat2: read('--cat-2'),
-    cat3: read('--cat-3'),
-    cat4: read('--cat-4'),
-    cat5: read('--cat-5'),
-    cat6: read('--cat-6'),
+    amber: read('--amber'),
+    rust: read('--rust'),
+    sage: read('--sage'),
+    slate: read('--slate'),
+    mauve: read('--mauve'),
   }
   return cache
 }
 
-// The order categorical charts run through. Six of them, so a chart of up
-// to six bars never repeats a colour.
-export function categoryColors(count: number): string[] {
-  const p = palette()
-  const cycle = [p.cat1, p.cat2, p.cat3, p.cat4, p.cat5, p.cat6]
-  return Array.from({ length: count }, (_, i) => cycle[i % cycle.length])
-}
+/**
+ * What a section's colour means, the same as in the filter sheet: amber is
+ * me, rust is them and anything negative, sage is shared and loved, slate
+ * is places, mauve is genre.
+ */
+export type Tone = 'amber' | 'rust' | 'sage' | 'slate' | 'mauve'
 
-// Fixed for the two of us wherever we appear beside each other.
-export function personColor(who: 'me' | 'them' | 'neither'): string {
-  const p = palette()
-  if (who === 'me') return p.me
-  if (who === 'them') return p.them
-  return p.neutral
+export function toneColor(tone: Tone): string {
+  return palette()[tone]
 }

@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { initialsOf } from '../utils/initials'
 import type { PointerEvent } from 'react'
 import type { WheelItem } from './titles'
 import { buildBackdropUrl, buildPosterUrl, buildProfileUrl } from './posters'
@@ -31,14 +32,6 @@ function formatRuntime(minutes: number): string {
   const hours = Math.floor(minutes / 60)
   const mins = minutes % 60
   return `${hours}h ${mins}m`
-}
-
-// Initials stand in when TMDB has no portrait for someone.
-function initialsOf(name: string): string {
-  const words = name.trim().split(/\s+/)
-  const first = words[0]?.[0] ?? ''
-  const last = words.length > 1 ? (words[words.length - 1]?.[0] ?? '') : ''
-  return (first + last).toUpperCase()
 }
 
 // 6pm–4am local -> "Not tonight", 4am–6pm -> "Not today".

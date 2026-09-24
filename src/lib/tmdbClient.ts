@@ -1,3 +1,6 @@
+import { extractCountries, extractDirectors } from './filmCredits'
+import type { CreditPerson, TmdbCountry, TmdbCreator, TmdbCrewMember } from './filmCredits'
+
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3'
 
@@ -112,6 +115,7 @@ interface TmdbCastMember {
 
 export interface TmdbCredits {
   cast?: TmdbCastMember[]
+  crew?: TmdbCrewMember[]
 }
 
 interface TmdbCreditsBlock {
@@ -129,6 +133,7 @@ export interface TmdbMovieDetails extends TmdbVideosBlock, TmdbCreditsBlock {
   original_language: string | null
   genres: TmdbGenre[]
   vote_average: number | null
+  production_countries?: TmdbCountry[]
 }
 
 export interface TmdbTvDetails extends TmdbVideosBlock, TmdbCreditsBlock {
@@ -142,6 +147,8 @@ export interface TmdbTvDetails extends TmdbVideosBlock, TmdbCreditsBlock {
   original_language: string | null
   genres: TmdbGenre[]
   vote_average: number | null
+  production_countries?: TmdbCountry[]
+  created_by?: TmdbCreator[]
 }
 
 export async function getMovieDetails(id: number): Promise<TmdbMovieDetails> {
@@ -207,6 +214,29 @@ export async function getTopCast(mediaType: 'movie' | 'tv', tmdbId: number): Pro
   return extractTopCast(credits)
 }
 
+// Everything the stats page reads that import used to leave behind: the
+// cast, the directors and the countries, from one details call. Credits
+// ride along on the same request rather than costing a second one.
+export interface FilmPeopleAndPlaces {
+  top_cast: TopCastMember[]
+  directors: CreditPerson[]
+  countries: string[]
+}
+
+export async function getFilmPeopleAndPlaces(
+  mediaType: 'movie' | 'tv',
+  tmdbId: number,
+): Promise<FilmPeopleAndPlaces> {
+  const details = await tmdbFetch<TmdbMovieDetails & TmdbTvDetails>(`/${mediaType}/${tmdbId}`, {
+    append_to_response: 'credits',
+  })
+  return {
+    top_cast: extractTopCast(details.credits),
+    directors: extractDirectors(mediaType, details.credits?.crew, details.created_by),
+    countries: extractCountries(details.production_countries),
+  }
+}
+
 export interface NormalizedFilm {
   id: string
   media_type: 'movie' | 'tv'
@@ -221,6 +251,8 @@ export interface NormalizedFilm {
   vote_average: number | null
   trailer_key: string | null
   top_cast: TopCastMember[]
+  directors: CreditPerson[]
+  countries: string[]
 }
 
 export function normalizeMovieDetails(details: TmdbMovieDetails): NormalizedFilm {
@@ -238,6 +270,8 @@ export function normalizeMovieDetails(details: TmdbMovieDetails): NormalizedFilm
     vote_average: details.vote_average,
     trailer_key: extractTrailerKey(details.videos),
     top_cast: extractTopCast(details.credits),
+    directors: extractDirectors('movie', details.credits?.crew, undefined),
+    countries: extractCountries(details.production_countries),
   }
 }
 
@@ -256,5 +290,7 @@ export function normalizeTvDetails(details: TmdbTvDetails): NormalizedFilm {
     vote_average: details.vote_average,
     trailer_key: extractTrailerKey(details.videos),
     top_cast: extractTopCast(details.credits),
+    directors: extractDirectors('tv', undefined, details.created_by),
+    countries: extractCountries(details.production_countries),
   }
 }

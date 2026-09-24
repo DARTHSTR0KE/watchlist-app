@@ -1,65 +1,164 @@
+import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { Bar, BarChart, Cell, ResponsiveContainer, XAxis, YAxis } from 'recharts'
-import type { Tally } from './statsData'
-import { categoryColors, palette } from './palette'
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
+import type { PersonTally, RatedFilm, Tally, YearChoice } from './statsCompute'
+import { palette, toneColor } from './palette'
+import type { Tone } from './palette'
 import { SectionLabel } from '../ui/Screen'
+import { buildPosterUrl, buildProfileUrl } from '../wheel/posters'
+import { starLabel } from '../wheel/filters'
+import { initialsOf } from '../utils/initials'
 
 // A number you can read at arm's length, with a label that doesn't compete
 // with it.
-export function Figure({
-  value,
-  label,
-  wide,
-  tone,
-}: {
-  value: ReactNode
-  label: string
-  wide?: boolean
-  // Whose number this is, when it sits beside the other person's.
-  tone?: 'me' | 'them'
-}) {
+export function Figure({ value, label, tone }: { value: ReactNode; label: string; tone?: Tone }) {
   return (
-    <div className={`figure${wide ? ' figure-wide' : ''}`}>
-      <span className={`figure-value${tone ? ` figure-value-${tone}` : ''}`}>{value}</span>
+    <div className="figure">
+      <span className={`figure-value${tone ? ` tone-${tone}` : ''}`}>{value}</span>
       <span className="figure-label">{label}</span>
     </div>
   )
 }
 
-// The same label as every other section, so stats reads as part of the
-// app rather than a dashboard bolted on the side.
-export function StatSection({ title, children }: { title: string; children: ReactNode }) {
+// The same label as every other screen, in the colour of what the section
+// is about.
+export function StatSection({
+  title,
+  tone,
+  children,
+}: {
+  title: string
+  tone: Tone
+  children: ReactNode
+}) {
   return (
     <section className="stat-section">
-      <SectionLabel>{title}</SectionLabel>
+      <SectionLabel tone={tone}>{title}</SectionLabel>
       {children}
     </section>
   )
 }
 
-// Every section can be empty on a new account, and an empty section has to
-// say what would fill it rather than rendering nothing.
+// Every section can be empty, and an empty section has to say what would
+// fill it rather than rendering nothing.
 export function StatEmpty({ children }: { children: ReactNode }) {
   return <p className="screen-empty">{children}</p>
 }
 
-export function TallyBars({
-  data,
-  colors,
-  height,
+export function StatNote({ children }: { children: ReactNode }) {
+  return <p className="stat-note">{children}</p>
+}
+
+/**
+ * All time, then each year something was watched, newest first. Sticky, so
+ * which year you are reading is never scrolled out of sight.
+ */
+export function YearPicker({
+  years,
+  value,
+  onChange,
 }: {
-  data: Tally[]
-  // One per row. Defaults to the categorical cycle.
-  colors?: string[]
-  height?: number
+  years: number[]
+  value: YearChoice
+  onChange: (year: YearChoice) => void
 }) {
+  const options: YearChoice[] = ['all', ...years]
+  return (
+    <div className="year-picker" role="tablist" aria-label="Which year">
+      {options.map((option) => (
+        <button
+          key={option}
+          type="button"
+          role="tab"
+          aria-selected={option === value}
+          className={`year-chip${option === value ? ' year-chip-on' : ''}`}
+          onClick={() => onChange(option)}
+        >
+          {option === 'all' ? 'All time' : option}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// Circular portraits with a count, scrolling sideways. Initials where TMDB
+// has no photo, or the photo fails to load.
+export function PeopleRow({ people }: { people: PersonTally[] }) {
+  const [failed, setFailed] = useState<Set<string>>(() => new Set())
+  return (
+    <ul className="people-row">
+      {people.map((person) => {
+        const url = failed.has(person.name) ? null : buildProfileUrl(person.profilePath)
+        return (
+          <li className="people-member" key={person.name}>
+            <span className="people-photo-wrap">
+              {url ? (
+                <img
+                  className="cast-photo"
+                  src={url}
+                  alt=""
+                  aria-hidden="true"
+                  loading="lazy"
+                  onError={() => setFailed((current) => new Set(current).add(person.name))}
+                />
+              ) : (
+                <span className="cast-photo cast-photo-fallback" aria-hidden="true">
+                  {initialsOf(person.name)}
+                </span>
+              )}
+              <span className="people-count" aria-label={`${person.count} films`}>
+                {person.count}
+              </span>
+            </span>
+            <span className="cast-name">{person.name}</span>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+// Three posters with their rating, framed in the section's colour.
+export function PosterTrio({ films, tone }: { films: RatedFilm[]; tone: 'sage' | 'rust' }) {
+  return (
+    <ul className={`poster-trio poster-trio-${tone}`}>
+      {films.map((film) => {
+        const url = buildPosterUrl(film.posterPath)
+        return (
+          <li className="poster-trio-cell" key={film.filmId}>
+            {url ? (
+              <img className="poster-trio-image" src={url} alt={film.title} loading="lazy" />
+            ) : (
+              <span className="poster-trio-image poster-trio-empty">{film.title}</span>
+            )}
+            <span className="poster-trio-rating">★ {starLabel(film.rating)}</span>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+export function CountryPills({ countries }: { countries: Tally[] }) {
+  return (
+    <ul className="country-pills">
+      {countries.map((country) => (
+        <li className="country-pill" key={country.label}>
+          {country.label}
+          <span className="country-pill-count">{country.count}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+export function TallyBars({ data, tone }: { data: Tally[]; tone: Tone }) {
   if (data.length === 0) return null
   const max = Math.max(...data.map((entry) => entry.count))
-  const fills = colors ?? categoryColors(data.length)
   const p = palette()
 
   return (
-    <div className="chart" style={{ height: height ?? Math.max(120, data.length * 30) }}>
+    <div className="chart" style={{ height: Math.max(120, data.length * 30) }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} layout="vertical" margin={{ top: 0, right: 34, bottom: 0, left: 0 }}>
           {/* An explicit numeric domain, not 'dataMax': left to itself
@@ -80,14 +179,11 @@ export function TallyBars({
               stopped partway and reading as a smaller number. */}
           <Bar
             dataKey="count"
+            fill={toneColor(tone)}
             radius={[0, 4, 4, 0]}
             isAnimationActive={false}
             label={{ position: 'right', fill: p.label, fontSize: 12 }}
-          >
-            {data.map((entry, index) => (
-              <Cell key={entry.label} fill={fills[index % fills.length]} />
-            ))}
-          </Bar>
+          />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -110,7 +206,7 @@ export function RatingHistogram({ data }: { data: { rating: string; count: numbe
           />
           <YAxis hide domain={[0, max]} />
           {/* These are my ratings, so they take my colour. */}
-          <Bar dataKey="count" fill={p.me} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+          <Bar dataKey="count" fill={p.amber} radius={[4, 4, 0, 0]} isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
     </div>

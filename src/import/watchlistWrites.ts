@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabaseClient'
 import { asyncPool } from '../lib/asyncPool'
 import { buildFilmId } from '../lib/tmdbClient'
-import type { NormalizedFilm, TopCastMember } from '../lib/tmdbClient'
+import type { FilmPeopleAndPlaces, NormalizedFilm, TopCastMember } from '../lib/tmdbClient'
 import { resolveCandidate } from './matching'
 
 export async function upsertFilm(film: NormalizedFilm): Promise<void> {
@@ -20,6 +20,8 @@ export async function upsertFilm(film: NormalizedFilm): Promise<void> {
       vote_average: film.vote_average,
       trailer_key: film.trailer_key,
       top_cast: film.top_cast,
+      directors: film.directors,
+      countries: film.countries,
       enriched_at: new Date().toISOString(),
     },
     { onConflict: 'id' },
@@ -32,6 +34,20 @@ export async function upsertFilm(film: NormalizedFilm): Promise<void> {
 // up again on every open.
 export async function saveTopCast(filmId: string, cast: TopCastMember[]): Promise<void> {
   const { error } = await supabase.from('films').update({ top_cast: cast }).eq('id', filmId)
+  if (error) throw error
+}
+
+// The cast, directors and countries for a film stored before import
+// captured them. Empty arrays are written as they come: a film TMDB lists
+// no director for is answered, not missing, and isn't fetched again.
+export async function saveFilmPeopleAndPlaces(
+  filmId: string,
+  facts: FilmPeopleAndPlaces,
+): Promise<void> {
+  const { error } = await supabase
+    .from('films')
+    .update({ top_cast: facts.top_cast, directors: facts.directors, countries: facts.countries })
+    .eq('id', filmId)
   if (error) throw error
 }
 

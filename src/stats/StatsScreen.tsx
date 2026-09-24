@@ -1,22 +1,22 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import { languageLabel, starLabel } from '../wheel/filters'
 import {
+  CountryPills,
   Figure,
+  PeopleRow,
+  PosterTrio,
   RatingHistogram,
   StatEmpty,
+  StatNote,
   StatSection,
   TallyBars,
+  YearPicker,
 } from './StatBits'
-import { personColor } from './palette'
 import { ErrorLine, Loading, Screen, ScreenHead } from '../ui/Screen'
-import {
-  computeTogether,
-  computeViewing,
-  computeWatchlist,
-  computeWheel,
-  loadStatsRaw,
-} from './statsData'
-import type { StatsRaw } from './statsData'
+import { loadStatsRaw } from './statsData'
+import { computeStats, watchedYears } from './statsCompute'
+import type { Coverage, StatsRaw, YearChoice } from './statsCompute'
 
 interface StatsScreenProps {
   userId: string
@@ -24,14 +24,63 @@ interface StatsScreenProps {
   partnerName: string | null
 }
 
-function round(value: number, places = 1): string {
-  return value.toFixed(places).replace(/\.0$/, '')
+const REGION_NAMES = new Intl.DisplayNames(['en'], { type: 'region' })
+
+function countryLabel(code: string): string {
+  try {
+    return REGION_NAMES.of(code) ?? code
+  } catch {
+    return code
+  }
 }
 
-function monthsPhrase(months: number): string {
-  if (months < 1) return 'under a month'
-  if (months < 24) return `${Math.round(months)} months`
-  return `${round(months / 12)} years`
+function round(value: number, places = 1): string {
+  return value.toFixed(places).replace(/\.0+$/, '')
+}
+
+function plural(count: number, word: string): string {
+  return `${count} ${word}${count === 1 ? '' : 's'}`
+}
+
+const REFRESH_HINT = 'Refresh film data in Settings fills them in.'
+
+/**
+ * Cast, directors and countries only exist once Refresh film data has run
+ * over a film. When none of the films in range have them, that is what
+ * gets said — a zero would claim you had watched no one.
+ */
+function CoverageGate({
+  coverage,
+  what,
+  hasAny,
+  empty,
+  children,
+}: {
+  coverage: Coverage
+  // Plural noun: "cast", "directors", "countries".
+  what: string
+  hasAny: boolean
+  empty: string
+  children: ReactNode
+}) {
+  if (coverage.known === 0 && coverage.missing === 0) return <StatEmpty>{empty}</StatEmpty>
+  if (coverage.known === 0) {
+    return (
+      <StatEmpty>
+        No {what} fetched for these films yet. {REFRESH_HINT}
+      </StatEmpty>
+    )
+  }
+  return (
+    <>
+      {hasAny ? children : <StatEmpty>{empty}</StatEmpty>}
+      {coverage.missing > 0 && (
+        <StatNote>
+          {plural(coverage.missing, 'film')} still missing {what}. {REFRESH_HINT}
+        </StatNote>
+      )}
+    </>
+  )
 }
 
 export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps) {
@@ -41,6 +90,7 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
   const [raw, setRaw] = useState<StatsRaw | null>(null)
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
+  const [year, setYear] = useState<YearChoice>('all')
 
   useEffect(() => {
     let cancelled = false
@@ -60,6 +110,13 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
     }
   }, [userId, partnerId])
 
+  const years = useMemo(() => (raw ? watchedYears(raw) : []), [raw])
+  const stats = useMemo(
+    () =>
+      raw ? computeStats(raw, year, { language: languageLabel, country: countryLabel }) : null,
+    [raw, year],
+  )
+
   if (loading) {
     return (
       <Screen>
@@ -68,7 +125,7 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
       </Screen>
     )
   }
-  if (failed || !raw) {
+  if (failed || !stats) {
     return (
       <Screen>
         <ScreenHead title="Stats" />
@@ -77,300 +134,217 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
     )
   }
 
-  const viewing = computeViewing(raw, languageLabel)
-  const together = computeTogether(raw, userId, partnerId, them)
-  const wheel = computeWheel(raw)
-  const watchlist = computeWatchlist(raw)
+  const when = year === 'all' ? 'yet' : `in ${year}`
+  const nothingWatched = stats.watchedCount === 0
 
-  const recommenderLine = (() => {
-    if (!partnerId) return null
-    if (together.betterRecommender === null) {
-      return `Not enough answered recommendations yet to say who picks better for whom.`
+  const averagesLine = (() => {
+    if (!partnerId) return 'No partner is linked, so there is no average to compare against.'
+    if (stats.myAverageShared === null || stats.theirAverageShared === null) {
+      return `No film you have both rated ${when}, so there is no average to compare.`
     }
-    if (together.betterRecommender === 'tie')
-      return 'Too close to call — you recommend about as well as each other.'
-    return together.betterRecommender === 'me'
-      ? `You are the better recommender.`
-      : `${them} is the better recommender.`
+    return `On the ${plural(stats.bothRatedCount, 'film')} you've both rated, you average ★ ${round(stats.myAverageShared, 2)} and ${them} ★ ${round(stats.theirAverageShared, 2)}.`
   })()
 
   return (
     <Screen>
-      <ScreenHead title="Stats" status={`${viewing.filmCount + viewing.showCount} watched`} />
+      <ScreenHead title="Stats" status={`${stats.watchedCount} watched`} />
 
-      {/* ---------------- Viewing ---------------- */}
-      <StatSection title="Viewing">
-        {raw.mine.length === 0 ? (
+      <YearPicker years={years} value={year} onChange={setYear} />
+
+      {/* ---------------- Headline ---------------- */}
+      {nothingWatched ? (
+        <StatEmpty>
+          Nothing watched yet. Import your Letterboxd history, or log a film with Watch this.
+        </StatEmpty>
+      ) : (
+        <>
+          <div className="figure-row">
+            <Figure value={stats.filmCount} label="films" tone="amber" />
+            <Figure value={round(stats.filmHours, 0)} label="hours" tone="amber" />
+            <Figure
+              value={stats.countryCoverage.known === 0 ? '—' : stats.countries.length}
+              label="countries"
+              tone="slate"
+            />
+          </div>
+          {stats.showCount > 0 && (
+            <StatNote>
+              Plus {plural(stats.showCount, 'show')}, left out of hours — a show's runtime is one
+              episode, not a season.
+            </StatNote>
+          )}
+          {stats.countryCoverage.known === 0 && (
+            <StatNote>Countries haven't been fetched for these films yet. {REFRESH_HINT}</StatNote>
+          )}
+        </>
+      )}
+
+      {/* ---------------- People ---------------- */}
+      <StatSection title="Most watched actors" tone="amber">
+        <CoverageGate
+          coverage={stats.actorCoverage}
+          what="cast"
+          hasAny={stats.actors.length > 0}
+          empty={`No actors to count ${when}.`}
+        >
+          <PeopleRow people={stats.actors} />
+        </CoverageGate>
+      </StatSection>
+
+      <StatSection title="Most watched directors" tone="amber">
+        <CoverageGate
+          coverage={stats.directorCoverage}
+          what="directors"
+          hasAny={stats.directors.length > 0}
+          empty={`No directors to count ${when}.`}
+        >
+          <PeopleRow people={stats.directors} />
+        </CoverageGate>
+      </StatSection>
+
+      {/* ---------------- Ratings at the ends ---------------- */}
+      <StatSection title="You rated highest" tone="sage">
+        {stats.highest.length === 0 ? (
+          <StatEmpty>Nothing rated {when}. Rate something when you log it.</StatEmpty>
+        ) : (
+          <PosterTrio films={stats.highest} tone="sage" />
+        )}
+      </StatSection>
+
+      <StatSection title="And lowest" tone="rust">
+        {stats.lowest.length === 0 ? (
           <StatEmpty>
-            Nothing watched yet. Import your Letterboxd history, or log a film with Watch this.
+            {stats.ratedCount === 0
+              ? `Nothing rated ${when}.`
+              : 'Nothing rated lower than the films above.'}
           </StatEmpty>
         ) : (
-          <>
-            <div className="figure-row">
-              <Figure value={viewing.filmCount} label="films" />
-              <Figure value={viewing.showCount} label="shows" />
-              <Figure value={round(viewing.filmHours, 0)} label="hours of film" />
-            </div>
-            <p className="stat-note">
-              Hours count films only — a show's runtime is one episode, not a season.
-            </p>
+          <PosterTrio films={stats.lowest} tone="rust" />
+        )}
+      </StatSection>
 
-            <div className="figure-row">
-              <Figure
-                value={viewing.togetherCount}
-                label={partnerId ? `with ${them}` : 'watched together'}
-              />
-              <Figure value={viewing.aloneCount} label="on your own" />
-              {/* Not folded into "on your own" — nobody has said which. */}
-              {viewing.unansweredCount > 0 && (
-                <Figure value={viewing.unansweredCount} label="not answered yet" />
-              )}
-            </div>
+      {/* ---------------- Places ---------------- */}
+      <StatSection title="Countries" tone="slate">
+        <CoverageGate
+          coverage={stats.countryCoverage}
+          what="countries"
+          hasAny={stats.countries.length > 0}
+          empty={`No countries to count ${when}.`}
+        >
+          <CountryPills countries={stats.countries} />
+        </CoverageGate>
+      </StatSection>
 
-            {viewing.ratedCount === 0 ? (
-              <StatEmpty>
-                No ratings yet. Rate something when you log it and the spread shows up here.
-              </StatEmpty>
-            ) : (
-              <>
-                <h4 className="stat-subtitle">My ratings</h4>
-                <RatingHistogram data={viewing.ratingHistogram} />
-                <div className="figure-row">
-                  <Figure
-                    value={viewing.myAverage === null ? '—' : `★ ${round(viewing.myAverage, 2)}`}
-                    label="your average"
-                    tone="me"
-                  />
-                  {/* No partner means no second average to sit beside it —
-                      naming one would invent a comparison. */}
-                  {partnerId && (
-                    <Figure
-                      value={
-                        viewing.theirAverage === null ? '—' : `★ ${round(viewing.theirAverage, 2)}`
-                      }
-                      label={`${them}'s average, shared films`}
-                      tone="them"
-                    />
-                  )}
-                </div>
-              </>
-            )}
+      {/* ---------------- What kind ---------------- */}
+      <StatSection title="Genres" tone="mauve">
+        {stats.genres.length === 0 ? (
+          <StatEmpty>No genres to count {when}.</StatEmpty>
+        ) : (
+          <TallyBars data={stats.genres} tone="mauve" />
+        )}
+      </StatSection>
 
-            {viewing.genres.length > 0 && (
-              <>
-                <h4 className="stat-subtitle">Genres</h4>
-                <TallyBars data={viewing.genres} />
-              </>
-            )}
-            {viewing.languages.length > 0 && (
-              <>
-                <h4 className="stat-subtitle">Languages</h4>
-                <TallyBars data={viewing.languages} />
-              </>
-            )}
-            {viewing.decades.length > 0 && (
-              <>
-                <h4 className="stat-subtitle">Decades</h4>
-                <TallyBars data={viewing.decades} />
-              </>
-            )}
-          </>
+      <StatSection title="Languages" tone="slate">
+        {stats.languages.length === 0 ? (
+          <StatEmpty>No languages to count {when}.</StatEmpty>
+        ) : (
+          <TallyBars data={stats.languages} tone="slate" />
         )}
       </StatSection>
 
       {/* ---------------- The two of us ---------------- */}
-      <StatSection title="The two of us">
+      <StatSection title="Together and on your own" tone="sage">
+        {nothingWatched ? (
+          <StatEmpty>Nothing watched {when}.</StatEmpty>
+        ) : (
+          <div className="figure-row">
+            <Figure
+              value={stats.togetherCount}
+              label={partnerId ? `with ${them}` : 'together'}
+              tone="sage"
+            />
+            <Figure value={stats.aloneCount} label="on your own" tone="amber" />
+            {/* Not folded into "on your own" — nobody has said which. */}
+            {stats.unansweredCount > 0 && (
+              <Figure value={stats.unansweredCount} label="not answered yet" />
+            )}
+          </div>
+        )}
+      </StatSection>
+
+      <StatSection title="Biggest disagreements" tone="rust">
         {!partnerId ? (
+          <StatEmpty>No partner is linked, so there is nothing to disagree about.</StatEmpty>
+        ) : stats.bothRatedCount === 0 ? (
           <StatEmpty>
-            No partner is linked to this account, so there is nothing to compare against.
+            Nothing you have both rated {when}. Only films you watched together can be compared.
+          </StatEmpty>
+        ) : stats.disagreements.length === 0 ? (
+          <StatEmpty>
+            You gave the same rating to all {plural(stats.bothRatedCount, 'film')} you've both
+            rated.
           </StatEmpty>
         ) : (
-          <>
-            <p className="stat-note">
-              Only films you watched together. Anything either of you watched alone is private to
-              that person, so it can't be compared here.
-            </p>
-            {together.bothRatedCount === 0 ? (
-              <StatEmpty>
-                Nothing you have both rated from a film you watched together yet. Once you have
-                each scored one, your agreement shows up here.
-              </StatEmpty>
-            ) : (
-              <>
-                <div className="figure-row">
-                  <Figure value={together.bothRatedCount} label="both rated" />
-                  <Figure
-                    value={
-                      together.averageGap === null ? '—' : `${round(together.averageGap, 2)}★`
-                    }
-                    label="average gap"
-                  />
-                  <Figure value={together.agreeWithinHalf} label="within half a star" />
+          <ul className="disagree-list">
+            {stats.disagreements.map((entry) => (
+              <li className="disagree-row" key={entry.filmId}>
+                <span className="disagree-title">{entry.title}</span>
+                <div className="disagree-scores">
+                  <span className="disagree-score who-me">
+                    <span className="score-who">You</span>
+                    <span className="score-value">★ {starLabel(entry.mine)}</span>
+                  </span>
+                  <span className="disagree-gap">{round(entry.gap, 1)}★ apart</span>
+                  <span className="disagree-score who-them">
+                    <span className="score-who">{them}</span>
+                    <span className="score-value">★ {starLabel(entry.theirs)}</span>
+                  </span>
                 </div>
-
-                <h4 className="stat-subtitle">Most disagreed about</h4>
-                <ul className="disagree-list">
-                  {together.disagreements.map((entry) => (
-                    <li className="disagree-row" key={entry.filmId}>
-                      <span className="disagree-title">{entry.title}</span>
-                      <div className="disagree-scores">
-                        <span className="disagree-score who-me">
-                          <span className="score-who">You</span>
-                          <span className="score-value">★ {starLabel(entry.mine)}</span>
-                        </span>
-                        <span className="disagree-gap">{round(entry.gap, 1)}★ apart</span>
-                        <span className="disagree-score who-them">
-                          <span className="score-who">{them}</span>
-                          <span className="score-value">★ {starLabel(entry.theirs)}</span>
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-
-            <h4 className="stat-subtitle">Recommendations</h4>
-            {together.myRecommending.sent === 0 && together.theirRecommending.sent === 0 ? (
-              <StatEmpty>
-                Neither of you has recommended anything yet. Use Recommend on a film to start.
-              </StatEmpty>
-            ) : (
-              <>
-                <div className="figure-row">
-                  <Figure
-                    value={`${together.myRecommending.watched}/${together.myRecommending.sent}`}
-                    label={`yours ${them} watched`}
-                    tone="me"
-                  />
-                  <Figure value={together.myRecommending.passed} label="they passed on" tone="me" />
-                </div>
-                <div className="figure-row">
-                  <Figure
-                    value={`${together.theirRecommending.watched}/${together.theirRecommending.sent}`}
-                    label="theirs you watched"
-                    tone="them"
-                  />
-                  <Figure
-                    value={together.theirRecommending.passed}
-                    label="you passed on"
-                    tone="them"
-                  />
-                </div>
-                <p className="stat-note">
-                  Counted from what each of you did with a recommendation, not from how you rated
-                  it — a rating on a film watched alone is private.
-                </p>
-                {recommenderLine && <p className="stat-verdict">{recommenderLine}</p>}
-              </>
-            )}
-
-            <h4 className="stat-subtitle">Who picks</h4>
-            {together.picks.length === 0 ? (
-              <StatEmpty>
-                No picks recorded yet. Logging a watch records who chose it.
-              </StatEmpty>
-            ) : (
-              <TallyBars
-                data={together.picks}
-                colors={together.picks.map((entry) =>
-                  personColor(
-                    entry.label === 'You' ? 'me' : entry.label === them ? 'them' : 'neither',
-                  ),
-                )}
-              />
-            )}
-          </>
+              </li>
+            ))}
+          </ul>
         )}
       </StatSection>
 
       {/* ---------------- The wheel ---------------- */}
-      <StatSection title="The wheel">
-        {wheel.totalSpins === 0 ? (
-          <StatEmpty>No spins yet. Spin the wheel and this fills in.</StatEmpty>
+      <StatSection title="The wheel" tone="amber">
+        {stats.wheel.totalSpins === 0 ? (
+          <StatEmpty>No spins {when}. Spin the wheel and this fills in.</StatEmpty>
         ) : (
           <>
             <div className="figure-row">
-              <Figure value={wheel.totalSpins} label="spins" />
-              <Figure value={wheel.watchedSpins} label="ended in a watch" />
+              <Figure value={stats.wheel.totalSpins} label="spins" />
               <Figure
-                value={wheel.averageRerolls === null ? '—' : round(wheel.averageRerolls, 1)}
+                value={
+                  stats.wheel.averageRerolls === null ? '—' : round(stats.wheel.averageRerolls, 1)
+                }
                 label="rerolls before committing"
               />
             </div>
-
-            {wheel.mostDodged && (
+            {stats.wheel.mostDodged ? (
               <div className="dodged">
-                <span className="figure-label">Most Dodged</span>
-                <span className="dodged-title">{wheel.mostDodged.title}</span>
+                <span className="figure-label">Most dodged</span>
+                <span className="dodged-title">{stats.wheel.mostDodged.title}</span>
                 <span className="figure-label">
-                  rerolled away {wheel.mostDodged.count}{' '}
-                  {wheel.mostDodged.count === 1 ? 'time' : 'times'}
+                  rerolled away {stats.wheel.mostDodged.count}{' '}
+                  {stats.wheel.mostDodged.count === 1 ? 'time' : 'times'}
                 </span>
               </div>
-            )}
-
-            {wheel.filterUse.length > 0 && (
-              <>
-                <h4 className="stat-subtitle">Filters you use</h4>
-                <TallyBars data={wheel.filterUse} />
-              </>
-            )}
-
-            <h4 className="stat-subtitle">Presets you use</h4>
-            {wheel.presetUse.length === 0 ? (
-              <StatEmpty>
-                No spins match a saved preset. Presets are matched by their filters, so editing one
-                loses the trail to its earlier spins.
-              </StatEmpty>
             ) : (
-              <TallyBars data={wheel.presetUse} />
+              <StatNote>Nothing rerolled away {when}.</StatNote>
             )}
           </>
         )}
       </StatSection>
 
-      {/* ---------------- The watchlist ---------------- */}
-      <StatSection title="The watchlist">
-        {watchlist.total === 0 ? (
-          <StatEmpty>Your watchlist is empty. Import your Letterboxd export to fill it.</StatEmpty>
+      {/* ---------------- Ratings ---------------- */}
+      <StatSection title="Your ratings" tone="amber">
+        {stats.ratedCount === 0 ? (
+          <StatEmpty>No ratings {when}. Rate something when you log it.</StatEmpty>
         ) : (
-          <>
-            <div className="figure-row">
-              <Figure value={watchlist.total} label="on the list" />
-              <Figure value={round(watchlist.addedPerMonth)} label="added per month" />
-              <Figure value={round(watchlist.watchedPerMonth)} label="watched per month" />
-            </div>
-
-            <p className="stat-verdict">
-              {watchlist.monthsToClear === null
-                ? 'At this rate the list never clears — you add at least as fast as you watch.'
-                : `At this rate it clears in ${monthsPhrase(watchlist.monthsToClear)}.`}
-            </p>
-
-            <div className="figure-row">
-              <Figure value={watchlist.neverLanded} label="never landed on by a spin" wide />
-            </div>
-            <p className="stat-note">
-              Spins record the film the wheel landed on, not the others it showed, so this counts
-              titles a spin has never chosen.
-            </p>
-
-            <h4 className="stat-subtitle">Longest waiting</h4>
-            {watchlist.oldest.length === 0 ? (
-              <StatEmpty>Nothing has been waiting — every title here has been watched.</StatEmpty>
-            ) : (
-              <ul className="disagree-list">
-                {watchlist.oldest.map((entry) => (
-                  <li className="waiting-row" key={entry.title + entry.addedAt}>
-                    <span className="disagree-title">{entry.title}</span>
-                    <span className="figure-label">{monthsPhrase(entry.months)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
+          <RatingHistogram data={stats.ratingHistogram} />
         )}
+        <p className="stat-verdict">{averagesLine}</p>
       </StatSection>
     </Screen>
   )

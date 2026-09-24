@@ -5,6 +5,7 @@ import { NoRowsAffected, saveDisplayName } from '../onboarding/onboardingState'
 import { BirthdayVideo } from '../birthday/BirthdayVideo'
 import { Empty, Row, Rows, Screen, ScreenHead, SectionLabel } from '../ui/Screen'
 import { ClearAllData } from './ClearAllData'
+import { FilmRefresh } from './FilmRefresh'
 import { loadWatchlistSummary } from '../import/watchlistWrites'
 import type { WatchlistSummary } from '../import/watchlistWrites'
 
@@ -167,6 +168,8 @@ export function SettingsScreen({
           Import a watchlist
         </button>
       </section>
+
+      <FilmRefresh />
 
       <section>
         <SectionLabel>Help</SectionLabel>
