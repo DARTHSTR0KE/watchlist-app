@@ -8,6 +8,7 @@ import { ClearAllData } from './ClearAllData'
 import { FilmRefresh } from './FilmRefresh'
 import { LineForThem } from './LineForThem'
 import { ForTheirWrapped } from '../gifts/ForTheirWrapped'
+import { giftWindow } from '../gifts/giftWindow'
 import { QuietFailure } from './QuietFailure'
 import { loadWatchlistSummary } from '../import/watchlistWrites'
 import type { WatchlistSummary } from '../import/watchlistWrites'
@@ -142,7 +143,8 @@ export function SettingsScreen({
         <LineForThem userId={userId} partnerId={partnerId} partnerName={partnerName} />
       )}
 
-      {partnerId && (
+      {/* Only from 1 to 14 December; the rest of the year it isn't here. */}
+      {partnerId && giftWindow(new Date()) === 'open' && (
         <ForTheirWrapped userId={userId} partnerId={partnerId} partnerName={partnerName} />
       )}
 

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { SectionLabel } from '../ui/Screen'
 import { describeError, reportQuietly } from '../lib/dbError'
-import { agree, possessiveName, subjectName } from '../utils/names'
+import { agree, subjectName } from '../utils/names'
 import {
   TRACK_MAX_BYTES,
   giftWindow,
@@ -16,7 +16,8 @@ import { MessageRecorder } from './MessageRecorder'
 
 /**
  * For their Wrapped: a song and a message, left between 1 and 14 December.
- * Outside those dates it only says when it opens, or that it has closed.
+ * Outside those dates there is nothing at all — no heading, no word of
+ * when it opens. It appears on the 1st and is gone on the 15th.
  *
  * Everything shown here is mine. What they left me is one line at most —
  * that something is waiting — and never what.
@@ -31,17 +32,16 @@ export function ForTheirWrapped({
   partnerName: string | null
 }) {
   const [now] = useState(() => new Date())
-  const state = giftWindow(now)
+  const open = giftWindow(now) === 'open'
   const year = giftYear(now)
-  const them = subjectName(partnerName)
 
   const [gift, setGift] = useState<MyGift | null>(null)
   const [waiting, setWaiting] = useState(false)
   const [failure, setFailure] = useState<string | null>(null)
 
   useEffect(() => {
-    // Nothing to read outside December: the section only says when it opens.
-    if (state === 'before') return
+    // Outside the window there is no section, so nothing to read.
+    if (!open) return
     let cancelled = false
     void loadMyGift(userId, year)
       .then((mine) => {
@@ -60,7 +60,7 @@ export function ForTheirWrapped({
     return () => {
       cancelled = true
     }
-  }, [userId, year, state])
+  }, [userId, year, open])
 
   const waitingLine = waiting && (
     <p className="gift-waiting">
@@ -68,58 +68,38 @@ export function ForTheirWrapped({
     </p>
   )
 
+  if (!open) return null
+
   return (
     <section>
       <SectionLabel tone="sage">For their Wrapped</SectionLabel>
 
-      {state === 'before' && (
-        <p className="screen-empty">
-          Opens on 1 December. Until the 14th you can leave {them} two things for{' '}
-          {possessiveName(partnerName)} Wrapped: a song to play behind it, and a message at the end.
-        </p>
-      )}
-
-      {state === 'closed' && (
+      {waitingLine}
+      <p className="screen-empty">
+        Neither of you sees what the other chose until the 15th. You can change the song
+        until then; the message is final once sent.
+      </p>
+      {failure ? (
+        <p className="screen-empty">{failure}</p>
+      ) : gift === null ? (
+        <p className="screen-empty">Loading…</p>
+      ) : (
         <>
-          {waitingLine}
-          <p className="screen-empty">
-            {gift && (gift.trackPath || gift.messageAt)
-              ? `Closed for this year. ${subjectName(partnerName, true)} ${agree(partnerName, 'sees', 'see')} what you left in ${possessiveName(partnerName)} Wrapped.`
-              : 'Closed for this year. It opens again on 1 December.'}
-          </p>
-        </>
-      )}
-
-      {state === 'open' && (
-        <>
-          {waitingLine}
-          <p className="screen-empty">
-            Neither of you sees what the other chose until the 15th. You can change the song
-            until then; the message is final once sent.
-          </p>
-          {failure ? (
-            <p className="screen-empty">{failure}</p>
-          ) : gift === null ? (
-            <p className="screen-empty">Loading…</p>
-          ) : (
-            <>
-              <TrackPicker
-                userId={userId}
-                partnerId={partnerId}
-                year={year}
-                gift={gift}
-                onSaved={setGift}
-              />
-              <MessageBlock
-                userId={userId}
-                partnerId={partnerId}
-                partnerName={partnerName}
-                year={year}
-                gift={gift}
-                onSent={setGift}
-              />
-            </>
-          )}
+          <TrackPicker
+            userId={userId}
+            partnerId={partnerId}
+            year={year}
+            gift={gift}
+            onSaved={setGift}
+          />
+          <MessageBlock
+            userId={userId}
+            partnerId={partnerId}
+            partnerName={partnerName}
+            year={year}
+            gift={gift}
+            onSent={setGift}
+          />
         </>
       )}
     </section>
