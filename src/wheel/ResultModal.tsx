@@ -4,10 +4,14 @@ import type { PointerEvent } from 'react'
 import type { WheelItem } from './titles'
 import { buildBackdropUrl, buildPosterUrl, buildProfileUrl } from './posters'
 import { useTopCast } from './useTopCast'
-import { BowlMoment, ShrugMoment } from '../brand/Moments'
+import { ShrugMoment } from '../brand/Moments'
+import { ReactionMoment } from '../brand/Ambient'
+import type { Reaction } from '../ambient/ambient'
 
 interface ResultModalProps {
   item: WheelItem
+  // Null for most films: they get the bowl, still, and nothing else.
+  reaction: Reaction | null
   rerollsRemaining: number
   canReroll: boolean
   canRemoveFromWheel: boolean
@@ -42,6 +46,7 @@ function getTakeOffLabel(): string {
 
 export function ResultModal({
   item,
+  reaction,
   rerollsRemaining,
   canReroll,
   canRemoveFromWheel,
@@ -117,9 +122,9 @@ export function ResultModal({
           <div className="modal-header">
             {backdropUrl && <img className="modal-backdrop" src={backdropUrl} alt="" aria-hidden="true" />}
             <div className="modal-header-fade" />
-          {/* In the corner of the result: one quick turn as it lands, and
-              then it settles. Purely alongside — nothing waits on it. */}
-          <BowlMoment mood="loop" size={46} className="modal-bowl" />
+          {/* In the corner of the result. Most films get the bowl and no
+              more; a few earn a reaction. Nothing waits on it. */}
+          <ReactionMoment reaction={reaction} />
             {posterUrl ? (
               <img className="modal-poster" src={posterUrl} alt={`${item.title} poster`} />
             ) : (

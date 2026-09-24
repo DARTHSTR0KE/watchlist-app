@@ -1,4 +1,15 @@
-import { BIN, BOWL, BRAND, GLASS, GOLDFISH, MOON, PARTY_HAT, RACCOON, RACCOON_SEATED, SACK } from './paths'
+import {
+  BIN,
+  BOWL,
+  BRAND,
+  GLASS,
+  GOLDFISH,
+  MOON,
+  PARTY_HAT,
+  RACCOON,
+  RACCOON_SEATED,
+  SACK,
+} from './paths'
 
 /**
  * The two of them, drawn from the shared path data. Both are plain <g>
@@ -6,7 +17,18 @@ import { BIN, BOWL, BRAND, GLASS, GOLDFISH, MOON, PARTY_HAT, RACCOON, RACCOON_SE
  * the icon, the splash and the empty states all do it differently.
  */
 
-export function RaccoonShapes() {
+/**
+ * Closed eyes are a short curve where the eye was; the brow is one arc
+ * over the left patch. Both sit on the same grid as everything else, so
+ * any placement of the head carries them with it.
+ */
+export function RaccoonShapes({
+  eyes = 'open',
+  brow = false,
+}: {
+  eyes?: 'open' | 'closed'
+  brow?: boolean
+} = {}) {
   const r = RACCOON
   return (
     <g>
@@ -38,14 +60,48 @@ export function RaccoonShapes() {
         height={r.maskBridge.height}
         fill={BRAND.mask}
       />
-      <circle cx={r.eyeLeft.cx} cy={r.eyeLeft.cy} r={r.eyeLeft.r} fill={BRAND.fur} />
-      <circle cx={r.eyeRight.cx} cy={r.eyeRight.cy} r={r.eyeRight.r} fill={BRAND.fur} />
+      {eyes === 'open' ? (
+        <>
+          <circle cx={r.eyeLeft.cx} cy={r.eyeLeft.cy} r={r.eyeLeft.r} fill={BRAND.fur} />
+          <circle cx={r.eyeRight.cx} cy={r.eyeRight.cy} r={r.eyeRight.r} fill={BRAND.fur} />
+        </>
+      ) : (
+        <>
+          <path
+            d="M29 51 Q34 55 39 51"
+            stroke={BRAND.fur}
+            strokeWidth="2.6"
+            strokeLinecap="round"
+            fill="none"
+          />
+          <path
+            d="M61 51 Q66 55 71 51"
+            stroke={BRAND.fur}
+            strokeWidth="2.6"
+            strokeLinecap="round"
+            fill="none"
+          />
+        </>
+      )}
+      {brow && (
+        <path
+          className="raccoon-brow"
+          d="M26 39 Q34 32 44 37"
+          stroke={BRAND.mask}
+          strokeWidth="5"
+          strokeLinecap="round"
+          fill="none"
+        />
+      )}
       <path d={r.snout} fill={BRAND.mask} />
     </g>
   )
 }
 
-export function GoldfishShapes() {
+// Asleep is an eye closed; tired is a lid half down over it.
+export type FishEye = 'open' | 'closed' | 'tired'
+
+export function GoldfishShapes({ eye = 'open' }: { eye?: FishEye } = {}) {
   const g = GOLDFISH
   return (
     <g>
@@ -54,7 +110,23 @@ export function GoldfishShapes() {
       <path d={g.dorsal} fill={BRAND.fin} />
       <path d={g.pelvic} fill={BRAND.fin} />
       <path d={g.body} fill={BRAND.fish} />
-      <circle cx={g.eye.cx} cy={g.eye.cy} r={g.eye.r} fill={BRAND.mask} />
+      {eye === 'closed' ? (
+        <path
+          d={`M${g.eye.cx - 4} ${g.eye.cy} Q${g.eye.cx} ${g.eye.cy + 3.5} ${g.eye.cx + 4} ${g.eye.cy}`}
+          stroke={BRAND.mask}
+          strokeWidth="2"
+          strokeLinecap="round"
+          fill="none"
+        />
+      ) : (
+        <circle cx={g.eye.cx} cy={g.eye.cy} r={g.eye.r} fill={BRAND.mask} />
+      )}
+      {eye === 'tired' && (
+        <path
+          d={`M${g.eye.cx - g.eye.r - 0.4} ${g.eye.cy + 0.6} A${g.eye.r + 0.4} ${g.eye.r + 0.4} 0 0 1 ${g.eye.cx + g.eye.r + 0.4} ${g.eye.cy + 0.6} Z`}
+          fill={BRAND.fish}
+        />
+      )}
     </g>
   )
 }
@@ -62,7 +134,13 @@ export function GoldfishShapes() {
 // Standalone, for anywhere that wants just one of them at a given size.
 export function Raccoon({ size, className }: { size: number; className?: string }) {
   return (
-    <svg width={size} height={size} viewBox={RACCOON.viewBox} className={className} aria-hidden="true">
+    <svg
+      width={size}
+      height={size}
+      viewBox={RACCOON.viewBox}
+      className={className}
+      aria-hidden="true"
+    >
       <RaccoonShapes />
     </svg>
   )
@@ -86,7 +164,7 @@ export function Goldfish({ size, className }: { size: number; className?: string
  * The seated raccoon, in named groups. The splash rotates `sp-head` about
  * the neck and `sp-arms` about the shoulders; everything else stays put.
  */
-export function RaccoonSeatedShapes() {
+export function RaccoonSeatedShapes({ eyes = 'open' }: { eyes?: 'open' | 'closed' } = {}) {
   const r = RACCOON_SEATED
   return (
     <g>
@@ -146,7 +224,7 @@ export function RaccoonSeatedShapes() {
           the head off the body. */}
       <g className="sp-head">
         <g transform={r.headTransform}>
-          <RaccoonShapes />
+          <RaccoonShapes eyes={eyes} />
         </g>
       </g>
     </g>
@@ -166,15 +244,27 @@ export function BowlShapes({
   swimming = false,
   loop = false,
   tipped = false,
+  tired = false,
+  fishEye = 'open',
+  empty = false,
 }: {
   uid: string
   swimming?: boolean
   loop?: boolean
   tipped?: boolean
+  // Swims, but slowly.
+  tired?: boolean
+  fishEye?: FishEye
+  // The fish is somewhere else — behind the bowl, or mid-air above it.
+  empty?: boolean
 }) {
   const b = BOWL
   const clip = `bowl-clip-${uid}`
-  const fishClass = loop ? 'bowl-fish bowl-fish-loop' : swimming ? 'bowl-fish bowl-fish-swim' : 'bowl-fish'
+  const fishClass = loop
+    ? 'bowl-fish bowl-fish-loop'
+    : swimming
+      ? `bowl-fish bowl-fish-swim${tired ? ' bowl-fish-tired' : ''}`
+      : 'bowl-fish'
 
   return (
     <g className={tipped ? 'bowl bowl-tipped' : 'bowl'}>
@@ -194,11 +284,13 @@ export function BowlShapes({
           <path d={b.water} fill={GLASS.water} />
           <path d={b.waterLine} stroke={GLASS.waterLine} strokeWidth="2" fill="none" />
         </g>
-        <g className={fishClass}>
-          <g transform={b.fishTransform}>
-            <GoldfishShapes />
+        {!empty && (
+          <g className={fishClass}>
+            <g transform={b.fishTransform}>
+              <GoldfishShapes eye={fishEye} />
+            </g>
           </g>
-        </g>
+        )}
       </g>
 
       <path d={b.glass} fill="none" stroke={GLASS.rim} strokeWidth="3" />
@@ -228,7 +320,13 @@ export function SackShapes({ filled }: { filled: number }) {
       <path d={s.neck} fill={BRAND.sand} />
       <path d={s.tie} fill={BRAND.mask} />
       {s.loot.slice(0, Math.max(0, Math.min(s.loot.length, filled))).map((piece) => (
-        <circle key={`${piece.cx}-${piece.cy}`} cx={piece.cx} cy={piece.cy} r={piece.r} fill={BRAND.mask} />
+        <circle
+          key={`${piece.cx}-${piece.cy}`}
+          cx={piece.cx}
+          cy={piece.cy}
+          r={piece.r}
+          fill={BRAND.mask}
+        />
       ))}
     </g>
   )
@@ -249,6 +347,37 @@ export function BinShapes() {
       {b.ribs.map((d) => (
         <path key={d} d={d} stroke={BRAND.mask} strokeWidth="2.5" fill="none" opacity="0.5" />
       ))}
+    </g>
+  )
+}
+
+// From behind: ears, the back of the head, and a dark band at the nape.
+// Nothing of the face, which is the point.
+export function RaccoonBackShapes() {
+  const r = RACCOON
+  return (
+    <g>
+      <path d={r.earOuterLeft} fill={BRAND.fur} strokeLinejoin="round" />
+      <path d={r.earOuterRight} fill={BRAND.fur} strokeLinejoin="round" />
+      <ellipse cx={r.head.cx} cy={r.head.cy} rx={r.head.rx} ry={r.head.ry} fill={BRAND.fur} />
+      <path d="M22 72 Q50 90 78 72 Q72 86 50 88 Q28 86 22 72 Z" fill={BRAND.mask} opacity="0.7" />
+    </g>
+  )
+}
+
+// Three z's rising, smallest first. Placed by the caller.
+export function ZzzShapes() {
+  return (
+    <g className="amb-zzz" fill={BRAND.sand} fontFamily="system-ui, sans-serif" fontWeight="700">
+      <text x="0" y="24" fontSize="10">
+        z
+      </text>
+      <text x="9" y="14" fontSize="13">
+        z
+      </text>
+      <text x="20" y="2" fontSize="16">
+        z
+      </text>
     </g>
   )
 }

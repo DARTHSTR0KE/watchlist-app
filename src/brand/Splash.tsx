@@ -1,5 +1,13 @@
 import { useEffect, useRef } from 'react'
-import { BowlShapes, GoldfishShapes, RaccoonShapes, RaccoonSeatedShapes } from './mark'
+import {
+  BowlShapes,
+  GoldfishShapes,
+  MoonShapes,
+  RaccoonShapes,
+  RaccoonSeatedShapes,
+  ZzzShapes,
+} from './mark'
+import { useSplashAmbient } from './useSplashAmbient'
 import { prefersReducedMotion } from './coldStart'
 import { SpeechBubble } from './SpeechBubble'
 import { SPOKEN_MIN_VISIBLE_MS, useSpokenNudge } from './useSpokenNudge'
@@ -54,6 +62,8 @@ export function Splash({ onDone }: { onDone: () => void }) {
   const visibleRef = useRef(false)
   // Written for me by the other person; neither of us writes our own.
   const tagline = useLineForMe()
+  // What the hour, the weather and the two of you add. Never waited on.
+  const ambient = useSplashAmbient()
 
   useEffect(() => {
     const hold = reduced ? (spoken ? STILL_WITH_BUBBLE_MS : STILL_MS) : FULL_MS
@@ -80,7 +90,7 @@ export function Splash({ onDone }: { onDone: () => void }) {
 
   return (
     <div
-      className={`splash${reduced ? ' splash-still' : ''}`}
+      className={`splash${reduced ? ' splash-still' : ''}${ambient.asleep ? ' splash-asleep' : ''}${ambient.together ? ' splash-together' : ''}`}
       onPointerDown={onDone}
       role="presentation"
     >
@@ -105,7 +115,7 @@ export function Splash({ onDone }: { onDone: () => void }) {
               anything that moves — it is on the ground where it was put. */}
           <g className="sp-troupe">
             <g className="sp-raccoon">
-              <RaccoonSeatedShapes />
+              <RaccoonSeatedShapes eyes={ambient.asleep ? 'closed' : 'open'} />
             </g>
             {/* Placement inside, animation outside — a CSS transform
                 replaces the attribute rather than composing with it.
@@ -113,10 +123,31 @@ export function Splash({ onDone }: { onDone: () => void }) {
                 in it from the first frame and never leaves it. */}
             <g className="sp-bowl">
               <g transform="translate(112 78) scale(0.66)">
-                <BowlShapes uid="splash" swimming />
+                <BowlShapes
+                  uid="splash"
+                  swimming={!ambient.fishAsleep}
+                  tired={ambient.fishTired}
+                  fishEye={ambient.fishAsleep ? 'closed' : ambient.fishTired ? 'tired' : 'open'}
+                />
               </g>
+              {ambient.fishAsleep && (
+                <g transform="translate(150 66)">
+                  <ZzzShapes />
+                </g>
+              )}
             </g>
+            {ambient.asleep && (
+              <g transform="translate(96 8)">
+                <ZzzShapes />
+              </g>
+            )}
           </g>
+          {/* Past midnight: she's up, and there's a moon to be up under. */}
+          {ambient.moon && (
+            <g className="sp-moon" transform="translate(158 2) scale(0.22)">
+              <MoonShapes />
+            </g>
+          )}
         </svg>
       </div>
 
@@ -126,6 +157,8 @@ export function Splash({ onDone }: { onDone: () => void }) {
         <p className="splash-name">Chhobidam</p>
         <p className="splash-gloss">chhobi + padam</p>
         <p className="splash-tag">{tagline}</p>
+        {/* Beneath their line, never instead of it, and usually absent. */}
+        {ambient.aside && <p className="splash-aside">{ambient.aside}</p>}
       </div>
 
       {/* Five seconds is long enough that it needs saying. */}

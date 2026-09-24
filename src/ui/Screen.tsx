@@ -3,6 +3,7 @@ import { buildPosterUrl } from '../wheel/posters'
 import { EmptyArt } from '../brand/EmptyArt'
 import type { EmptyArtKind } from '../brand/EmptyArt'
 import { BowlMoment } from '../brand/Moments'
+import { PeerMoment } from '../brand/Ambient'
 
 /**
  * One pattern, used by every section. Rows for things you manage, grids
@@ -187,10 +188,14 @@ export function PosterCell({
  * behind every await would flash it for eighty milliseconds and read as a
  * fault rather than as loading.
  */
-export function Loading({ children }: { children?: ReactNode }) {
+// Who waits with you. Chosen per screen, so it isn't the same drawing on
+// every one: a peek over the edge, or the fish going round its bowl.
+export type LoadingArt = 'raccoon' | 'goldfish' | 'bowl'
+
+export function Loading({ children, art = 'bowl' }: { children?: ReactNode; art?: LoadingArt }) {
   return (
     <div className="loading-line">
-      <BowlMoment mood="swim" size={40} />
+      {art === 'bowl' ? <BowlMoment mood="swim" size={40} /> : <PeerMoment who={art} />}
       <p className="screen-empty">{children ?? 'Loading…'}</p>
     </div>
   )

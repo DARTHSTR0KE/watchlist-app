@@ -13,6 +13,7 @@ import {
 import { BRAND } from './paths'
 import { isBirthday } from '../birthday/birthdayDate'
 import { prefersReducedMotion } from './coldStart'
+import { Tappable } from './Tappable'
 
 /**
  * Moments, not decoration. Each of these belongs to one thing the app is
@@ -62,11 +63,13 @@ export function HeistMoment({ done, total }: { done: number; total: number }) {
 export function BinMoment() {
   const still = prefersReducedMotion()
   return (
-    <svg className="moment moment-bin" viewBox={BIN.viewBox} aria-hidden="true">
-      <g className={still ? undefined : 'bin-rummage'}>
-        <BinShapes />
-      </g>
-    </svg>
+    <Tappable who="raccoon">
+      <svg className="moment moment-bin" viewBox={BIN.viewBox} aria-hidden="true">
+        <g className={still ? undefined : 'bin-rummage'}>
+          <BinShapes />
+        </g>
+      </svg>
+    </Tappable>
   )
 }
 
@@ -85,29 +88,31 @@ export function BowlMoment({
   const moving = still ? 'still' : mood
 
   return (
-    <svg
-      className={`moment moment-bowl${className ? ` ${className}` : ''}`}
-      width={size}
-      height={size}
-      viewBox="0 0 100 100"
-      aria-hidden="true"
-    >
-      <BowlShapes
-        uid={uid}
-        swimming={moving === 'swim'}
-        loop={moving === 'loop'}
-        tipped={mood === 'tipped'}
-      />
-      {mood === 'tipped' && (
-        // What came out of it. Drawn outside the glass on purpose.
-        <path
-          className="bowl-spill"
-          d="M6 88 C24 96 52 98 78 92 C60 100 24 100 6 88 Z"
-          fill="rgba(110, 123, 166, 0.42)"
+    <Tappable who="goldfish">
+      <svg
+        className={`moment moment-bowl${className ? ` ${className}` : ''}`}
+        width={size}
+        height={size}
+        viewBox="0 0 100 100"
+        aria-hidden="true"
+      >
+        <BowlShapes
+          uid={uid}
+          swimming={moving === 'swim'}
+          loop={moving === 'loop'}
+          tipped={mood === 'tipped'}
         />
-      )}
-      <Hat transform="translate(22 -6) scale(0.56)" />
-    </svg>
+        {mood === 'tipped' && (
+          // What came out of it. Drawn outside the glass on purpose.
+          <path
+            className="bowl-spill"
+            d="M6 88 C24 96 52 98 78 92 C60 100 24 100 6 88 Z"
+            fill="rgba(110, 123, 166, 0.42)"
+          />
+        )}
+        <Hat transform="translate(22 -6) scale(0.56)" />
+      </svg>
+    </Tappable>
   )
 }
 
@@ -115,12 +120,14 @@ export function BowlMoment({
 export function ShrugMoment() {
   const still = prefersReducedMotion()
   return (
-    <svg className="moment moment-shrug" viewBox={RACCOON.viewBox} aria-hidden="true">
-      <g className={still ? undefined : 'shrug-lift'}>
-        <RaccoonShrugShapes />
-      </g>
-      <Hat transform="translate(14 -14) scale(0.44)" />
-    </svg>
+    <Tappable who="raccoon">
+      <svg className="moment moment-shrug" viewBox={RACCOON.viewBox} aria-hidden="true">
+        <g className={still ? undefined : 'shrug-lift'}>
+          <RaccoonShrugShapes />
+        </g>
+        <Hat transform="translate(14 -14) scale(0.44)" />
+      </svg>
+    </Tappable>
   )
 }
 
@@ -132,7 +139,13 @@ function RaccoonShrugShapes() {
       {/* Out past the head, which fills the grid to y=88 — anything
           closer in is simply behind it. */}
       <path d="M18 74 L1 58" stroke={BRAND.fur} strokeWidth="9" strokeLinecap="round" fill="none" />
-      <path d="M82 74 L99 58" stroke={BRAND.fur} strokeWidth="9" strokeLinecap="round" fill="none" />
+      <path
+        d="M82 74 L99 58"
+        stroke={BRAND.fur}
+        strokeWidth="9"
+        strokeLinecap="round"
+        fill="none"
+      />
       <g transform="translate(12 6) scale(0.76)">
         <RaccoonShapes />
       </g>
@@ -147,10 +160,12 @@ export function NightMoment() {
       <svg className="moment moment-moon" viewBox={MOON.viewBox} aria-hidden="true">
         <MoonShapes />
       </svg>
-      <svg className="moment moment-awake" viewBox={RACCOON.viewBox} aria-hidden="true">
-        <RaccoonShapes />
-        <Hat transform="translate(14 -14) scale(0.44)" />
-      </svg>
+      <Tappable who="raccoon">
+        <svg className="moment moment-awake" viewBox={RACCOON.viewBox} aria-hidden="true">
+          <RaccoonShapes />
+          <Hat transform="translate(14 -14) scale(0.44)" />
+        </svg>
+      </Tappable>
     </span>
   )
 }

@@ -123,7 +123,7 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
     return (
       <Screen>
         <ScreenHead title="Stats" />
-        <Loading>Adding it all up…</Loading>
+        <Loading art="raccoon">Adding it all up…</Loading>
       </Screen>
     )
   }

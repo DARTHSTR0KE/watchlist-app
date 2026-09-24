@@ -1,5 +1,6 @@
 import { GOLDFISH, RACCOON } from './paths'
 import { GoldfishShapes, RaccoonShapes } from './mark'
+import { Tappable } from './Tappable'
 
 /**
  * The pair turning up where a screen has nothing to show.
@@ -17,15 +18,15 @@ export type EmptyArtKind = 'raccoon' | 'goldfish' | 'pair'
 const SIZE = 34
 
 export function EmptyArt({ kind }: { kind: EmptyArtKind }) {
-  if (kind === 'raccoon') {
-    return (
+  const raccoon = (
+    <Tappable who="raccoon">
       <svg className="empty-art" width={SIZE} height={SIZE} viewBox={RACCOON.viewBox} aria-hidden="true">
         <RaccoonShapes />
       </svg>
-    )
-  }
-  if (kind === 'goldfish') {
-    return (
+    </Tappable>
+  )
+  const goldfish = (
+    <Tappable who="goldfish">
       <svg
         className="empty-art"
         width={SIZE}
@@ -35,16 +36,15 @@ export function EmptyArt({ kind }: { kind: EmptyArtKind }) {
       >
         <GoldfishShapes />
       </svg>
-    )
-  }
+    </Tappable>
+  )
+  if (kind === 'raccoon') return raccoon
+  if (kind === 'goldfish') return goldfish
+  // Two drawings rather than one, so each can be tapped on its own.
   return (
-    <svg className="empty-art" width={SIZE * 1.6} height={SIZE} viewBox="0 0 170 100" aria-hidden="true">
-      <g transform="translate(0 4) scale(0.92)">
-        <RaccoonShapes />
-      </g>
-      <g transform="translate(92 42) scale(0.78)">
-        <GoldfishShapes />
-      </g>
-    </svg>
+    <span className="empty-art-pair">
+      {raccoon}
+      {goldfish}
+    </span>
   )
 }

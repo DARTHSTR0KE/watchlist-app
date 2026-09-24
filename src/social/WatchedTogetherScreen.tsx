@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Empty, Loading, PosterCell, PosterGrid, Screen, ScreenHead, SectionLabel } from '../ui/Screen'
-import { BowlMoment, MomentLine } from '../brand/Moments'
+import { MomentLine } from '../brand/Moments'
+import { SleepingPairMoment } from '../brand/Ambient'
 import { MascotPair } from '../brand/Mascot'
 import { loadWatchedSplit } from './pendingWatches'
 import type { WatchedSplit } from './pendingWatches'
@@ -42,8 +43,8 @@ export function WatchedTogetherScreen({ userId, partnerName }: WatchedScreenProp
     <Screen>
       <ScreenHead title="Watched" status={`${total}`} />
 
-      {/* The joke picks the animal here, not the database. */}
-      <MomentLine art={<BowlMoment mood="swim" size={46} />}>
+      {/* Both of them asleep here — this is where the evenings went. */}
+      <MomentLine art={<SleepingPairMoment />}>
         Three-second memory. That's why we keep a list.
       </MomentLine>
 

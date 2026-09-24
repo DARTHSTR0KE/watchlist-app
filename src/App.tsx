@@ -82,6 +82,12 @@ import type { SplashLine } from './social/splashLines'
 import { EmptyArt } from './brand/EmptyArt'
 import { NudgeBanner } from './social/NudgeBanner'
 import { BinMoment, NightMoment } from './brand/Moments'
+import { WheelDust, WheelWatcher } from './brand/Ambient'
+import { useAmbient } from './ambient/ambientStore'
+import { reactionFor } from './ambient/ambient'
+import type { Reaction } from './ambient/ambient'
+import { loadLandingFacts } from './ambient/landing'
+import type { LandingFacts } from './ambient/landing'
 import type { Mascot } from './brand/mascots'
 import { dismissNudge, loadNudge } from './social/nudges'
 import { deliverySnapshot, handledElsewhere, subscribeDelivery } from './social/nudgeDelivery'
@@ -166,6 +172,25 @@ function WheelScreen({
   const [loadingItems, setLoadingItems] = useState(true)
   const [rotation, setRotation] = useState(0)
   const [spinning, setSpinning] = useState(false)
+  // Away long enough and the wheel has gathered dust, which the first spin
+  // of the session shakes off.
+  const ambient = useAmbient()
+  const [shaken, setShaken] = useState(false)
+  // For the result modal's reactions: what they sent me, and what I keep
+  // turning down.
+  const landingRef = useRef<LandingFacts>({ recommended: new Set(), rerolled: new Map() })
+  // Decided the moment a film lands, so a minute ticking past ten o'clock
+  // can't change a reaction that is already showing.
+  const [reaction, setReaction] = useState<Reaction | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    void loadLandingFacts(userId).then((facts) => {
+      if (!cancelled) landingRef.current = facts
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [userId])
   const [result, setResult] = useState<WheelItem | null>(null)
   const [rerollsUsed, setRerollsUsed] = useState(0)
   const [hasWatchedEver, setHasWatchedEver] = useState(false)
@@ -369,6 +394,19 @@ function WheelScreen({
     window.clearTimeout(fallbackTimerRef.current)
     const landed = pendingResultRef.current
     setSpinning(false)
+    setReaction(
+      landed
+        ? reactionFor(
+            {
+              recommendedByPartner: landingRef.current.recommended.has(landed.id),
+              rerolledAway: landingRef.current.rerolled.get(landed.id) ?? 0,
+              runtimeMinutes: landed.runtimeMinutes,
+              genres: landed.genres,
+            },
+            new Date(),
+          )
+        : null,
+    )
     setResult(landed)
     pendingResultRef.current = null
     navigator.vibrate?.(VIBRATE_PATTERN)
@@ -394,6 +432,10 @@ function WheelScreen({
         closeSpin('rerolled')
         // The film turned down, not the one about to land.
         logEvent('reroll', { filmId: result?.id ?? null })
+        if (result) {
+          const rerolled = landingRef.current.rerolled
+          rerolled.set(result.id, (rerolled.get(result.id) ?? 0) + 1)
+        }
       }
 
       // Spin again must not land back on the film it is replacing.
@@ -406,6 +448,7 @@ function WheelScreen({
 
       setResult(null)
       setSpinning(true)
+      setShaken(true)
       // A plain spin never touches the reroll budget — only a reroll spends
       // it, and only "Watch this" resets it. This is the sole reset trigger
       // (see handleWatchThis below); spin() deciding the budget here, on
@@ -919,6 +962,12 @@ function WheelScreen({
             onSpinEnd={finishSpin}
             onSpin={() => spin(false)}
             spinDisabled={spinDisabled}
+            overlay={
+              <>
+                {ambient.away && !shaken && <WheelDust />}
+                {spinning && <WheelWatcher />}
+              </>
+            }
           />
 
           {togetherNote && <p className="empty-state">{togetherNote}</p>}
@@ -987,6 +1036,7 @@ function WheelScreen({
       {result && (
         <ResultModal
           item={result}
+          reaction={reaction}
           vetoes={vetoOptions}
           onVeto={handleVeto}
           rerollsRemaining={rerollsRemaining}
@@ -1078,7 +1128,7 @@ function AuthenticatedApp() {
       setCheckingWatchlist(false)
 
       // Logged quietly and never waited on by anything else.
-      void recordOpen(userId, partner?.id ?? null).then((opened) => {
+      void recordOpen(userId).then((opened) => {
         if (cancelled || !opened) return
         setMilestone(opened.milestone)
       })

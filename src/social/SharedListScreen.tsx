@@ -57,7 +57,7 @@ export function SharedListScreen({
     return (
       <Screen>
         <ScreenHead title="Watch together" />
-        <Loading>Fetching your list…</Loading>
+        <Loading art="raccoon">Fetching your list…</Loading>
       </Screen>
     )
   }

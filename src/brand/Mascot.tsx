@@ -3,20 +3,7 @@ import { GOLDFISH, RACCOON } from './paths'
 import { BowlShapes, GoldfishShapes, PartyHat, RaccoonShapes } from './mark'
 import { isBirthday } from '../birthday/birthdayDate'
 import type { Mascot as MascotName } from './mascots'
-import { logEvent } from '../events/events'
-import type { MouseEvent } from 'react'
-
-/**
- * A tap on an animal is noticed and nothing more: no response on screen.
- * Inside a button the tap belongs to the button — pressing "Nudge" is not
- * reaching for the fish — so those aren't counted.
- */
-function noticeTap(who: MascotName) {
-  return (event: MouseEvent<SVGSVGElement>) => {
-    if (event.currentTarget.closest('button, a')) return
-    logEvent('tap_mascot', { detail: { who } })
-  }
-}
+import { Tappable } from './Tappable'
 
 /**
  * A person's animal, wherever the app refers to that person. Which animal
@@ -25,6 +12,9 @@ function noticeTap(who: MascotName) {
  *
  * The hats are the one thing here that isn't about who someone is: on 30
  * September everyone wears one, wherever they appear.
+ *
+ * Tapping one does something small (see Tappable), except inside a button,
+ * where the tap belongs to the button.
  */
 export function Mascot({
   who,
@@ -41,50 +31,54 @@ export function Mascot({
   const uid = useId().replace(/:/g, '')
   if (!who) return null
   const party = isBirthday()
-  const onClick = noticeTap(who)
 
   if (who === 'goldfish' && bowl) {
     return (
-      <svg width={size} height={size} viewBox="0 0 100 100" className={className} aria-hidden="true" onClick={onClick}>
-        <BowlShapes uid={uid} />
-        {party && (
-          <g transform="translate(20 -4) scale(0.6)">
-            <PartyHat />
-          </g>
-        )}
-      </svg>
+      <Tappable who="goldfish">
+        <svg width={size} height={size} viewBox="0 0 100 100" className={className} aria-hidden="true">
+          <BowlShapes uid={uid} />
+          {party && (
+            <g transform="translate(20 -4) scale(0.6)">
+              <PartyHat />
+            </g>
+          )}
+        </svg>
+      </Tappable>
     )
   }
 
   if (who === 'goldfish') {
     return (
-      <svg
-        width={size}
-        height={size * 0.64}
-        viewBox={GOLDFISH.viewBox}
-        className={className}
-        aria-hidden="true"
-        onClick={onClick}
-      >
-        <GoldfishShapes />
-        {party && (
-          <g transform="translate(24 -16) scale(0.36)">
-            <PartyHat />
-          </g>
-        )}
-      </svg>
+      <Tappable who="goldfish">
+        <svg
+          width={size}
+          height={size * 0.64}
+          viewBox={GOLDFISH.viewBox}
+          className={className}
+          aria-hidden="true"
+        >
+          <GoldfishShapes />
+          {party && (
+            <g transform="translate(24 -16) scale(0.36)">
+              <PartyHat />
+            </g>
+          )}
+        </svg>
+      </Tappable>
     )
   }
 
   return (
-    <svg width={size} height={size} viewBox={RACCOON.viewBox} className={className} aria-hidden="true" onClick={onClick}>
-      <RaccoonShapes />
-      {party && (
-        <g transform="translate(14 -14) scale(0.44)">
-          <PartyHat />
-        </g>
-      )}
-    </svg>
+    <Tappable who="raccoon">
+      <svg width={size} height={size} viewBox={RACCOON.viewBox} className={className} aria-hidden="true">
+        <RaccoonShapes />
+        {party && (
+          <g transform="translate(14 -14) scale(0.44)">
+            <PartyHat />
+          </g>
+        )}
+      </svg>
+    </Tappable>
   )
 }
 

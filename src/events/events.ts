@@ -55,14 +55,3 @@ export function logEvent(
       (error: unknown) => reportQuietly(`Logging ${type}`, error),
     )
 }
-
-// app_open once per page load, however many times the shell mounts —
-// StrictMode alone mounts it twice in development.
-let openLogged = false
-
-export function logAppOpenOnce(): boolean {
-  if (openLogged) return false
-  openLogged = true
-  logEvent('app_open')
-  return true
-}

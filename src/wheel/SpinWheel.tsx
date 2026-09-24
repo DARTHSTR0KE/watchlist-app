@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import type { ReactNode } from 'react'
 import type { WheelItem } from './titles'
 import {
   SEGMENT_COLORS,
@@ -20,6 +21,9 @@ interface SpinWheelProps {
   onSpinEnd: () => void
   onSpin: () => void
   spinDisabled: boolean
+  // Drawn over the wheel's own box — the watcher, the dust. Never takes
+  // a tap meant for the wheel.
+  overlay?: ReactNode
 }
 
 const SIZE = 320
@@ -130,6 +134,7 @@ export function SpinWheel({
   onSpinEnd,
   onSpin,
   spinDisabled,
+  overlay,
 }: SpinWheelProps) {
   const count = items.length
   const segmentAngle = count > 0 ? 360 / count : 0
@@ -201,6 +206,7 @@ export function SpinWheel({
 
   return (
     <div className="wheel-wrap">
+      {overlay}
       <svg
         className="wheel-svg"
         viewBox={`0 0 ${SIZE} ${SIZE}`}

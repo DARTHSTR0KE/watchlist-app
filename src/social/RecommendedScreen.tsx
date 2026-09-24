@@ -151,7 +151,7 @@ export function RecommendedScreen({
     return (
       <Screen>
         <ScreenHead title="Recommendations" />
-        <Loading>Seeing what's arrived…</Loading>
+        <Loading art="goldfish">Seeing what's arrived…</Loading>
       </Screen>
     )
   }

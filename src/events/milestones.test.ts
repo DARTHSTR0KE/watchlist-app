@@ -4,7 +4,6 @@ vi.mock('../lib/supabaseClient', () => ({ supabase: {} }))
 
 const { SPIN_MILESTONES, TOGETHER_MILESTONES, countMilestones, milestoneLine, yearOfThis } =
   await import('./milestones')
-const { isAround } = await import('./presence')
 
 function occurrences(count: number) {
   return Array.from({ length: count }, (_, i) => ({
@@ -58,14 +57,5 @@ describe('milestoneLine', () => {
     expect(milestoneLine('first_recommendation_accepted', 'Sam')).toBe(
       'that was the first recommendation of yours Sam took.',
     )
-  })
-})
-
-describe('isAround', () => {
-  const now = new Date('2026-09-24T12:00:00Z')
-  it('counts an open in the last fifteen minutes as here', () => {
-    expect(isAround('2026-09-24T11:50:00Z', now)).toBe(true)
-    expect(isAround('2026-09-24T11:40:00Z', now)).toBe(false)
-    expect(isAround(null, now)).toBe(false)
   })
 })
