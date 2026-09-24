@@ -8,6 +8,7 @@ import {
   saveLine,
 } from './splashLines'
 import type { SplashLine } from './splashLines'
+import { describeError } from '../lib/dbError'
 
 /**
  * Writing their line, the same wherever it is done. On the prompt it sits
@@ -49,10 +50,12 @@ export function SplashLineEditor({
       const saved = await saveLine(userId, partnerId, trimmed)
       onSaved(saved)
     } catch (error) {
+      // A lock is expected and explained; anything else says what the
+      // database said.
       setMessage(
         error instanceof LineLockedThisMonth
           ? "It's already been changed this month."
-          : "Couldn't save that. Try again.",
+          : `Couldn't save that: ${describeError(error)}`,
       )
     }
     setSaving(false)

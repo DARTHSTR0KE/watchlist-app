@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient'
+import { subjectName } from '../utils/names'
 import { FILM_COLUMNS, toWheelItemFromFilm } from '../wheel/loadWheelItems'
 import type { WheelItem } from '../wheel/titles'
 import { WHEEL_DRAW_SIZE, weightedSample } from '../wheel/weightedDraw'
@@ -37,7 +38,7 @@ export async function buildTogetherWheel(
   mode: TogetherMode,
   userId: string,
   partnerId: string,
-  partnerName: string,
+  partnerName: string | null,
 ): Promise<TogetherWheel> {
   if (mode === 'ours') {
     return { items: await loadSharedListItems(), note: null }
@@ -74,9 +75,9 @@ export async function buildTogetherWheel(
   }
   let note: string | null = null
   if (mineAll.length < HALF && theirsAll.length >= HALF) {
-    note = `You only had ${mineAll.length} to draw from, so more came from ${partnerName}.`
+    note = `You only had ${mineAll.length} to draw from, so more came from ${partnerName ?? 'theirs'}.`
   } else if (theirsAll.length < HALF && mineAll.length >= HALF) {
-    note = `${partnerName} only had ${theirsAll.length} to draw from, so more came from yours.`
+    note = `${subjectName(partnerName, true)} only had ${theirsAll.length} to draw from, so more came from yours.`
   } else if (items.length < WHEEL_DRAW_SIZE) {
     note = `Only ${items.length} between you — that's the whole wheel.`
   }

@@ -7,6 +7,7 @@ import { Empty, Row, Rows, Screen, ScreenHead, SectionLabel } from '../ui/Screen
 import { ClearAllData } from './ClearAllData'
 import { FilmRefresh } from './FilmRefresh'
 import { LineForThem } from './LineForThem'
+import { QuietFailure } from './QuietFailure'
 import { loadWatchlistSummary } from '../import/watchlistWrites'
 import type { WatchlistSummary } from '../import/watchlistWrites'
 
@@ -175,6 +176,8 @@ export function SettingsScreen({
       </section>
 
       <FilmRefresh />
+
+      <QuietFailure />
 
       <section>
         <SectionLabel>Help</SectionLabel>

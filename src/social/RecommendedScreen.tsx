@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { agree, subjectName } from '../utils/names'
 import { buildPosterUrl } from '../wheel/posters'
 import { Empty, Loading, PosterThumb, Row, Rows, Screen, ScreenHead, SectionLabel } from '../ui/Screen'
 import { FilmPicker } from '../wheel/FilmPicker'
@@ -212,7 +213,8 @@ export function RecommendedScreen({
       {message && <Empty>{message}</Empty>}
 
       {received.length === 0 ? (
-        <Empty art="raccoon">Nothing yet. Anything {them} sends lands here.</Empty>
+        <Empty art="raccoon">Nothing yet. Anything {subjectName(partnerName)}{' '}
+          {agree(partnerName, 'sends', 'send')} lands here.</Empty>
       ) : (
         <Rows>
           {waiting.map((item) => (
@@ -272,7 +274,8 @@ export function RecommendedScreen({
         <Mascot who={myMascot} size={20} bowl className="mascot-inline" /> Sent to {them}
       </SectionLabel>
       {sent.length === 0 ? (
-        <Empty>Nothing outstanding — {them} has answered everything.</Empty>
+        <Empty>Nothing outstanding — {subjectName(partnerName)}{' '}
+          {agree(partnerName, 'has', 'have')} answered everything.</Empty>
       ) : (
         <Rows>
           {sent.map((item) => (
@@ -331,7 +334,10 @@ export function RecommendedScreen({
                   fine thing to recommend, but knowing changes what you
                   would say about it. */}
               {seenByThem === 'yes' && (
-                <p className="notice">{them} has already seen this.</p>
+                <p className="notice">
+                  {subjectName(partnerName, true)} {agree(partnerName, 'has', 'have')} already
+                  seen this.
+                </p>
               )}
               <input
                 className="filter-preset-input rec-note-input"

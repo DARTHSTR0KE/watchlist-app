@@ -1,4 +1,5 @@
 import { Empty, Row, Rows, Screen, ScreenHead } from '../ui/Screen'
+import { possessiveName } from '../utils/names'
 import type { TogetherMode } from '../wheel/filters'
 
 interface TogetherChooserProps {
@@ -31,7 +32,6 @@ export function TogetherChooser({
     )
   }
 
-  const them = partnerName ?? 'them'
   const options: { mode: TogetherMode; name: string; meta: string }[] = [
     {
       mode: 'ours',
@@ -41,7 +41,7 @@ export function TogetherChooser({
           ? 'The films you have both added'
           : `${sharedCount} film${sharedCount === 1 ? '' : 's'} you have both added`,
     },
-    { mode: 'theirs', name: `From ${them}'s watchlist`, meta: 'Something they are waiting on' },
+    { mode: 'theirs', name: `From ${possessiveName(partnerName)} watchlist`, meta: 'Something they are waiting on' },
     { mode: 'mix', name: 'Mix', meta: 'Half each, drawn from both watchlists' },
   ]
 

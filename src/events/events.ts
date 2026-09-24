@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabaseClient'
 import type { Json } from '../types/supabase'
+import { reportQuietly } from '../lib/dbError'
 
 /**
  * One row per thing that happened, in the order it happened.
@@ -10,7 +11,8 @@ import type { Json } from '../types/supabase'
  * when — plus, in detail, anything nothing else keeps.
  *
  * Logging is silent and never in the way: nothing is awaited by the
- * caller, a failed write is dropped, and nothing on screen changes.
+ * caller and nothing on screen changes. A failed write is not shown where
+ * it happened, but its reason is kept for Settings to show.
  */
 
 export const EVENT_TYPES = [
@@ -47,8 +49,10 @@ export function logEvent(
     .from('events')
     .insert({ type, film_id: options.filmId ?? null, detail: options.detail ?? null })
     .then(
-      () => {},
-      () => {},
+      ({ error }) => {
+        if (error) reportQuietly(`Logging ${type}`, error)
+      },
+      (error: unknown) => reportQuietly(`Logging ${type}`, error),
     )
 }
 

@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabaseClient'
 import { logAppOpenOnce, logEvent } from './events'
 import { recordMilestones, takeUnseenMilestone } from './milestones'
 import type { MilestoneKey } from './milestones'
+import { DbError, reportQuietly } from '../lib/dbError'
 
 /**
  * Whether the other person is around, read from when they last opened
@@ -19,7 +20,7 @@ export function isAround(lastOpenAt: string | null, now: Date = new Date()): boo
 // Stamps my last_open_at from the database clock and returns what it was.
 export async function touchLastOpen(): Promise<string | null> {
   const { data, error } = await supabase.rpc('touch_last_open')
-  if (error) throw error
+  if (error) throw DbError.from(error)
   return (data as string | null) ?? null
 }
 
@@ -29,7 +30,7 @@ export async function loadLastOpen(userId: string): Promise<string | null> {
     .select('last_open_at')
     .eq('id', userId)
     .maybeSingle()
-  if (error) throw error
+  if (error) throw DbError.from(error)
   return data?.last_open_at ?? null
 }
 
@@ -52,17 +53,30 @@ export async function recordOpen(userId: string, partnerId: string | null): Prom
   const [previousOpenAt, partnerLastOpenAt] = await Promise.all([
     // Undefined when the stamp failed, so a failure is not mistaken for a
     // first open and everything reached so far filed away unannounced.
-    touchLastOpen().catch(() => undefined),
-    partnerId ? loadLastOpen(partnerId).catch(() => null) : Promise.resolve(null),
+    touchLastOpen().catch((error: unknown) => {
+      reportQuietly('Stamping last_open_at', error)
+      return undefined
+    }),
+    partnerId
+      ? loadLastOpen(partnerId).catch((error: unknown) => {
+          reportQuietly('Reading their last_open_at', error)
+          return null
+        })
+      : Promise.resolve(null),
   ])
 
   const partnerAround = isAround(partnerLastOpenAt)
   if (partnerAround) logEvent('both_here', { detail: { partner_opened_at: partnerLastOpenAt } })
 
   if (previousOpenAt !== undefined) {
-    await recordMilestones(userId, previousOpenAt).catch(() => {})
+    await recordMilestones(userId, previousOpenAt).catch((error: unknown) =>
+      reportQuietly('Recording milestones', error),
+    )
   }
-  const milestone = await takeUnseenMilestone().catch(() => null)
+  const milestone = await takeUnseenMilestone().catch((error: unknown) => {
+    reportQuietly('Reading milestones', error)
+    return null
+  })
 
   return { partnerLastOpenAt, partnerAround, milestone }
 }

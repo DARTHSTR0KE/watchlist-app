@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabaseClient'
 import { logEvent } from '../events/events'
+import { DbError } from '../lib/dbError'
 
 /**
  * The splash tagline, written by the other person. I write theirs, they
@@ -89,7 +90,7 @@ export async function loadLineForMe(userId: string): Promise<string | null> {
     .select('line')
     .eq('to_user', userId)
     .maybeSingle()
-  if (error) throw error
+  if (error) throw DbError.from(error)
   return data?.line ?? null
 }
 
@@ -104,12 +105,13 @@ export async function loadLineFromMe(
     .eq('from_user', userId)
     .eq('to_user', partnerId)
     .maybeSingle()
-  if (error) throw error
+  if (error) throw DbError.from(error)
   return data ? { line: data.line, setAt: data.set_at } : null
 }
 
-// Raised by the trigger when the line has already changed this month.
-export class LineLockedThisMonth extends Error {}
+// Raised by the trigger when the line has already changed this month. A
+// DbError like any other, so the database's own words are still there.
+export class LineLockedThisMonth extends DbError {}
 
 export async function saveLine(
   userId: string,
@@ -131,8 +133,10 @@ export async function saveLine(
     .select('line, set_at')
     .single()
   if (error) {
-    if (error.code === 'P0001') throw new LineLockedThisMonth(error.message)
-    throw error
+    if (error.code === 'P0001') {
+      throw new LineLockedThisMonth(error.code, error.details, error.hint, error.message)
+    }
+    throw DbError.from(error)
   }
   logEvent('splash_line_set')
   return { line: data.line, setAt: data.set_at }

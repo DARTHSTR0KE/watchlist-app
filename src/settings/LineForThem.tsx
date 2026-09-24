@@ -3,6 +3,8 @@ import { SectionLabel } from '../ui/Screen'
 import { SplashLineEditor } from '../social/SplashLineEditor'
 import { loadLineFromMe } from '../social/splashLines'
 import type { SplashLine } from '../social/splashLines'
+import { describeError } from '../lib/dbError'
+import { agree, subjectName } from '../utils/names'
 
 // Their splash line, changeable here as soon as the month allows rather
 // than only when the prompt comes round.
@@ -18,7 +20,8 @@ export function LineForThem({
   const them = partnerName ?? 'Them'
   // Undefined while loading; null when I have never written one.
   const [current, setCurrent] = useState<SplashLine | null | undefined>(undefined)
-  const [failed, setFailed] = useState(false)
+  // The database's own account of why the read failed, not a stand-in.
+  const [failure, setFailure] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -26,8 +29,8 @@ export function LineForThem({
       .then((line) => {
         if (!cancelled) setCurrent(line)
       })
-      .catch(() => {
-        if (!cancelled) setFailed(true)
+      .catch((error: unknown) => {
+        if (!cancelled) setFailure(describeError(error))
       })
     return () => {
       cancelled = true
@@ -38,10 +41,11 @@ export function LineForThem({
     <section>
       <SectionLabel tone="sage">{them}</SectionLabel>
       <p className="screen-empty">
-        What {partnerName ?? 'they'} see under the name when they open this.
+        What {subjectName(partnerName)} {agree(partnerName, 'sees', 'see')} under the name when
+        they open this.
       </p>
-      {failed ? (
-        <p className="screen-empty">Couldn't load the line you wrote. Try again later.</p>
+      {failure ? (
+        <p className="screen-empty">Couldn't load the line you wrote: {failure}</p>
       ) : current === undefined ? (
         <p className="screen-empty">Loading…</p>
       ) : (

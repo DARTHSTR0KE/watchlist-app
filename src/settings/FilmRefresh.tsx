@@ -24,7 +24,7 @@ export function FilmRefresh() {
     if (refresh.error) return refresh.error
     if (refresh.missing === null) return 'Checking…'
     if (refresh.finished && refresh.failed > 0) {
-      return `${plural(refresh.failed, 'film')} couldn't be fetched. Run it again to retry them.`
+      return `${plural(refresh.failed, 'film')} couldn't be refreshed. Run it again to retry them.`
     }
     if (refresh.missing === 0) return 'Every film has its cast, directors and countries.'
     return `${plural(refresh.missing, 'film')} missing cast, directors or countries`
@@ -43,7 +43,12 @@ export function FilmRefresh() {
               ? 'Keeps going if you leave this screen.'
               : 'Stats uses these for actors, directors and countries.'
           }
-        />
+        >
+          {/* The actual reason, whether it was TMDB or the database. */}
+          {refresh.lastFailure && (
+            <p className="row-note">Last failure — {refresh.lastFailure}</p>
+          )}
+        </Row>
       </Rows>
       {refresh.running && refresh.total > 0 && (
         <div

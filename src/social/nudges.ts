@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabaseClient'
 import { logEvent } from '../events/events'
+import { DbError } from '../lib/dbError'
 
 /**
  * A short message that shows up at the top of the other person's app the
@@ -29,26 +30,13 @@ export const NUDGE_SPOKEN_MAX = 40
  * Carries what PostgREST actually said. "That didn't send" told neither of
  * us whether the table was missing, a policy refused the row, or a foreign
  * key had nothing to point at — and those need completely different fixes.
+ * The general form of this is DbError; this stays its own name so a failed
+ * send can still be told apart from any other failure.
  */
-export class NudgeSendError extends Error {
-  code: string | null
-  detail: string | null
-  hint: string | null
-
+export class NudgeSendError extends DbError {
   constructor(code: string | null, detail: string | null, hint: string | null, message: string) {
-    super(message)
+    super(code, detail, hint, message)
     this.name = 'NudgeSendError'
-    this.code = code
-    this.detail = detail
-    this.hint = hint
-  }
-
-  // What to put on screen: the code is the part that identifies the cause.
-  get report(): string {
-    const parts = [this.message]
-    if (this.code) parts.push(`(${this.code})`)
-    if (this.hint) parts.push(`Hint: ${this.hint}`)
-    return parts.join(' ')
   }
 }
 

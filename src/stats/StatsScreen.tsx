@@ -15,6 +15,7 @@ import {
 } from './StatBits'
 import { ErrorLine, Loading, Screen, ScreenHead } from '../ui/Screen'
 import { loadStatsRaw } from './statsData'
+import { describeError } from '../lib/dbError'
 import { computeStats, watchedYears } from './statsCompute'
 import type { Coverage, StatsRaw, YearChoice } from './statsCompute'
 
@@ -89,7 +90,8 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
   const them = partnerName ?? 'them'
   const [raw, setRaw] = useState<StatsRaw | null>(null)
   const [loading, setLoading] = useState(true)
-  const [failed, setFailed] = useState(false)
+  // Why the load failed, in the database's words.
+  const [failure, setFailure] = useState<string | null>(null)
   const [year, setYear] = useState<YearChoice>('all')
 
   useEffect(() => {
@@ -100,9 +102,9 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
         setRaw(data)
         setLoading(false)
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (cancelled) return
-        setFailed(true)
+        setFailure(describeError(error))
         setLoading(false)
       })
     return () => {
@@ -125,11 +127,11 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
       </Screen>
     )
   }
-  if (failed || !stats) {
+  if (failure || !stats) {
     return (
       <Screen>
         <ScreenHead title="Stats" />
-        <ErrorLine>Couldn't load your stats. Check your connection and try again.</ErrorLine>
+        <ErrorLine>Couldn't load your stats: {failure ?? 'nothing came back.'}</ErrorLine>
       </Screen>
     )
   }

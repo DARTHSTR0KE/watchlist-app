@@ -1,4 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { agree, subjectName } from './utils/names'
 import type { Json } from './types/supabase'
 import './App.css'
 import { SpinWheel } from './wheel/SpinWheel'
@@ -72,6 +73,7 @@ import { LetterboxdPrompt } from './social/LetterboxdPrompt'
 import { Splash } from './brand/Splash'
 import { logEvent } from './events/events'
 import { recordOpen } from './events/presence'
+import { reportQuietly } from './lib/dbError'
 import { milestoneLine } from './events/milestones'
 import type { MilestoneKey } from './events/milestones'
 import { SplashLinePrompt } from './social/SplashLinePrompt'
@@ -286,7 +288,7 @@ function WheelScreen({
           togetherMode,
           userId,
           linked.id,
-          linked.displayName ?? 'them',
+          linked.displayName,
         ).then((built) => {
           note = built.note
           return built.items
@@ -612,8 +614,8 @@ function WheelScreen({
               {
                 key: 'partner',
                 label: vetoesSpent.has('partner')
-                  ? `${partner.displayName} vetoed this`
-                  : `${partner.displayName} vetoes this`,
+                  ? `${subjectName(partner.displayName, true)} vetoed this`
+                  : `${subjectName(partner.displayName, true)} ${agree(partner.displayName, 'vetoes', 'veto')} this`,
                 used: vetoesSpent.has('partner'),
               },
             ]
@@ -1085,7 +1087,10 @@ function AuthenticatedApp() {
       // month once skipped. A failed read asks nothing: better silent than
       // asking someone who already wrote one.
       if (partner && !promptSkippedThisMonth()) {
-        const mine = await loadLineFromMe(userId, partner.id).catch(() => undefined)
+        const mine = await loadLineFromMe(userId, partner.id).catch((error: unknown) => {
+          reportQuietly('Checking for a splash line you wrote', error)
+          return undefined
+        })
         if (!cancelled && mine === null) setLinePrompt({ current: null })
       }
 

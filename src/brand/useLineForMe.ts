@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import { DEFAULT_TAGLINE, cacheLineFor, cachedLineFor, loadLineForMe } from '../social/splashLines'
+import { reportQuietly } from '../lib/dbError'
 
 /**
  * The tagline the other person wrote for me, or the original when they
@@ -24,8 +25,10 @@ export function useLineForMe(): string {
         cacheLineFor(userId, line)
         setFetched({ userId, line })
       })
-      .catch(() => {
-        // A failed read shows whatever was cached, or the default.
+      .catch((error: unknown) => {
+        // A failed read shows whatever was cached, or the default — the
+        // splash is no place for an error — but the reason is kept.
+        reportQuietly('Reading your splash line', error)
         if (!cancelled) setFetched({ userId, line: cachedLineFor(userId) })
       })
     return () => {

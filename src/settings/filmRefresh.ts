@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient'
 import { asyncPool } from '../lib/asyncPool'
 import { getFilmPeopleAndPlaces, parseFilmId } from '../lib/tmdbClient'
 import { saveFilmPeopleAndPlaces } from '../import/watchlistWrites'
+import { DbError, describeError } from '../lib/dbError'
 
 /**
  * Fills in top_cast, directors and countries for every film missing any of
@@ -24,6 +25,9 @@ export interface FilmRefreshState {
   // Set once a run has finished, so the screen can say how it went.
   finished: boolean
   error: string | null
+  // Why the most recent film failed, when any did. One reason stands for
+  // the lot: a missing column fails every film the same way.
+  lastFailure: string | null
 }
 
 let state: FilmRefreshState = {
@@ -34,6 +38,7 @@ let state: FilmRefreshState = {
   failed: 0,
   finished: false,
   error: null,
+  lastFailure: null,
 }
 
 const listeners = new Set<() => void>()
@@ -66,7 +71,7 @@ export async function countFilmsMissingData(): Promise<void> {
     .select('id', { count: 'exact', head: true })
     .or(MISSING_ANY)
   if (error) {
-    set({ error: "Couldn't check which films need refreshing." })
+    set({ error: `Couldn't check which films need refreshing: ${DbError.from(error).report}` })
     return
   }
   set({ missing: count ?? 0, error: null })
@@ -83,7 +88,7 @@ async function loadMissingIds(): Promise<string[]> {
       .or(MISSING_ANY)
       .order('id')
       .range(from, from + PAGE - 1)
-    if (error) throw error
+    if (error) throw DbError.from(error)
     for (const row of data ?? []) ids.push(row.id)
     if ((data ?? []).length < PAGE) return ids
   }
@@ -91,13 +96,21 @@ async function loadMissingIds(): Promise<string[]> {
 
 export async function startFilmRefresh(): Promise<void> {
   if (state.running) return
-  set({ running: true, finished: false, completed: 0, total: 0, failed: 0, error: null })
+  set({
+    running: true,
+    finished: false,
+    completed: 0,
+    total: 0,
+    failed: 0,
+    error: null,
+    lastFailure: null,
+  })
 
   let ids: string[]
   try {
     ids = await loadMissingIds()
-  } catch {
-    set({ running: false, error: "Couldn't load the films to refresh. Try again." })
+  } catch (error) {
+    set({ running: false, error: `Couldn't load the films to refresh: ${describeError(error)}` })
     return
   }
   set({ total: ids.length })
@@ -114,9 +127,9 @@ export async function startFilmRefresh(): Promise<void> {
     },
     {
       onProgress: (completed) => set({ completed }),
-      onItemError: () => {
+      onItemError: (filmId, _index, error) => {
         failed += 1
-        set({ failed })
+        set({ failed, lastFailure: `${filmId}: ${describeError(error)}` })
       },
     },
   )

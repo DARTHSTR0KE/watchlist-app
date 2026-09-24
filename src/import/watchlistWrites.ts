@@ -4,6 +4,7 @@ import { asyncPool } from '../lib/asyncPool'
 import { buildFilmId } from '../lib/tmdbClient'
 import type { FilmPeopleAndPlaces, NormalizedFilm, TopCastMember } from '../lib/tmdbClient'
 import { resolveCandidate } from './matching'
+import { DbError } from '../lib/dbError'
 
 export async function upsertFilm(film: NormalizedFilm): Promise<void> {
   const { error } = await supabase.from('films').upsert(
@@ -49,7 +50,7 @@ export async function saveFilmPeopleAndPlaces(
     .from('films')
     .update({ top_cast: facts.top_cast, directors: facts.directors, countries: facts.countries })
     .eq('id', filmId)
-  if (error) throw error
+  if (error) throw DbError.from(error)
 }
 
 // For a film already in the films table — accepting a recommendation, say.

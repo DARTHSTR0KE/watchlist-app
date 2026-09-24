@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabaseClient'
 import type { CreditPerson } from '../lib/filmCredits'
 import { loadTogetherFilmIds } from '../social/pendingWatches'
+import { DbError } from '../lib/dbError'
 import type { FilmFacts, StatsRaw, WatchedRecord } from './statsCompute'
 
 /**
@@ -65,7 +66,7 @@ async function fetchWatched(userId: string): Promise<WatchedJoinRow[]> {
     .from('watched')
     .select(WATCHED_COLUMNS)
     .eq('user_id', userId)
-  if (error) throw error
+  if (error) throw DbError.from(error)
   return (data ?? []) as unknown as WatchedJoinRow[]
 }
 
@@ -82,10 +83,14 @@ export async function loadStatsRaw(userId: string, partnerId: string | null): Pr
   const [mineRows, theirRows, togetherFilmIds, spins] = await Promise.all([
     fetchWatched(userId),
     partnerId ? fetchWatched(partnerId) : Promise.resolve([] as WatchedJoinRow[]),
-    loadTogetherFilmIds().catch(() => new Set<string>()),
+    // Not caught: a failed read here used to become "nothing watched
+    // together" — a wrong answer passed off as a real one.
+    loadTogetherFilmIds().catch((error: unknown) => {
+      throw DbError.from(error as { message?: string })
+    }),
     supabase.from('spins').select('film_id, outcome, created_at, films(title)').eq('user_id', userId),
   ])
-  if (spins.error) throw spins.error
+  if (spins.error) throw DbError.from(spins.error)
 
   const films = new Map<string, FilmFacts>()
   for (const row of [...mineRows, ...theirRows]) {

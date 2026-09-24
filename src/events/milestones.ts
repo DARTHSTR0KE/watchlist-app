@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabaseClient'
 import type { Json } from '../types/supabase'
+import { DbError, reportQuietly } from '../lib/dbError'
 
 /**
  * Milestones are written once, the first time each is reached, and never
@@ -152,7 +153,7 @@ async function spinOccurrences(userId: string): Promise<Occurrence[]> {
     .eq('user_id', userId)
     .order('created_at', { ascending: true })
     .limit(500)
-  if (error) throw error
+  if (error) throw DbError.from(error)
   return ((data ?? []) as unknown as { film_id: string | null; created_at: string | null; films: TitleJoin }[])
     .filter((row) => row.created_at !== null)
     .map((row) => ({ at: row.created_at!, filmId: row.film_id, title: row.films?.title ?? null }))
@@ -164,7 +165,7 @@ async function togetherOccurrences(): Promise<Occurrence[]> {
     .from('watched')
     .select('film_id, watched_on, films(title)')
     .eq('together', true)
-  if (error) throw error
+  if (error) throw DbError.from(error)
   const earliest = new Map<string, Occurrence>()
   for (const row of (data ?? []) as unknown as {
     film_id: string
@@ -191,7 +192,7 @@ async function firstAcceptedRecommendation(userId: string): Promise<Occurrence |
     .order('responded_at', { ascending: true })
     .limit(1)
     .maybeSingle()
-  if (error) throw error
+  if (error) throw DbError.from(error)
   if (!data) return null
   const row = data as unknown as { film_id: string; responded_at: string; films: TitleJoin }
   return { at: row.responded_at, filmId: row.film_id, title: row.films?.title ?? null }
@@ -207,18 +208,19 @@ async function firstEvent(type: string): Promise<Occurrence | null> {
     .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle()
-  if (error) throw error
+  if (error) throw DbError.from(error)
   return data ? { at: data.created_at, filmId: data.film_id, title: null } : null
 }
 
 async function earliestOf(table: 'spins' | 'imports' | 'events', userId: string): Promise<string | null> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from(table as 'spins')
     .select('created_at')
     .eq('user_id', userId)
     .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle()
+  if (error) throw DbError.from(error)
   return data?.created_at ?? null
 }
 
@@ -229,10 +231,15 @@ async function earliestOf(table: 'spins' | 'imports' | 'events', userId: string)
  */
 export async function recordMilestones(userId: string, previousOpenAt: string | null): Promise<void> {
   const { data: existingRows, error } = await supabase.from('milestones').select('key')
-  if (error) throw error
+  if (error) throw DbError.from(error)
   const existing = new Set((existingRows ?? []).map((row) => row.key))
 
-  const settle = <T,>(promise: Promise<T>, fallback: T) => promise.catch(() => fallback)
+  // One failed query doesn't stop the others, but it says why it failed.
+  const settle = <T,>(promise: Promise<T>, fallback: T) =>
+    promise.catch((failure: unknown) => {
+      reportQuietly('Counting towards a milestone', failure)
+      return fallback
+    })
   const [spins, together, accepted, nudge, secret, firstSpin, firstImport, firstEventAt] =
     await Promise.all([
       settle(spinOccurrences(userId), []),
@@ -257,7 +264,7 @@ export async function recordMilestones(userId: string, previousOpenAt: string | 
 
   const backfill = previousOpenAt === null
   const now = new Date().toISOString()
-  await supabase.from('milestones').upsert(
+  const { error: writeError } = await supabase.from('milestones').upsert(
     reached.map((candidate) => ({
       user_id: userId,
       key: candidate.key,
@@ -267,6 +274,7 @@ export async function recordMilestones(userId: string, previousOpenAt: string | 
     })),
     { onConflict: 'user_id,key', ignoreDuplicates: true },
   )
+  if (writeError) throw DbError.from(writeError)
 }
 
 // One unseen milestone, the earliest reached, marked seen as it is taken.
@@ -279,11 +287,14 @@ export async function takeUnseenMilestone(): Promise<MilestoneKey | null> {
     .order('reached_at', { ascending: true })
     .limit(1)
     .maybeSingle()
-  if (error || !data) return null
-  await supabase
+  if (error) throw DbError.from(error)
+  if (!data) return null
+  const { error: seenError } = await supabase
     .from('milestones')
     .update({ seen_at: new Date().toISOString() })
     .eq('key', data.key)
     .is('seen_at', null)
+  // Still shown; it just may come round once more.
+  if (seenError) reportQuietly('Marking a milestone seen', seenError)
   return data.key as MilestoneKey
 }
