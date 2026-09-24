@@ -4183,3 +4183,18 @@ a.pending-action {
   opacity: 1;
   animation: none;
 }
+
+/* Milestones ----------------------------------------------------------- */
+
+/* One line, said once, on the open after it happened. Not a banner and
+   not dismissible: moving to another screen is enough to let it go. */
+.milestone-line {
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 460px;
+  margin: 0.5rem auto 0;
+  padding: 0 1.25rem;
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--sage);
+}

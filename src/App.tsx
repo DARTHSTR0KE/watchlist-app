@@ -1,4 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import type { Json } from './types/supabase'
 import './App.css'
 import { SpinWheel } from './wheel/SpinWheel'
 import { ResultModal } from './wheel/ResultModal'
@@ -69,6 +70,10 @@ const StatsScreen = lazy(() =>
 import { PendingWatchPrompt } from './social/PendingWatchPrompt'
 import { LetterboxdPrompt } from './social/LetterboxdPrompt'
 import { Splash } from './brand/Splash'
+import { logEvent } from './events/events'
+import { recordOpen } from './events/presence'
+import { milestoneLine } from './events/milestones'
+import type { MilestoneKey } from './events/milestones'
 import { SplashLinePrompt } from './social/SplashLinePrompt'
 import { loadLineFromMe, promptSkippedThisMonth } from './social/splashLines'
 import type { SplashLine } from './social/splashLines'
@@ -197,6 +202,9 @@ function WheelScreen({
   const [vetoedIds, setVetoedIds] = useState<Set<string>>(new Set())
   const [vetoesSpent, setVetoesSpent] = useState<Set<string>>(new Set())
   const [sheet, setSheet] = useState<'none' | 'filters' | 'presets'>('none')
+  // What the filters were when the sheet opened, so closing it can tell
+  // whether anything was applied.
+  const filtersAtOpenRef = useRef<WheelFilters | null>(null)
   const [presets, setPresets] = useState<FilterPreset[]>([])
   // Which preset the current filters came from. Without this there is no
   // such thing as an applied preset to undo — applying one only copied its
@@ -362,6 +370,7 @@ function WheelScreen({
     setResult(landed)
     pendingResultRef.current = null
     navigator.vibrate?.(VIBRATE_PATTERN)
+    logEvent('spin', { filmId: landed?.id ?? null })
     void recordSpin(userId, landed?.id ?? null, filters).then((id) => {
       spinIdRef.current = id
     })
@@ -379,7 +388,11 @@ function WheelScreen({
       if (isReroll && rerollsUsed >= MAX_REROLLS) return
       // The spin being replaced is closed out as a reroll before the next
       // one starts.
-      if (isReroll) closeSpin('rerolled')
+      if (isReroll) {
+        closeSpin('rerolled')
+        // The film turned down, not the one about to land.
+        logEvent('reroll', { filmId: result?.id ?? null })
+      }
 
       // Spin again must not land back on the film it is replacing.
       const index = pickSegment(
@@ -462,6 +475,7 @@ function WheelScreen({
   const handleTakeOff = () => {
     const removedId = result?.id
     closeSpin('removed')
+    logEvent('not_tonight', { filmId: removedId ?? null })
     if (removedId) setSetAside((current) => new Set(current).add(removedId))
     setItems((current) =>
       current.length > MIN_WHEEL_SEGMENTS ? current.filter((item) => item.id !== removedId) : current,
@@ -484,6 +498,13 @@ function WheelScreen({
     closeSpin('abandoned')
     setActivePresetId(fromPreset)
     setFilters(next)
+    // A preset lands all at once, so it is one application. The sheet's
+    // chip-by-chip changes are logged once, when it closes.
+    if (fromPreset) {
+      logEvent('filter_applied', {
+        detail: { preset_id: fromPreset, filters: next as unknown as Json },
+      })
+    }
     // A new source means a different table; the loader draws once it lands,
     // and drawing from the outgoing pool here would only flash the wrong
     // films first.
@@ -565,6 +586,8 @@ function WheelScreen({
     const vetoed = result
     if (!vetoed || vetoesSpent.has(key)) return
     closeSpin('removed')
+    // Whose veto it was; the film says what was vetoed.
+    logEvent('veto', { filmId: vetoed.id, detail: { by: key } })
 
     const next = items.filter((item) => item.id !== vetoed.id)
     setVetoesSpent((current) => new Set(current).add(key))
@@ -797,7 +820,10 @@ function WheelScreen({
               // The shared list is spun exactly as assembled, so there is
               // nothing here for filters to do.
               disabled={filters.source === 'shared'}
-              onClick={() => setSheet('filters')}
+              onClick={() => {
+                filtersAtOpenRef.current = filters
+                setSheet('filters')
+              }}
             >
               Filters
             </button>
@@ -923,7 +949,13 @@ function WheelScreen({
           onChange={handleFiltersChange}
           onSavePreset={handleSavePreset}
           onManagePresets={() => setSheet('presets')}
-          onClose={() => setSheet('none')}
+          onClose={() => {
+            // Only if something actually changed while it was open.
+            if (JSON.stringify(filtersAtOpenRef.current) !== JSON.stringify(filters)) {
+              logEvent('filter_applied', { detail: { filters: filters as unknown as Json } })
+            }
+            setSheet('none')
+          }}
         />
       )}
 
@@ -1015,6 +1047,9 @@ function AuthenticatedApp() {
   // The line I wrote for them, while the prompt to write one is up. The
   // prompt comes before anything else once the splash has gone.
   const [linePrompt, setLinePrompt] = useState<{ current: SplashLine | null } | null>(null)
+  // A milestone reached since the last open: one line, on the first screen
+  // this session, gone once you move on.
+  const [milestone, setMilestone] = useState<MilestoneKey | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -1039,6 +1074,12 @@ function AuthenticatedApp() {
         setPartnerMascot(partner.mascot)
       }
       setCheckingWatchlist(false)
+
+      // Logged quietly and never waited on by anything else.
+      void recordOpen(userId, partner?.id ?? null).then((opened) => {
+        if (cancelled || !opened) return
+        setMilestone(opened.milestone)
+      })
 
       // Only while I have never written them one, and not again this
       // month once skipped. A failed read asks nothing: better silent than
@@ -1116,12 +1157,14 @@ function AuthenticatedApp() {
           displayName={myName}
           unseenRecommendations={unseenRecommendations}
           onNavigate={(next) => {
+            setMilestone(null)
             setWheelSource(null)
             setWheelTogetherMode(null)
             setEditingSharedList(false)
             setScreen(next)
           }}
         />
+        {milestone && <p className="milestone-line">{milestoneLine(milestone, partnerName)}</p>}
         {screen === 'wheel' && (
           <WheelScreen startSource={wheelSource} startTogetherMode={wheelTogetherMode} />
         )}

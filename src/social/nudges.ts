@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient'
+import { logEvent } from '../events/events'
 
 /**
  * A short message that shows up at the top of the other person's app the
@@ -95,6 +96,9 @@ export async function sendNudge(userId: string, partnerId: string, message: stri
   if (error) {
     throw new NudgeSendError(error.code ?? null, error.details ?? null, error.hint ?? null, error.message)
   }
+  // The nudges row is replaced by the next one, so the message is kept
+  // here: this is the only place a nudge outlives its successor.
+  logEvent('nudge_sent', { detail: { message: text } })
 }
 
 // What is waiting for me, if anything.

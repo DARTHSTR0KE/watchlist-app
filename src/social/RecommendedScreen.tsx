@@ -102,7 +102,7 @@ export function RecommendedScreen({
       return
     }
     settle(item, 'queued')
-    await respondToRecommendation(item.id, 'queued').catch(() => revert(item))
+    await respondToRecommendation(item.id, 'queued', item.filmId).catch(() => revert(item))
     setMessage(error ? `"${item.title}" was already on your watchlist.` : `Added "${item.title}".`)
     setBusyId(null)
   }
@@ -111,7 +111,7 @@ export function RecommendedScreen({
     setBusyId(item.id)
     setMessage(null)
     settle(item, 'passed')
-    await respondToRecommendation(item.id, 'passed').catch(() => revert(item))
+    await respondToRecommendation(item.id, 'passed', item.filmId).catch(() => revert(item))
     setBusyId(null)
   }
 

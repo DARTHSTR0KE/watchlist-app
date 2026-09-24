@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient'
+import { logEvent } from '../events/events'
 import { asyncPool } from '../lib/asyncPool'
 import { buildFilmId } from '../lib/tmdbClient'
 import type { FilmPeopleAndPlaces, NormalizedFilm, TopCastMember } from '../lib/tmdbClient'
@@ -285,6 +286,7 @@ export async function watchFilmNow(userId: string, filmId: string): Promise<void
     .eq('user_id', userId)
     .eq('film_id', filmId)
   if (deleteError) throw deleteError
+  logEvent('watch_started', { filmId })
 }
 
 export async function markMissingAsWatched(userId: string, watchlistItemIds: string[], filmIds: string[]): Promise<void> {
@@ -377,6 +379,8 @@ export async function recordImport(
     vanished: params.vanished,
   })
   if (error) throw error
+  // The counts live on the imports row; the event only places it in time.
+  logEvent('import_run')
 }
 
 // What is on the list and when it last changed, so importing again is a

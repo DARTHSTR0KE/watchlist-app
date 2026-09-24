@@ -95,13 +95,14 @@ export function ClearAllData({ userId, partnerId, partnerName, onCleared }: Clea
             {plural(counts.watched, 'watched record')}, {plural(counts.recommendations, 'recommendation')},{' '}
             {plural(counts.wheels, 'custom wheel')}, {plural(counts.sharedList, 'film')} on the shared
             list, {plural(counts.presets, 'filter preset')}, {plural(counts.spins, 'spin')},{' '}
-            {plural(counts.imports, 'import')}, {plural(counts.nudges, 'nudge')} and{' '}
-            {plural(counts.splashLines, 'splash line')} —{' '}
+            {plural(counts.imports, 'import')}, {plural(counts.nudges, 'nudge')},{' '}
+            {plural(counts.splashLines, 'splash line')}, {plural(counts.events, 'logged event')} and{' '}
+            {plural(counts.milestones, 'milestone')} —{' '}
             {plural(totalRecords(counts), 'record')} in all.
           </p>
           <p className="screen-empty">
             That count is only what this account can see. {them}'s own watchlist, watched history,
-            wheels, presets, spins and imports go as well, and can't be counted from here.
+            wheels, presets, spins, imports, events and milestones go as well, and can't be counted from here.
           </p>
         </>
       )}

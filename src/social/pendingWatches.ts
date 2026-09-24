@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient'
+import { logEvent } from '../events/events'
 
 /**
  * Watching a film asks nothing at the time — you are about to start it.
@@ -76,6 +77,7 @@ export async function answerWatch(
     .eq('user_id', userId)
     .eq('film_id', filmId)
   if (error) throw error
+  logEvent(together ? 'watched_together' : 'watched_alone', { filmId })
 }
 
 /**
@@ -100,6 +102,7 @@ export async function undoWatch(userId: string, pending: PendingWatch): Promise<
     .eq('user_id', userId)
     .eq('film_id', pending.filmId)
   if (deleteError) throw deleteError
+  logEvent('watch_abandoned', { filmId: pending.filmId })
 }
 
 export interface WatchedFilm {

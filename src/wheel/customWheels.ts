@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient'
+import { logEvent } from '../events/events'
 import type { WheelItem } from './titles'
 import { FILM_COLUMNS, toWheelItemFromFilm } from './loadWheelItems'
 
@@ -90,6 +91,7 @@ export async function createCustomWheel(userId: string, name: string): Promise<C
     .select('id, user_id, name, shared, created_at')
     .single()
   if (error) throw error
+  logEvent('wheel_created', { detail: { wheel_id: data.id } })
   return toWheel({ ...data, custom_wheel_items: null, items: null }, userId)
 }
 

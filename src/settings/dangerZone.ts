@@ -26,6 +26,8 @@ export interface DataCounts {
   imports: number
   nudges: number
   splashLines: number
+  events: number
+  milestones: number
 }
 
 export const EMPTY_COUNTS: DataCounts = {
@@ -39,6 +41,8 @@ export const EMPTY_COUNTS: DataCounts = {
   imports: 0,
   nudges: 0,
   splashLines: 0,
+  events: 0,
+  milestones: 0,
 }
 
 // Every count is of what the policies actually let me see, which for the
@@ -65,6 +69,8 @@ export async function countEverything(): Promise<DataCounts> {
     imports,
     nudges,
     splashLines,
+    events,
+    milestones,
   ] = await Promise.all([
     countOf('watchlist_items'),
     countOf('watched'),
@@ -78,6 +84,9 @@ export async function countEverything(): Promise<DataCounts> {
     // Both directions are visible to either of us, so this one counts
     // the other person's line too.
     countOf('splash_lines'),
+    // Only my own: each of us reads our own stream and milestones.
+    countOf('events'),
+    countOf('milestones'),
   ])
   return {
     watchlist,
@@ -90,6 +99,8 @@ export async function countEverything(): Promise<DataCounts> {
     imports,
     nudges,
     splashLines,
+    events,
+    milestones,
   }
 }
 
@@ -120,6 +131,8 @@ const LABELS: Record<keyof DataCounts, string> = {
   imports: 'import history',
   nudges: 'nudges',
   splashLines: 'splash lines',
+  events: 'the event log',
+  milestones: 'milestones',
 }
 
 /**
@@ -156,6 +169,8 @@ export async function clearAllData(userId: string, partnerId: string | null): Pr
     // Same again: the line each of us wrote for the other. Gone, the
     // prompt to write one comes back on the next open.
     supabase.from('splash_lines').delete().in('from_user', ids),
+    supabase.from('events').delete().in('user_id', ids),
+    supabase.from('milestones').delete().in('user_id', ids),
   ])
   await supabase.from('custom_wheels').delete().in('user_id', ids)
 

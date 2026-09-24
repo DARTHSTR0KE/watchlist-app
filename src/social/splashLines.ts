@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient'
+import { logEvent } from '../events/events'
 
 /**
  * The splash tagline, written by the other person. I write theirs, they
@@ -133,6 +134,7 @@ export async function saveLine(
     if (error.code === 'P0001') throw new LineLockedThisMonth(error.message)
     throw error
   }
+  logEvent('splash_line_set')
   return { line: data.line, setAt: data.set_at }
 }
 

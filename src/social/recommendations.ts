@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient'
+import { logEvent } from '../events/events'
 
 export interface Recommendation {
   id: string
@@ -108,6 +109,7 @@ export async function sendRecommendation(
     note: trimmed.length > 0 ? trimmed : null,
   })
   if (error) throw error
+  logEvent('recommendation_sent', { filmId })
 }
 
 // What this user has sent that the other person has not dealt with yet —
@@ -128,10 +130,12 @@ export async function loadRecommendationsSent(userId: string): Promise<Recommend
 export async function respondToRecommendation(
   recommendationId: string,
   status: 'queued' | 'passed' | 'watched',
+  filmId: string,
 ): Promise<void> {
   const { error } = await supabase
     .from('recommendations')
     .update({ status, responded_at: new Date().toISOString() })
     .eq('id', recommendationId)
   if (error) throw error
+  logEvent(status === 'passed' ? 'recommendation_passed' : 'recommendation_accepted', { filmId })
 }

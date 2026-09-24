@@ -3,6 +3,20 @@ import { GOLDFISH, RACCOON } from './paths'
 import { BowlShapes, GoldfishShapes, PartyHat, RaccoonShapes } from './mark'
 import { isBirthday } from '../birthday/birthdayDate'
 import type { Mascot as MascotName } from './mascots'
+import { logEvent } from '../events/events'
+import type { MouseEvent } from 'react'
+
+/**
+ * A tap on an animal is noticed and nothing more: no response on screen.
+ * Inside a button the tap belongs to the button — pressing "Nudge" is not
+ * reaching for the fish — so those aren't counted.
+ */
+function noticeTap(who: MascotName) {
+  return (event: MouseEvent<SVGSVGElement>) => {
+    if (event.currentTarget.closest('button, a')) return
+    logEvent('tap_mascot', { detail: { who } })
+  }
+}
 
 /**
  * A person's animal, wherever the app refers to that person. Which animal
@@ -27,10 +41,11 @@ export function Mascot({
   const uid = useId().replace(/:/g, '')
   if (!who) return null
   const party = isBirthday()
+  const onClick = noticeTap(who)
 
   if (who === 'goldfish' && bowl) {
     return (
-      <svg width={size} height={size} viewBox="0 0 100 100" className={className} aria-hidden="true">
+      <svg width={size} height={size} viewBox="0 0 100 100" className={className} aria-hidden="true" onClick={onClick}>
         <BowlShapes uid={uid} />
         {party && (
           <g transform="translate(20 -4) scale(0.6)">
@@ -49,6 +64,7 @@ export function Mascot({
         viewBox={GOLDFISH.viewBox}
         className={className}
         aria-hidden="true"
+        onClick={onClick}
       >
         <GoldfishShapes />
         {party && (
@@ -61,7 +77,7 @@ export function Mascot({
   }
 
   return (
-    <svg width={size} height={size} viewBox={RACCOON.viewBox} className={className} aria-hidden="true">
+    <svg width={size} height={size} viewBox={RACCOON.viewBox} className={className} aria-hidden="true" onClick={onClick}>
       <RaccoonShapes />
       {party && (
         <g transform="translate(14 -14) scale(0.44)">

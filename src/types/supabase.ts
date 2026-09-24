@@ -16,6 +16,7 @@ export interface Database {
           partner_id: string | null
           onboarded_at: string | null
           mascot: 'raccoon' | 'goldfish' | null
+          last_open_at: string | null
         }
         Insert: {
           id: string
@@ -23,6 +24,7 @@ export interface Database {
           partner_id?: string | null
           onboarded_at?: string | null
           mascot?: 'raccoon' | 'goldfish' | null
+          last_open_at?: string | null
         }
         Update: {
           id?: string
@@ -30,6 +32,7 @@ export interface Database {
           partner_id?: string | null
           onboarded_at?: string | null
           mascot?: 'raccoon' | 'goldfish' | null
+          last_open_at?: string | null
         }
         Relationships: []
       }
@@ -385,6 +388,61 @@ export interface Database {
         }
         Relationships: []
       }
+      events: {
+        Row: {
+          id: number
+          user_id: string
+          type: string
+          film_id: string | null
+          detail: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          // Defaults to auth.uid() in the database.
+          user_id?: string
+          type: string
+          film_id?: string | null
+          detail?: Json | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          user_id?: string
+          type?: string
+          film_id?: string | null
+          detail?: Json | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      milestones: {
+        Row: {
+          user_id: string
+          key: string
+          reached_at: string
+          detail: Json | null
+          seen_at: string | null
+          created_at: string
+        }
+        Insert: {
+          user_id?: string
+          key: string
+          reached_at: string
+          detail?: Json | null
+          seen_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          user_id?: string
+          key?: string
+          reached_at?: string
+          detail?: Json | null
+          seen_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       splash_lines: {
         Row: {
           from_user: string
@@ -448,6 +506,14 @@ export interface Database {
       partner_has_watched: {
         Args: { p_film_id: string }
         Returns: boolean
+      }
+      /**
+       * Stamps profiles.last_open_at with the database clock and hands
+       * back what it was before, in one step.
+       */
+      touch_last_open: {
+        Args: Record<string, never>
+        Returns: string | null
       }
     }
     Enums: Record<never, never>
