@@ -7,6 +7,7 @@ import { Empty, Row, Rows, Screen, ScreenHead, SectionLabel } from '../ui/Screen
 import { ClearAllData } from './ClearAllData'
 import { FilmRefresh } from './FilmRefresh'
 import { LineForThem } from './LineForThem'
+import { ForTheirWrapped } from '../gifts/ForTheirWrapped'
 import { QuietFailure } from './QuietFailure'
 import { loadWatchlistSummary } from '../import/watchlistWrites'
 import type { WatchlistSummary } from '../import/watchlistWrites'
@@ -139,6 +140,10 @@ export function SettingsScreen({
 
       {partnerId && (
         <LineForThem userId={userId} partnerId={partnerId} partnerName={partnerName} />
+      )}
+
+      {partnerId && (
+        <ForTheirWrapped userId={userId} partnerId={partnerId} partnerName={partnerName} />
       )}
 
       <section>

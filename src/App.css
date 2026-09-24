@@ -4580,3 +4580,107 @@ a.pending-action {
     animation: none !important;
   }
 }
+
+/* For their Wrapped ------------------------------------------------------- */
+
+.gift-prompt .pending-question {
+  line-height: 1.5;
+}
+
+/* That something is waiting, and nothing about what. */
+.gift-waiting {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--sage);
+}
+
+.gift-block {
+  margin-top: 1.25rem;
+}
+
+.gift-block .stat-subtitle {
+  margin-top: 0;
+}
+
+.gift-name {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.gift-audio {
+  display: block;
+  width: 100%;
+  margin-bottom: 0.25rem;
+}
+
+.gift-recorder {
+  display: flex;
+  flex-direction: column;
+}
+
+.gift-recorder .btn-primary,
+.gift-recorder .btn-field {
+  margin-top: 0.75rem;
+}
+
+.gift-video {
+  display: block;
+  width: 100%;
+  max-height: 60vh;
+  border-radius: 12px;
+  background-color: #000;
+  object-fit: contain;
+}
+
+/* The live picture is a mirror, the way a front camera is expected to
+   look; the recording itself is not flipped. */
+.gift-video-live {
+  transform: scaleX(-1);
+}
+
+.gift-countdown {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  margin: 0.75rem 0 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.gift-recording-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background-color: var(--danger);
+  animation: gift-pulse 1s ease-in-out infinite;
+}
+
+@keyframes gift-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Said plainly, before the button, because it can't be undone. */
+.gift-lock-warning {
+  margin: 0.9rem 0 0;
+  padding: 0.7rem 0.85rem;
+  border-left: 3px solid var(--rust);
+  border-radius: 10px;
+  background-color: rgba(176, 112, 95, 0.1);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gift-recording-dot {
+    animation: none;
+  }
+}

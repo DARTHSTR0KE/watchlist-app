@@ -443,6 +443,39 @@ export interface Database {
         }
         Relationships: []
       }
+      wrapped_gifts: {
+        Row: {
+          from_user: string
+          to_user: string
+          year: number
+          track_path: string | null
+          track_title: string | null
+          track_at: string | null
+          message_path: string | null
+          message_at: string | null
+        }
+        Insert: {
+          from_user?: string
+          to_user: string
+          year: number
+          track_path?: string | null
+          track_title?: string | null
+          track_at?: string | null
+          message_path?: string | null
+          message_at?: string | null
+        }
+        Update: {
+          from_user?: string
+          to_user?: string
+          year?: number
+          track_path?: string | null
+          track_title?: string | null
+          track_at?: string | null
+          message_path?: string | null
+          message_at?: string | null
+        }
+        Relationships: []
+      }
       splash_lines: {
         Row: {
           from_user: string
@@ -511,6 +544,14 @@ export interface Database {
        * Stamps profiles.last_open_at with the database clock and hands
        * back what it was before, in one step.
        */
+      /**
+       * Security definer. Whether the other person has left me anything
+       * for this year's Wrapped — yes or no, never what.
+       */
+      gift_waiting: {
+        Args: { p_year: number }
+        Returns: boolean
+      }
       touch_last_open: {
         Args: Record<string, never>
         Returns: string | null

@@ -77,6 +77,9 @@ import { reportQuietly } from './lib/dbError'
 import { milestoneLine } from './events/milestones'
 import type { MilestoneKey } from './events/milestones'
 import { SplashLinePrompt } from './social/SplashLinePrompt'
+import { GiftPrompt } from './gifts/GiftPrompt'
+import { giftYear, promptDue } from './gifts/giftWindow'
+import { hasLeftAnything, loadMyGift, promptShown, recordPromptShown } from './gifts/gifts'
 import { loadLineFromMe, promptSkippedThisMonth } from './social/splashLines'
 import type { SplashLine } from './social/splashLines'
 import { EmptyArt } from './brand/EmptyArt'
@@ -1102,6 +1105,9 @@ function AuthenticatedApp() {
   // A milestone reached since the last open: one line, on the first screen
   // this session, gone once you move on.
   const [milestone, setMilestone] = useState<MilestoneKey | null>(null)
+  // December: which of the three gift prompt days is up, while nothing has
+  // been left for them yet.
+  const [giftPrompt, setGiftPrompt] = useState<{ year: number; day: number } | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -1142,6 +1148,21 @@ function AuthenticatedApp() {
           return undefined
         })
         if (!cancelled && mine === null) setLinePrompt({ current: null })
+      }
+
+      // The December prompt: at most three times a year, and only while
+      // nothing has been left. A failed read asks nothing.
+      const now = new Date()
+      const dueDay = promptDue(now)
+      const year = giftYear(now)
+      if (partner && dueDay !== null && !promptShown(year, dueDay)) {
+        const left = await loadMyGift(userId, year)
+          .then(hasLeftAnything)
+          .catch((error: unknown) => {
+            reportQuietly('Checking for a Wrapped gift', error)
+            return true
+          })
+        if (!cancelled && !left) setGiftPrompt({ year, day: dueDay })
       }
 
       // Asked on opening, which is the whole point of not asking at the
@@ -1324,7 +1345,23 @@ function AuthenticatedApp() {
 
         {/* The walkthrough comes first: a new account has nothing to be
             asked about anyway. */}
+        {giftPrompt && !linePrompt && !needsOnboarding && (
+          <GiftPrompt
+            partnerName={partnerName}
+            onLeaveSomething={() => {
+              recordPromptShown(giftPrompt.year, giftPrompt.day)
+              setGiftPrompt(null)
+              setScreen('settings')
+            }}
+            onDismiss={() => {
+              recordPromptShown(giftPrompt.year, giftPrompt.day)
+              setGiftPrompt(null)
+            }}
+          />
+        )}
+
         {!linePrompt &&
+          !giftPrompt &&
           !needsOnboarding &&
           !promptDismissed &&
           // One at a time: the rating step stands in front of the next
