@@ -4,7 +4,6 @@ import { SplashLineEditor } from '../social/SplashLineEditor'
 import { loadLineFromMe } from '../social/splashLines'
 import type { SplashLine } from '../social/splashLines'
 import { describeError } from '../lib/dbError'
-import { agree, subjectName } from '../utils/names'
 
 // Their splash line, changeable here as soon as the month allows rather
 // than only when the prompt comes round.
@@ -40,10 +39,6 @@ export function LineForThem({
   return (
     <section>
       <SectionLabel tone="sage">{them}</SectionLabel>
-      <p className="screen-empty">
-        What {subjectName(partnerName)} {agree(partnerName, 'sees', 'see')} under the name when
-        they open this.
-      </p>
       {failure ? (
         <p className="screen-empty">Couldn't load the line you wrote: {failure}</p>
       ) : current === undefined ? (

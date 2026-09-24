@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Empty, Loading, PosterCell, PosterGrid, Screen, ScreenHead, SectionLabel } from '../ui/Screen'
-import { MomentLine } from '../brand/Moments'
-import { SleepingPairMoment } from '../brand/Ambient'
+import { Empty, Loading, PosterCell, PosterGrid, Screen, SectionLabel } from '../ui/Screen'
+import { Ticket } from '../ui/Ticket'
+import { Ground } from '../ui/Ground'
+import { TINT, usePosterColors } from '../ui/posterColor'
+import { ScreenCharacter } from '../brand/Ambient'
+import { yearOf } from './ticketFacts'
 import { MascotPair } from '../brand/Mascot'
 import { loadWatchedSplit } from './pendingWatches'
 import type { WatchedSplit } from './pendingWatches'
@@ -27,10 +30,23 @@ export function WatchedTogetherScreen({ userId, partnerName }: WatchedScreenProp
     }
   }, [userId])
 
+  const year = new Date().getFullYear()
+  const heading = `WATCHED · ${year}`
+  // Whatever was watched last colours the screen.
+  const newest = split
+    ? [...split.together, ...split.alone].sort((a, b) =>
+        (b.watchedOn ?? '').localeCompare(a.watchedOn ?? ''),
+      )[0]
+    : undefined
+  const newestColor = usePosterColors([newest?.posterPath])
+  const ground = (
+    <Ground tints={newestColor && newestColor.length > 0 ? newestColor : [TINT.sage]} />
+  )
+
   if (split === null) {
     return (
-      <Screen>
-        <ScreenHead title="Watched" />
+      <Screen ground={ground}>
+        <Ticket heading={heading} figure="…" line="Counting what you've seen" />
         <Loading>Counting what you've seen…</Loading>
       </Screen>
     )
@@ -38,15 +54,18 @@ export function WatchedTogetherScreen({ userId, partnerName }: WatchedScreenProp
 
   const them = partnerName ?? 'them'
   const total = split.together.length + split.aloneTotal
+  const togetherThisYear = split.together.filter((film) => yearOf(film.watchedOn) === year).length
+  const aloneThisYear = split.alone.filter((film) => yearOf(film.watchedOn) === year).length
+  const thisYear = togetherThisYear + aloneThisYear
 
   return (
-    <Screen>
-      <ScreenHead title="Watched" status={`${total}`} />
-
-      {/* Both of them asleep here — this is where the evenings went. */}
-      <MomentLine art={<SleepingPairMoment />}>
-        Three-second memory. That's why we keep a list.
-      </MomentLine>
+    <Screen ground={ground} character={<ScreenCharacter kind="fish-asleep" />}>
+      <Ticket
+        heading={heading}
+        figure={`${thisYear} film${thisYear === 1 ? '' : 's'}`}
+        line={`${togetherThisYear} with ${them}`}
+        perforation="THREE-SECOND MEMORY. THAT IS WHY WE KEEP A LIST."
+      />
 
       {total === 0 ? (
         <Empty art="pair">Nothing watched yet. Films land here once one of you logs one.</Empty>

@@ -5,23 +5,36 @@ import {
   RUNTIME_STEP,
   decadesPresent,
   genreFacets,
+  mostRestrictiveFilter,
   languageFacets,
   languageLabel,
   runtimeCeiling,
 } from './filters'
 import type { WheelFilters } from './filters'
-import { Screen, ScreenHead } from '../ui/Screen'
+import { Screen } from '../ui/Screen'
+import { Ticket } from '../ui/Ticket'
+import { Ground } from '../ui/Ground'
+import { TINT, usePosterColors, vividness } from '../ui/posterColor'
+import type { RGB } from '../ui/posterColor'
+import { ScreenCharacter } from '../brand/Ambient'
+import { describeFilters } from './filterSummary'
+import { WHEEL_DRAW_SIZE } from './weightedDraw'
 import type { WheelItem } from './titles'
 
 interface FilterSheetProps {
   pool: WheelItem[]
-  filters: WheelFilters
+  // What the wheel is using now, and the films it drew with it.
+  applied: WheelFilters
+  drawn: WheelItem[]
+  // What is being edited here. Nothing reaches the wheel until Show.
+  draft: WheelFilters
   watchedIds: Set<string>
-  matchCount: number
-  onChange: (filters: WheelFilters) => void
-  onSavePreset: (name: string) => void
+  // Everything the wheel could draw from with a given set of filters.
+  poolFor: (filters: WheelFilters) => WheelItem[]
+  onDraftChange: (filters: WheelFilters) => void
+  onApply: (filters: WheelFilters) => void
+  onSavePreset: (name: string, filters: WheelFilters) => void
   onManagePresets: () => void
-  onClose: () => void
 }
 
 function Chip({
@@ -47,17 +60,50 @@ function Chip({
   )
 }
 
+// Colours for the ground from the films that would be drawn: the three
+// most vivid, never an average of all of them.
+function pickTints(colors: RGB[]): RGB[] {
+  return [...colors].sort((a, b) => vividness(b) - vividness(a)).slice(0, 3)
+}
+
+const tintsKey = (tints: readonly RGB[]) => tints.map((tint) => tint.join(',')).join('|')
+
 export function FilterSheet({
   pool,
-  filters,
+  applied,
+  drawn,
+  draft,
   watchedIds,
-  matchCount,
-  onChange,
+  poolFor,
+  onDraftChange,
+  onApply,
   onSavePreset,
   onManagePresets,
-  onClose,
 }: FilterSheetProps) {
   const [presetName, setPresetName] = useState('')
+  // Chip counts, facets and the ticket all follow the draft.
+  const filters = draft
+  const onChange = onDraftChange
+
+  const matching = poolFor(draft)
+  const matchCount = matching.length
+  const shown = Math.min(WHEEL_DRAW_SIZE, matchCount)
+  const unchanged = JSON.stringify(draft) === JSON.stringify(applied)
+  // The films this would put on the wheel: the ones already there while
+  // nothing has changed, otherwise the first of what would match. Fixed
+  // rather than sampled, so the ground doesn't reshuffle on every render.
+  const preview = unchanged ? drawn : matching.slice(0, WHEEL_DRAW_SIZE)
+
+  const colors = usePosterColors(matchCount === 0 ? [] : preview.map((item) => item.posterPath))
+  // Nothing matching turns the ground rust at once, before any poster is
+  // read; otherwise the ground holds its last colours until the new ones
+  // are in, so it never flashes to a stand-in between draws.
+  const [tints, setTints] = useState<readonly RGB[]>([TINT.amber])
+  const nextTints =
+    matchCount === 0 ? [TINT.rust] : colors === null ? null : colors.length > 0 ? pickTints(colors) : [TINT.amber]
+  if (nextTints && tintsKey(nextTints) !== tintsKey(tints)) setTints(nextTints)
+
+  const culprit = matchCount === 0 ? mostRestrictiveFilter(pool, draft, watchedIds) : null
 
   const languages = languageFacets(pool, filters, watchedIds)
   const genres = genreFacets(pool, filters, watchedIds)
@@ -71,13 +117,26 @@ export function FilterSheet({
     list.includes(value) ? list.filter((entry) => entry !== value) : [...list, value]
 
   return (
-    /* In place like every other section — no sheet, nothing dimmed. */
-    <Screen>
-      <ScreenHead
-        title="Filters"
-        status={`${matchCount} matching`}
-        tone={matchCount === 0 ? 'rust' : 'amber'}
-      />
+    /* In place like every other section. The way out is in the header;
+       only Show changes the wheel. */
+    <Screen
+      ground={<Ground tints={tints} />}
+      character={matchCount === 0 ? <ScreenCharacter kind="bin" /> : undefined}
+    >
+      {matchCount === 0 ? (
+        <Ticket
+          heading="FILTERS"
+          figure="Nothing matches"
+          line={describeFilters(draft)}
+          perforation={
+            culprit && culprit.wouldMatch > 0
+              ? `LOOSEN ${culprit.label.toUpperCase()} — THAT BRINGS BACK ${culprit.wouldMatch} FILM${culprit.wouldMatch === 1 ? '' : 'S'}`
+              : 'CLEAR ALL TO START AGAIN'
+          }
+        />
+      ) : (
+        <Ticket heading="FILTERS" figure={`${shown} of ${matchCount}`} line={describeFilters(draft)} />
+      )}
 
         <section className="filter-group dim-type">
           <p className="section-label tone-dimension">Media type</p>
@@ -234,7 +293,7 @@ export function FilterSheet({
               className="filter-save-button"
               disabled={presetName.trim().length === 0}
               onClick={() => {
-                onSavePreset(presetName.trim())
+                onSavePreset(presetName.trim(), draft)
                 setPresetName('')
               }}
             >
@@ -257,8 +316,14 @@ export function FilterSheet({
           >
             Clear all
           </button>
-          <button type="button" className="btn-primary" onClick={onClose}>
-            Show {matchCount} film{matchCount === 1 ? '' : 's'}
+          {/* The only thing here that changes the wheel. */}
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={matchCount === 0}
+            onClick={() => onApply(draft)}
+          >
+            Show {shown} film{shown === 1 ? '' : 's'}
           </button>
         </div>
     </Screen>

@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { buildPosterUrl } from '../wheel/posters'
 import { EmptyArt } from '../brand/EmptyArt'
@@ -11,8 +12,65 @@ import { PeerMoment } from '../brand/Ambient'
  * labels in the colour of what they mean. Nothing here overlays anything.
  */
 
-export function Screen({ children }: { children: ReactNode }) {
-  return <div className="screen">{children}</div>
+// How much clear space a character needs at the bottom before it appears.
+const CHARACTER_ROOM_PX = 130
+
+/**
+ * A screen: its ground behind, its content, a faint film grain over all of
+ * it, and — only when the content leaves room at the bottom — one
+ * character fixed there. The character never scrolls with the content and
+ * never sits on top of it.
+ */
+export function Screen({
+  children,
+  ground,
+  character,
+}: {
+  children: ReactNode
+  ground?: ReactNode
+  character?: ReactNode
+}) {
+  const scrollerRef = useRef<HTMLDivElement | null>(null)
+  const [room, setRoom] = useState(false)
+
+  // Measured from the last thing on the screen rather than a wrapper, so
+  // the screen's own spacing rules still see their children directly.
+  useEffect(() => {
+    const scroller = scrollerRef.current
+    if (!character || !scroller) return
+    const measure = () => {
+      const last = scroller.lastElementChild
+      const contentBottom = last
+        ? last.getBoundingClientRect().bottom - scroller.getBoundingClientRect().top + scroller.scrollTop
+        : 0
+      setRoom(contentBottom + CHARACTER_ROOM_PX <= scroller.clientHeight)
+    }
+    const sizes = new ResizeObserver(measure)
+    const watchChildren = () => {
+      sizes.disconnect()
+      sizes.observe(scroller)
+      for (const child of Array.from(scroller.children)) sizes.observe(child)
+      measure()
+    }
+    const children = new MutationObserver(watchChildren)
+    children.observe(scroller, { childList: true })
+    watchChildren()
+    return () => {
+      sizes.disconnect()
+      children.disconnect()
+    }
+  }, [character])
+
+  return (
+    <>
+      {ground}
+      <div className="screen" ref={scrollerRef}>
+        {children}
+      </div>
+      {character && room && <div className="screen-character">{character}</div>}
+      <div className="grain" aria-hidden="true" />
+    </>
+  )
 }
 
 // Title left, count or short status right, in the same place everywhere so

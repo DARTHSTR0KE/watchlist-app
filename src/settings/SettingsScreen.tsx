@@ -3,7 +3,13 @@ import { useAuth } from '../auth/AuthProvider'
 import { ensureAudioContext, playTick, useMuted } from '../wheel/tickSound'
 import { NoRowsAffected, saveDisplayName } from '../onboarding/onboardingState'
 import { BirthdayVideo } from '../birthday/BirthdayVideo'
-import { Empty, Row, Rows, Screen, ScreenHead, SectionLabel } from '../ui/Screen'
+import { Empty, Screen, SectionLabel } from '../ui/Screen'
+import { Ticket } from '../ui/Ticket'
+import { Ground } from '../ui/Ground'
+import { TINT, usePosterColors } from '../ui/posterColor'
+import { ScreenCharacter } from '../brand/Ambient'
+import { reportQuietly } from '../lib/dbError'
+import { countMySpins, loadLastWatchedPoster, plural } from '../social/ticketFacts'
 import { ClearAllData } from './ClearAllData'
 import { FilmRefresh } from './FilmRefresh'
 import { LineForThem } from './LineForThem'
@@ -56,6 +62,26 @@ export function SettingsScreen({
   const [message, setMessage] = useState<string | null>(null)
   const [showIntro, setShowIntro] = useState(false)
   const [summary, setSummary] = useState<WatchlistSummary | null>(null)
+  const [spins, setSpins] = useState<number | null>(null)
+  const [lastPoster, setLastPoster] = useState<string | null>(null)
+  const lastColor = usePosterColors([lastPoster])
+
+  useEffect(() => {
+    let cancelled = false
+    void countMySpins(userId)
+      .then((count) => {
+        if (!cancelled) setSpins(count)
+      })
+      .catch((error: unknown) => reportQuietly('Counting spins', error))
+    void loadLastWatchedPoster(userId)
+      .then((poster) => {
+        if (!cancelled) setLastPoster(poster)
+      })
+      .catch((error: unknown) => reportQuietly('Finding the last film watched', error))
+    return () => {
+      cancelled = true
+    }
+  }, [userId])
 
   useEffect(() => {
     let cancelled = false
@@ -103,8 +129,22 @@ export function SettingsScreen({
   }
 
   return (
-    <Screen>
-      <ScreenHead title="Settings" status={displayName ?? undefined} />
+    <Screen
+      ground={<Ground tints={lastColor && lastColor.length > 0 ? lastColor : [TINT.slate]} />}
+      character={<ScreenCharacter kind="raccoon-asleep" />}
+    >
+      <Ticket
+        heading="YOUR FILMS"
+        figure={summary === null ? '…' : `${summary.count} on the list`}
+        line={
+          summary === null
+            ? 'Counting'
+            : summary.lastImportedAt
+              ? `Last imported ${new Date(summary.lastImportedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`
+              : 'Never imported'
+        }
+        perforation={spins === null ? undefined : `${plural(spins, 'spin').toUpperCase()} SO FAR`}
+      />
 
       <section>
         <SectionLabel>Your name</SectionLabel>
@@ -115,7 +155,6 @@ export function SettingsScreen({
           </Empty>
         ) : (
           <>
-            <p className="screen-empty">This is what the other person sees you as, everywhere.</p>
             <div className="filter-save-row">
               <input
                 className="filter-preset-input"
@@ -158,24 +197,6 @@ export function SettingsScreen({
 
       <section>
         <SectionLabel>Your films</SectionLabel>
-        {/* What is already there, so importing again is a decision rather
-            than a guess. */}
-        <Rows>
-          <Row
-            name={
-              summary === null
-                ? 'Counting…'
-                : `${summary.count} film${summary.count === 1 ? '' : 's'} on your watchlist`
-            }
-            meta={
-              summary === null
-                ? undefined
-                : summary.lastImportedAt
-                  ? `Last imported ${new Date(summary.lastImportedAt).toLocaleDateString()}`
-                  : 'Never imported'
-            }
-          />
-        </Rows>
         {/* The one amber button on this screen. */}
         <button type="button" className="btn-primary" onClick={onGoToImport}>
           Import a watchlist

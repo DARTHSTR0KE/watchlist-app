@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Empty, Loading, PosterCell, PosterGrid, Screen, ScreenHead, SectionLabel } from '../ui/Screen'
+import { Empty, Loading, PosterCell, PosterGrid, Screen, SectionLabel } from '../ui/Screen'
+import { Ticket } from '../ui/Ticket'
+import { DriftingGround } from '../ui/Ground'
+import { TINT } from '../ui/posterColor'
 import { FilmPicker } from '../wheel/FilmPicker'
 import { addToSharedList, loadSharedList, removeFromSharedList } from './sharedList'
 import type { SharedListEntry } from './sharedList'
@@ -53,10 +56,13 @@ export function SharedListScreen({
     }
   }
 
+  // The same ground as Together, which this belongs to.
+  const ground = <DriftingGround left={TINT.amber} right={TINT.rust} />
+
   if (loading) {
     return (
-      <Screen>
-        <ScreenHead title="Watch together" />
+      <Screen ground={ground}>
+        <Ticket heading="OUR LIST" figure="…" line="Fetching your list" />
         <Loading art="raccoon">Fetching your list…</Loading>
       </Screen>
     )
@@ -65,8 +71,12 @@ export function SharedListScreen({
   const existingIds = new Set(entries.map((entry) => entry.filmId))
 
   return (
-    <Screen>
-      <ScreenHead title="Watch together" status={`${entries.length}`} />
+    <Screen ground={ground}>
+      <Ticket
+        heading="OUR LIST"
+        figure={`${entries.length} film${entries.length === 1 ? '' : 's'}`}
+        line="Anything either of you adds shows up for both"
+      />
 
       {message && <Empty>{message}</Empty>}
 

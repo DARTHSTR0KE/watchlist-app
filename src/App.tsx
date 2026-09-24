@@ -87,6 +87,7 @@ import { NudgeBanner } from './social/NudgeBanner'
 import { BinMoment, NightMoment } from './brand/Moments'
 import { WheelDust, WheelWatcher } from './brand/Ambient'
 import { useAmbient } from './ambient/ambientStore'
+import { setFilterExit } from './wheel/filterExit'
 import { reactionFor } from './ambient/ambient'
 import type { Reaction } from './ambient/ambient'
 import { loadLandingFacts } from './ambient/landing'
@@ -235,6 +236,9 @@ function WheelScreen({
   // What the filters were when the sheet opened, so closing it can tell
   // whether anything was applied.
   const filtersAtOpenRef = useRef<WheelFilters | null>(null)
+  // What Filters is editing. Nothing reaches the wheel until Show; leaving
+  // any other way drops it and the filters stay exactly as they were.
+  const [filterDraft, setFilterDraft] = useState<WheelFilters | null>(null)
   const [presets, setPresets] = useState<FilterPreset[]>([])
   // Which preset the current filters came from. Without this there is no
   // such thing as an applied preset to undo — applying one only copied its
@@ -648,6 +652,56 @@ function WheelScreen({
     if (next.length >= MIN_WHEEL_SEGMENTS) spinList(next, false)
   }
 
+  // Filters is a place of its own now, so it needs a way back that commits
+  // to nothing: the header's back control, the Wheel tab, and the phone's
+  // own back button all leave it with the filters exactly as they were.
+  const openFilters = () => {
+    filtersAtOpenRef.current = filters
+    setFilterDraft(filters)
+    setSheet('filters')
+    window.history.pushState({ chhobidamFilters: true }, '')
+  }
+
+  const leaveFilters = useCallback(() => {
+    // The back button's entry goes with it; its popstate does the closing.
+    if ((window.history.state as { chhobidamFilters?: boolean } | null)?.chhobidamFilters) {
+      window.history.back()
+    } else {
+      setSheet('none')
+      setFilterDraft(null)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (sheet === 'none') return
+    const onPop = () => {
+      // Back from presets goes to Filters, not past it.
+      if (sheet === 'presets') {
+        setSheet('filters')
+        window.history.pushState({ chhobidamFilters: true }, '')
+        return
+      }
+      setSheet('none')
+      setFilterDraft(null)
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [sheet])
+
+  useEffect(() => {
+    if (sheet === 'none') return
+    setFilterExit(leaveFilters)
+    return () => setFilterExit(null)
+  }, [sheet, leaveFilters])
+
+  const applyDraft = (draft: WheelFilters) => {
+    if (JSON.stringify(filtersAtOpenRef.current) !== JSON.stringify(draft)) {
+      logEvent('filter_applied', { detail: { filters: draft as unknown as Json } })
+    }
+    handleFiltersChange(draft)
+    leaveFilters()
+  }
+
   const vetoOptions = allowsVeto(filters.source)
     ? [
         {
@@ -675,9 +729,9 @@ function WheelScreen({
     handleFiltersChange({ ...filters, source: next })
   }
 
-  const handleSavePreset = (name: string) => {
+  const handleSavePreset = (name: string, which: WheelFilters = filters) => {
     // Newest first, matching how the presets screen lists them.
-    void savePreset(userId, name, filters)
+    void savePreset(userId, name, which)
       .then((preset) => setPresets((current) => [preset, ...current]))
       .catch(() => {})
   }
@@ -847,9 +901,10 @@ function WheelScreen({
   return (
     <div className="app">
       <FilmBackdrop backdropPath={displayedBackdrop} />
-      <h1 className="app-title">Innu ki dekhbo?</h1>
+      {/* Filters and presets bring their own ticket to the top. */}
+      {!inPlacePanel && <h1 className="app-title">Innu ki dekhbo?</h1>}
 
-      <div className="wheel-controls">
+      <div className="wheel-controls" hidden={inPlacePanel}>
         <SourceToggle source={filters.source} onChange={handleSourceChange} />
         {!pickingWheel && !inPlacePanel && (
         <div className="wheel-controls-row">
@@ -868,10 +923,7 @@ function WheelScreen({
               // The shared list is spun exactly as assembled, so there is
               // nothing here for filters to do.
               disabled={filters.source === 'shared'}
-              onClick={() => {
-                filtersAtOpenRef.current = filters
-                setSheet('filters')
-              }}
+              onClick={openFilters}
             >
               Filters
             </button>
@@ -997,19 +1049,17 @@ function WheelScreen({
       {sheet === 'filters' && (
         <FilterSheet
           pool={masterItems}
-          filters={filters}
+          applied={filters}
+          drawn={items}
+          draft={filterDraft ?? filters}
           watchedIds={watchedIds}
-          matchCount={matchingPool.length}
-          onChange={handleFiltersChange}
+          poolFor={(which) =>
+            visiblePool(masterItems, which, watchedIds, setAside, watchedThisSession, vetoedIds)
+          }
+          onDraftChange={setFilterDraft}
+          onApply={applyDraft}
           onSavePreset={handleSavePreset}
           onManagePresets={() => setSheet('presets')}
-          onClose={() => {
-            // Only if something actually changed while it was open.
-            if (JSON.stringify(filtersAtOpenRef.current) !== JSON.stringify(filters)) {
-              logEvent('filter_applied', { detail: { filters: filters as unknown as Json } })
-            }
-            setSheet('none')
-          }}
         />
       )}
 

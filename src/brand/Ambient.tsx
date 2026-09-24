@@ -1,6 +1,14 @@
 import { useId } from 'react'
 import { BOWL, RACCOON } from './paths'
-import { BowlShapes, GoldfishShapes, RaccoonBackShapes, RaccoonShapes, ZzzShapes } from './mark'
+import {
+  BowlShapes,
+  GoldfishShapes,
+  RaccoonBackShapes,
+  RaccoonSeatedShapes,
+  RaccoonShapes,
+  ZzzShapes,
+} from './mark'
+import { BinMoment } from './Moments'
 import { prefersReducedMotion } from './coldStart'
 import { Tappable } from './Tappable'
 import type { Reaction } from '../ambient/ambient'
@@ -207,4 +215,81 @@ export function ReactionMoment({ reaction }: { reaction: Reaction | null }) {
       </svg>
     </Tappable>
   )
+}
+
+/**
+ * The one character a screen has, fixed at its bottom edge. Which one and
+ * which side is the screen's choice; the screen only shows it when there
+ * is room left under its content.
+ */
+export type ScreenCharacterKind = 'raccoon' | 'raccoon-asleep' | 'fish-asleep' | 'pair' | 'bin'
+
+function RaccoonStanding({ asleep = false }: { asleep?: boolean }) {
+  return (
+    <Tappable who="raccoon">
+      <svg className="character-svg character-raccoon" viewBox="0 0 120 140" aria-hidden="true">
+        <g className={asleep ? 'character-asleep-tilt' : undefined}>
+          <RaccoonSeatedShapes eyes={asleep ? 'closed' : 'open'} />
+        </g>
+        {asleep && (
+          <g transform="translate(92 6)">
+            <ZzzShapes />
+          </g>
+        )}
+      </svg>
+    </Tappable>
+  )
+}
+
+function FishInBowl({ asleep = false }: { asleep?: boolean }) {
+  const uid = useUid()
+  const still = prefersReducedMotion()
+  return (
+    <Tappable who="goldfish">
+      <svg className="character-svg character-bowl" viewBox="0 -28 110 128" aria-hidden="true">
+        <BowlShapes uid={uid} swimming={!asleep && !still} fishEye={asleep ? 'closed' : 'open'} />
+        {asleep && (
+          <g transform="translate(74 -14)">
+            <ZzzShapes />
+          </g>
+        )}
+      </svg>
+    </Tappable>
+  )
+}
+
+export function ScreenCharacter({ kind }: { kind: ScreenCharacterKind }) {
+  switch (kind) {
+    case 'raccoon':
+      return (
+        <div className="character character-right">
+          <RaccoonStanding />
+        </div>
+      )
+    case 'raccoon-asleep':
+      return (
+        <div className="character character-left">
+          <RaccoonStanding asleep />
+        </div>
+      )
+    case 'fish-asleep':
+      return (
+        <div className="character character-right">
+          <FishInBowl asleep />
+        </div>
+      )
+    case 'pair':
+      return (
+        <div className="character character-both">
+          <RaccoonStanding />
+          <FishInBowl />
+        </div>
+      )
+    case 'bin':
+      return (
+        <div className="character character-right">
+          <BinMoment />
+        </div>
+      )
+  }
 }

@@ -75,10 +75,6 @@ export function ForTheirWrapped({
       <SectionLabel tone="sage">For their Wrapped</SectionLabel>
 
       {waitingLine}
-      <p className="screen-empty">
-        Neither of you sees what the other chose until the 15th. You can change the song
-        until then; the message is final once sent.
-      </p>
       {failure ? (
         <p className="screen-empty">{failure}</p>
       ) : gift === null ? (

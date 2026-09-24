@@ -2,7 +2,10 @@ import { useState } from 'react'
 import { describeFilters } from './filterSummary'
 import { MAX_STARRED_PRESETS } from './wheelPersistence'
 import type { FilterPreset } from './wheelPersistence'
-import { Empty, Row, Rows, Screen, ScreenHead } from '../ui/Screen'
+import { Empty, Row, Rows, Screen } from '../ui/Screen'
+import { Ticket } from '../ui/Ticket'
+import { Ground } from '../ui/Ground'
+import { TINT } from '../ui/posterColor'
 
 interface PresetsScreenProps {
   presets: FilterPreset[]
@@ -98,14 +101,15 @@ export function PresetsScreen({
   const atCap = starredCount >= MAX_STARRED_PRESETS
 
   return (
-    <Screen>
-      <ScreenHead title="Presets" status={`${starredCount} of ${MAX_STARRED_PRESETS} active`} />
-
-      <p className="screen-empty">
-        {atCap
-          ? `${MAX_STARRED_PRESETS} of ${MAX_STARRED_PRESETS} active — unstar one to add another`
-          : 'Starred presets appear as chips above the wheel.'}
-      </p>
+    <Screen ground={<Ground tints={[TINT.amber, TINT.mauve]} />}>
+      <Ticket
+        heading="PRESETS"
+        figure={`${starredCount} of ${MAX_STARRED_PRESETS} active`}
+        line={`${presets.length} saved`}
+        perforation={
+          atCap ? 'UNSTAR ONE TO ADD ANOTHER' : 'STARRED ONES SHOW AS CHIPS ABOVE THE WHEEL'
+        }
+      />
 
       {presets.length === 0 ? (
         <Empty>No presets yet. Save a filter combination from the filters screen.</Empty>

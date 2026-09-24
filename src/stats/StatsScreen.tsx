@@ -13,7 +13,10 @@ import {
   TallyBars,
   YearPicker,
 } from './StatBits'
-import { ErrorLine, Loading, Screen, ScreenHead } from '../ui/Screen'
+import { ErrorLine, Loading, Screen } from '../ui/Screen'
+import { Ticket } from '../ui/Ticket'
+import { Ground } from '../ui/Ground'
+import { TINT } from '../ui/posterColor'
 import { loadStatsRaw } from './statsData'
 import { describeError } from '../lib/dbError'
 import { computeStats, watchedYears } from './statsCompute'
@@ -119,18 +122,20 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
     [raw, year],
   )
 
+  const ground = <Ground tints={[TINT.amber, TINT.slate]} />
+
   if (loading) {
     return (
-      <Screen>
-        <ScreenHead title="Stats" />
+      <Screen ground={ground}>
+        <Ticket heading="STATS" figure="…" line="Adding it all up" />
         <Loading art="raccoon">Adding it all up…</Loading>
       </Screen>
     )
   }
   if (failure || !stats) {
     return (
-      <Screen>
-        <ScreenHead title="Stats" />
+      <Screen ground={ground}>
+        <Ticket heading="STATS" figure="—" line="Couldn't load" />
         <ErrorLine>Couldn't load your stats: {failure ?? 'nothing came back.'}</ErrorLine>
       </Screen>
     )
@@ -148,8 +153,12 @@ export function StatsScreen({ userId, partnerId, partnerName }: StatsScreenProps
   })()
 
   return (
-    <Screen>
-      <ScreenHead title="Stats" status={`${stats.watchedCount} watched`} />
+    <Screen ground={ground}>
+      <Ticket
+        heading={year === 'all' ? 'STATS · ALL TIME' : `STATS · ${year}`}
+        figure={`${stats.watchedCount} watched`}
+        line={`${round(stats.filmHours, 0)} hours of film`}
+      />
 
       <YearPicker years={years} value={year} onChange={setYear} />
 

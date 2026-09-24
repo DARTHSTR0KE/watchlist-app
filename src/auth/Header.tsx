@@ -1,3 +1,5 @@
+import { useFilterExit } from '../wheel/filterExit'
+
 export type Screen =
   | 'wheel'
   | 'recommended'
@@ -25,11 +27,20 @@ const NAV: { value: Screen; label: string }[] = [
 ]
 
 export function Header({ screen, displayName, unseenRecommendations, onNavigate }: HeaderProps) {
+  // Set while Filters is open: the way back to the wheel, leaving the
+  // filters exactly as they were.
+  const exitFilters = useFilterExit()
 
   return (
     <header className="app-header">
       <div className="app-header-top">
-        <span className="app-header-name">{displayName ?? '…'}</span>
+        {exitFilters && screen === 'wheel' ? (
+          <button type="button" className="app-header-back" onClick={exitFilters}>
+            <span aria-hidden="true">‹</span> Wheel
+          </button>
+        ) : (
+          <span className="app-header-name">{displayName ?? '…'}</span>
+        )}
         <button
           type="button"
           className={`app-header-signout${screen === 'settings' ? ' app-nav-item-on' : ''}`}
@@ -47,7 +58,10 @@ export function Header({ screen, displayName, unseenRecommendations, onNavigate 
             type="button"
             className={`app-nav-item${screen === item.value ? ' app-nav-item-on' : ''}`}
             aria-current={screen === item.value ? 'page' : undefined}
-            onClick={() => onNavigate(item.value)}
+            onClick={() =>
+              // The Wheel tab while in Filters is the same way out.
+              item.value === 'wheel' && exitFilters ? exitFilters() : onNavigate(item.value)
+            }
           >
             {item.label}
             {item.value === 'recommended' && unseenRecommendations > 0 && (

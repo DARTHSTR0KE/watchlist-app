@@ -4684,3 +4684,295 @@ a.pending-action {
     animation: none;
   }
 }
+
+/* Screens: ticket, ground, grain, character ------------------------------- */
+
+/* Header and footer stay above every screen's ground. */
+.app-header,
+.app-footer {
+  position: relative;
+  z-index: 2;
+}
+
+.screen {
+  position: relative;
+  z-index: 1;
+}
+
+.wheel-controls[hidden] {
+  display: none;
+}
+
+/* The way out of Filters, where the name usually sits. */
+.app-header-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.8rem 0.35rem 0.55rem;
+  border: 1px solid rgba(245, 245, 245, 0.22);
+  border-radius: 999px;
+  background: rgba(245, 245, 245, 0.06);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.app-header-back span {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+/* The ticket. Cream paper, a notch bitten out of each side — cut clean
+   through with a mask, so the notch shows whatever ground is behind. */
+.ticket {
+  --notch: 11px;
+  margin: 0 0 1.5rem;
+  /* The wheel's container centres its text; a ticket reads from the left. */
+  text-align: left;
+  color: #1a1a20;
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.35));
+}
+
+.ticket-main,
+.ticket-stub {
+  background-color: var(--bone);
+}
+
+.ticket-main {
+  padding: 1.05rem 1.35rem 1.1rem;
+}
+
+/* One piece: notches at the middle of each side. */
+.ticket-whole {
+  border-radius: 16px;
+  -webkit-mask:
+    radial-gradient(circle var(--notch) at left center, #0000 98%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle var(--notch) at right center, #0000 98%, #000) right / 51% 100% no-repeat;
+  mask:
+    radial-gradient(circle var(--notch) at left center, #0000 98%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle var(--notch) at right center, #0000 98%, #000) right / 51% 100% no-repeat;
+}
+
+/* Two pieces: the notches sit on the perforation, half in each. */
+.ticket-main-torn {
+  border-radius: 16px 16px 0 0;
+  -webkit-mask:
+    radial-gradient(circle var(--notch) at left bottom, #0000 98%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle var(--notch) at right bottom, #0000 98%, #000) right / 51% 100% no-repeat;
+  mask:
+    radial-gradient(circle var(--notch) at left bottom, #0000 98%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle var(--notch) at right bottom, #0000 98%, #000) right / 51% 100% no-repeat;
+}
+
+.ticket-stub {
+  padding: 0.75rem 1.35rem 0.85rem;
+  border-radius: 0 0 16px 16px;
+  /* The perforation: a dashed line across the top, between the notches. */
+  background-image: linear-gradient(90deg, rgba(26, 26, 32, 0.4) 55%, transparent 0);
+  background-size: 9px 2px;
+  background-repeat: repeat-x;
+  background-position: 0 0;
+  background-origin: padding-box;
+  -webkit-mask:
+    radial-gradient(circle var(--notch) at left top, #0000 98%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle var(--notch) at right top, #0000 98%, #000) right / 51% 100% no-repeat;
+  mask:
+    radial-gradient(circle var(--notch) at left top, #0000 98%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle var(--notch) at right top, #0000 98%, #000) right / 51% 100% no-repeat;
+}
+
+.ticket-heading {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(26, 26, 32, 0.6);
+}
+
+.ticket-figure {
+  margin: 0.3rem 0 0;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 2.1rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: #16161b;
+}
+
+.ticket-line {
+  margin: 0.3rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: rgba(26, 26, 32, 0.68);
+}
+
+.ticket-perforation {
+  margin: 0.2rem 0 0;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1.45;
+  text-transform: uppercase;
+  color: rgba(26, 26, 32, 0.62);
+}
+
+/* The ground: fixed behind the screen, never scrolling with it. */
+.ground {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background-color: #0b0b0e;
+}
+
+/* Inside a container that is its own stacking context, it goes under. */
+.import-screen {
+  position: relative;
+  z-index: 1;
+}
+
+.import-screen > .ground {
+  z-index: -1;
+}
+
+.ground-layer {
+  position: absolute;
+  inset: 0;
+}
+
+/* A new ground fades in over the old one rather than cutting to it. */
+.ground-layer-in {
+  animation: ground-in 0.8s ease both;
+}
+
+@keyframes ground-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Together: two washes drifting towards each other and apart. */
+.ground-drift-wash {
+  position: absolute;
+  width: 115vmax;
+  height: 115vmax;
+  border-radius: 50%;
+}
+
+.ground-drift-left {
+  top: -62vmax;
+  left: -58vmax;
+  animation: drift-left 9s ease-in-out infinite;
+}
+
+.ground-drift-right {
+  top: -48vmax;
+  right: -62vmax;
+  animation: drift-right 9s ease-in-out infinite;
+}
+
+.ground-drift-fade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(11, 11, 14, 0) 0%, rgba(11, 11, 14, 0.2) 25%, rgba(11, 11, 14, 0.7) 48%, #0b0b0e 66%);
+}
+
+@keyframes drift-left {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(16vmax, 4vmax);
+  }
+}
+
+@keyframes drift-right {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(-16vmax, 3vmax);
+  }
+}
+
+/* Film grain: one static layer of noise over every screen, at 9%. */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  opacity: 0.09;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1.4 -0.2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+}
+
+/* The screen's one character, fixed at the bottom above the footer. */
+.screen-character {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(2.6rem + env(safe-area-inset-bottom));
+  z-index: 3;
+  pointer-events: none;
+}
+
+.character {
+  display: flex;
+  align-items: flex-end;
+  max-width: 460px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.character-right {
+  justify-content: flex-end;
+}
+
+.character-left {
+  justify-content: flex-start;
+}
+
+.character-both {
+  justify-content: space-between;
+}
+
+.character .tappable {
+  pointer-events: auto;
+}
+
+.character-raccoon {
+  width: 62px;
+}
+
+.character-bowl {
+  width: 58px;
+}
+
+.character .moment-bin {
+  width: 78px;
+  pointer-events: auto;
+}
+
+.character-asleep-tilt {
+  transform-box: view-box;
+  transform-origin: 60px 120px;
+  transform: rotate(-6deg);
+}
+
+/* Every movement here stops at its resting state. */
+@media (prefers-reduced-motion: reduce) {
+  .ground-layer-in,
+  .ground-drift-left,
+  .ground-drift-right {
+    animation: none !important;
+  }
+}

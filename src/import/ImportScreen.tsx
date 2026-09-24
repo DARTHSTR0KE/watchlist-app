@@ -6,6 +6,9 @@ import { ManualSearch } from './ManualSearch'
 import { WatchlistGrid } from './WatchlistGrid'
 import { MissingItemsPanel } from './MissingItemsPanel'
 import { formatRelativeTime } from '../utils/relativeTime'
+import { Ticket } from '../ui/Ticket'
+import { Ground } from '../ui/Ground'
+import { TINT } from '../ui/posterColor'
 import { BowlMoment, HeistMoment } from '../brand/Moments'
 import { downloadLetterboxdCsv } from './letterboxdExport'
 import {
@@ -92,11 +95,15 @@ export function ImportScreen({ onGoToWheel }: ImportScreenProps) {
 
   return (
     <div className="import-screen">
+      {/* Fixed to the viewport, so they sit behind and over this scroller. */}
+      <Ground tints={[TINT.sand, TINT.rust]} />
+      <div className="grain" aria-hidden="true" />
+      <Ticket
+        heading="YOUR WATCHLIST"
+        figure={`${gridItems.length} film${gridItems.length === 1 ? '' : 's'}`}
+        line={lastImportAt ? `Last updated ${formatRelativeTime(lastImportAt)}` : 'Never imported'}
+      />
       <div className="import-header">
-        <h1 className="import-title">Your watchlist</h1>
-        {lastImportAt && (
-          <p className="import-last-updated">Watchlist last updated {formatRelativeTime(lastImportAt)}</p>
-        )}
         {gridItems.length > 0 && (
           <button type="button" className="import-go-to-wheel" onClick={onGoToWheel}>
             Go to wheel

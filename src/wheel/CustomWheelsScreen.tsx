@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import type { CustomWheel } from './customWheels'
-import { Empty, PosterStack, Row, Rows, Screen, ScreenHead } from '../ui/Screen'
+import { Empty, PosterStack, Row, Rows, Screen } from '../ui/Screen'
+import { Ticket } from '../ui/Ticket'
 
 interface CustomWheelsListProps {
   wheels: CustomWheel[]
@@ -92,9 +93,10 @@ export function CustomWheelsList({
 
   return (
     <Screen>
-      <ScreenHead
-        title="Pick a wheel"
-        status={`${wheels.length} wheel${wheels.length === 1 ? '' : 's'}`}
+      <Ticket
+        heading="MY WHEELS"
+        figure={`${wheels.length} wheel${wheels.length === 1 ? '' : 's'}`}
+        line={`${wheels.filter((wheel) => wheel.shared).length} shared with both of you`}
       />
 
       {wheels.length === 0 ? (

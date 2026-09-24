@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { agree, subjectName } from '../utils/names'
 import { buildPosterUrl } from '../wheel/posters'
-import { Empty, Loading, PosterThumb, Row, Rows, Screen, ScreenHead, SectionLabel } from '../ui/Screen'
+import { Empty, Loading, PosterThumb, Row, Rows, Screen, SectionLabel } from '../ui/Screen'
+import { Ticket } from '../ui/Ticket'
+import { Ground } from '../ui/Ground'
+import { TINT, usePosterColors } from '../ui/posterColor'
+import { ScreenCharacter } from '../brand/Ambient'
+import { loadWatchedFilmIds } from '../wheel/loadWheelItems'
+import { forMeCounts, plural } from './ticketFacts'
 import { FilmPicker } from '../wheel/FilmPicker'
 import type { PickedFilm } from '../wheel/FilmPicker'
 import {
@@ -42,6 +48,8 @@ export function RecommendedScreen({
   onSeen,
 }: RecommendedScreenProps) {
   const [received, setReceived] = useState<Recommendation[]>([])
+  // For the ticket: of what they sent this year, how much I have watched.
+  const [watchedIds, setWatchedIds] = useState<Set<string>>(new Set())
   const [sent, setSent] = useState<Recommendation[]>([])
   const [loading, setLoading] = useState(true)
   const [note, setNote] = useState('')
@@ -58,6 +66,7 @@ export function RecommendedScreen({
   const [busyId, setBusyId] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
 
+  const newestColor = usePosterColors(loading ? [] : [received[0]?.posterPath])
   const onSeenRef = useRef(onSeen)
   useEffect(() => {
     onSeenRef.current = onSeen
@@ -68,9 +77,11 @@ export function RecommendedScreen({
     void Promise.all([
       loadRecommendationsForMe(userId).catch(() => [] as Recommendation[]),
       loadRecommendationsSent(userId).catch(() => [] as Recommendation[]),
-    ]).then(async ([mine, outgoing]) => {
+      loadWatchedFilmIds(userId).catch(() => new Set<string>()),
+    ]).then(async ([mine, outgoing, watched]) => {
       if (cancelled) return
       setReceived(mine)
+      setWatchedIds(watched)
       setSent(outgoing)
       setLoading(false)
       if (mine.some((item) => !item.seen)) {
@@ -147,10 +158,16 @@ export function RecommendedScreen({
     setSending(false)
   }
 
+  const heading = `FROM ${(partnerName ?? 'them').toUpperCase()}`
+  // The newest thing they sent colours the screen; nothing sent, amber.
+  const ground = (
+    <Ground tints={newestColor && newestColor.length > 0 ? newestColor : [TINT.amber]} />
+  )
+
   if (loading) {
     return (
-      <Screen>
-        <ScreenHead title="Recommendations" />
+      <Screen ground={ground}>
+        <Ticket heading={heading} figure="…" line="Seeing what's arrived" />
         <Loading art="goldfish">Seeing what's arrived…</Loading>
       </Screen>
     )
@@ -158,8 +175,8 @@ export function RecommendedScreen({
 
   if (!partnerId) {
     return (
-      <Screen>
-        <ScreenHead title="Recommendations" />
+      <Screen ground={ground}>
+        <Ticket heading="FOR ME" figure="—" line="No partner is linked to this account" />
         <Empty>
           No partner is linked to this account, so there is nobody to swap recommendations with.
         </Empty>
@@ -197,16 +214,17 @@ export function RecommendedScreen({
   const waiting = received.filter((item) => item.respondedAt === null)
   const answered = received.filter((item) => item.respondedAt !== null)
   const chosenPoster = chosen ? buildPosterUrl(chosen.posterPath) : null
+  const year = new Date().getFullYear()
+  const { sentThisYear, watchedOfThem } = forMeCounts(received, watchedIds, year)
 
   return (
-    <Screen>
-      <ScreenHead
-        title={`From ${them}`}
-        status={
-          <>
-            <Mascot who={partnerMascot} size={22} bowl className="mascot-inline" />{' '}
-            {waiting.length} waiting
-          </>
+    <Screen ground={ground} character={<ScreenCharacter kind="raccoon" />}>
+      <Ticket
+        heading={heading}
+        figure={`${waiting.length} waiting`}
+        line={`${subjectName(partnerName, true)} ${agree(partnerName, 'has', 'have')} sent ${plural(sentThisYear, 'film')} this year`}
+        perforation={
+          sentThisYear > 0 ? `YOU HAVE WATCHED ${watchedOfThem} OF THEM` : undefined
         }
       />
 
