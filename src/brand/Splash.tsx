@@ -3,6 +3,7 @@ import { BowlShapes, GoldfishShapes, RaccoonShapes, RaccoonSeatedShapes } from '
 import { prefersReducedMotion } from './coldStart'
 import { SpeechBubble } from './SpeechBubble'
 import { SPOKEN_MIN_VISIBLE_MS, useSpokenNudge } from './useSpokenNudge'
+import { useLineForMe } from './useLineForMe'
 
 /**
  * One raccoon and one goldfish in its bowl, from the first frame to the
@@ -17,7 +18,7 @@ import { SPOKEN_MIN_VISIBLE_MS, useSpokenNudge } from './useSpokenNudge'
  *   0.0-0.8  the pair fade in, already in position
  *   0.8-1.4  the name and the gloss fade in
  *   1.0      the skip hint appears
- *   1.4-2.0  the tagline fades in, and holds — ten words need reading time
+ *   1.4-2.0  the tagline fades in, and holds — sixty characters need reading time
  *   3.8-4.25 she walks over to the bowl
  *   4.25-4.45 she bends to it and reaches down with both arms
  *   4.45-4.6 she lifts it to her chest, the water staying level
@@ -51,6 +52,8 @@ export function Splash({ onDone }: { onDone: () => void }) {
   const reduced = prefersReducedMotion()
   const { spoken, onVisible } = useSpokenNudge()
   const visibleRef = useRef(false)
+  // Written for me by the other person; neither of us writes our own.
+  const tagline = useLineForMe()
 
   useEffect(() => {
     const hold = reduced ? (spoken ? STILL_WITH_BUBBLE_MS : STILL_MS) : FULL_MS
@@ -122,7 +125,7 @@ export function Splash({ onDone }: { onDone: () => void }) {
       <div className="splash-words">
         <p className="splash-name">Chhobidam</p>
         <p className="splash-gloss">chhobi + padam</p>
-        <p className="splash-tag">Indecisive about films. Never about you :3</p>
+        <p className="splash-tag">{tagline}</p>
       </div>
 
       {/* Five seconds is long enough that it needs saying. */}

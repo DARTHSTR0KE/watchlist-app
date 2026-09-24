@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabaseClient'
 import { clearPlayedRecord } from '../birthday/birthdayDate'
+import { clearSplashLineRecords } from '../social/splashLines'
 
 /**
  * Clearing everything, for both accounts.
@@ -24,6 +25,7 @@ export interface DataCounts {
   spins: number
   imports: number
   nudges: number
+  splashLines: number
 }
 
 export const EMPTY_COUNTS: DataCounts = {
@@ -36,6 +38,7 @@ export const EMPTY_COUNTS: DataCounts = {
   spins: 0,
   imports: 0,
   nudges: 0,
+  splashLines: 0,
 }
 
 // Every count is of what the policies actually let me see, which for the
@@ -51,18 +54,31 @@ async function countOf(table: string): Promise<number> {
 }
 
 export async function countEverything(): Promise<DataCounts> {
-  const [watchlist, watched, recommendations, wheels, sharedList, presets, spins, imports, nudges] =
-    await Promise.all([
-      countOf('watchlist_items'),
-      countOf('watched'),
-      countOf('recommendations'),
-      countOf('custom_wheels'),
-      countOf('shared_list_items'),
-      countOf('filter_presets'),
-      countOf('spins'),
-      countOf('imports'),
-      countOf('nudges'),
-    ])
+  const [
+    watchlist,
+    watched,
+    recommendations,
+    wheels,
+    sharedList,
+    presets,
+    spins,
+    imports,
+    nudges,
+    splashLines,
+  ] = await Promise.all([
+    countOf('watchlist_items'),
+    countOf('watched'),
+    countOf('recommendations'),
+    countOf('custom_wheels'),
+    countOf('shared_list_items'),
+    countOf('filter_presets'),
+    countOf('spins'),
+    countOf('imports'),
+    countOf('nudges'),
+    // Both directions are visible to either of us, so this one counts
+    // the other person's line too.
+    countOf('splash_lines'),
+  ])
   return {
     watchlist,
     watched,
@@ -73,6 +89,7 @@ export async function countEverything(): Promise<DataCounts> {
     spins,
     imports,
     nudges,
+    splashLines,
   }
 }
 
@@ -88,6 +105,8 @@ export interface ClearResult {
   onboardingReset: boolean
   // The birthday video's record lives in localStorage, not the database.
   birthdayReset: boolean
+  // The prompt's skip and the cached line, also in localStorage.
+  splashLineReset: boolean
 }
 
 const LABELS: Record<keyof DataCounts, string> = {
@@ -100,6 +119,7 @@ const LABELS: Record<keyof DataCounts, string> = {
   spins: 'spins',
   imports: 'import history',
   nudges: 'nudges',
+  splashLines: 'splash lines',
 }
 
 /**
@@ -133,6 +153,9 @@ export async function clearAllData(userId: string, partnerId: string | null): Pr
     // Both directions at once: ids holds us both, and from_user is
     // whoever sent it.
     supabase.from('nudges').delete().in('from_user', ids),
+    // Same again: the line each of us wrote for the other. Gone, the
+    // prompt to write one comes back on the next open.
+    supabase.from('splash_lines').delete().in('from_user', ids),
   ])
   await supabase.from('custom_wheels').delete().in('user_id', ids)
 
@@ -147,11 +170,18 @@ export async function clearAllData(userId: string, partnerId: string | null): Pr
   // Not a table, but it is data about this account all the same, and a
   // wipe that left it behind would quietly skip the video on the day.
   const birthdayReset = clearPlayedRecord()
+  const splashLineReset = clearSplashLineRecords()
 
   const remaining = await countEverything().catch(() => EMPTY_COUNTS)
   const survivors = (Object.keys(remaining) as (keyof DataCounts)[])
     .filter((key) => remaining[key] > 0)
     .map((key) => `${remaining[key]} in ${LABELS[key]}`)
 
-  return { remaining, survivors, onboardingReset: (reset ?? []).length > 0, birthdayReset }
+  return {
+    remaining,
+    survivors,
+    onboardingReset: (reset ?? []).length > 0,
+    birthdayReset,
+    splashLineReset,
+  }
 }

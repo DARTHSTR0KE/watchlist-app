@@ -95,7 +95,8 @@ export function ClearAllData({ userId, partnerId, partnerName, onCleared }: Clea
             {plural(counts.watched, 'watched record')}, {plural(counts.recommendations, 'recommendation')},{' '}
             {plural(counts.wheels, 'custom wheel')}, {plural(counts.sharedList, 'film')} on the shared
             list, {plural(counts.presets, 'filter preset')}, {plural(counts.spins, 'spin')},{' '}
-            {plural(counts.imports, 'import')} and {plural(counts.nudges, 'nudge')} —{' '}
+            {plural(counts.imports, 'import')}, {plural(counts.nudges, 'nudge')} and{' '}
+            {plural(counts.splashLines, 'splash line')} —{' '}
             {plural(totalRecords(counts), 'record')} in all.
           </p>
           <p className="screen-empty">

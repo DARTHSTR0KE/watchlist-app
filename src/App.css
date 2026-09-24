@@ -4060,3 +4060,126 @@ a.pending-action {
 .nudge-count-over {
   color: var(--amber);
 }
+
+/* Their splash line --------------------------------------------------- */
+
+/* The prompt is the splash standing still, under the real one so it is
+   only seen once that has gone, and over everything else. */
+.line-prompt {
+  z-index: 55;
+}
+
+.line-prompt-question {
+  position: absolute;
+  top: max(8%, env(safe-area-inset-top));
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0 1.75rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--text);
+}
+
+/* Set in the tagline's own type, so what is typed is what they will see. */
+.line-input-splash {
+  display: block;
+  width: 100%;
+  margin: 1rem 0 0;
+  padding: 0 0 0.2rem;
+  border: none;
+  border-bottom: 1px dashed rgba(217, 164, 65, 0.55);
+  border-radius: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--amber);
+  outline: none;
+}
+
+.line-input-splash::placeholder {
+  color: rgba(217, 164, 65, 0.45);
+}
+
+.line-input-splash:focus {
+  border-bottom-style: solid;
+}
+
+/* Hangs under the words block, so nothing here moves the field. */
+.line-editor-splash .line-below {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  padding: 0.25rem 1.75rem 0;
+}
+
+.line-count {
+  margin: 0.3rem 0 0;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--text-faint);
+}
+
+.line-count-full {
+  color: var(--rust);
+}
+
+.line-meta {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--text-dim);
+}
+
+.line-last {
+  color: var(--text-soft);
+}
+
+.line-error {
+  color: var(--rust);
+}
+
+.line-current {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--amber);
+}
+
+.line-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.line-editor-splash .line-actions {
+  justify-content: center;
+}
+
+.line-skip {
+  padding: 0.5rem 0.9rem;
+  border: 1px solid rgba(245, 245, 245, 0.2);
+  border-radius: 10px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-soft);
+  cursor: pointer;
+}
+
+/* The tagline's fade-in is for the moving splash; standing still it is
+   simply there. */
+.line-locked-splash {
+  opacity: 1;
+  animation: none;
+}

@@ -385,6 +385,27 @@ export interface Database {
         }
         Relationships: []
       }
+      splash_lines: {
+        Row: {
+          from_user: string
+          to_user: string
+          line: string
+          set_at: string
+        }
+        Insert: {
+          from_user: string
+          to_user: string
+          line: string
+          set_at?: string
+        }
+        Update: {
+          from_user?: string
+          to_user?: string
+          line?: string
+          set_at?: string
+        }
+        Relationships: []
+      }
       imports: {
         Row: {
           id: string

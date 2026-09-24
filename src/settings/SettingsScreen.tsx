@@ -6,6 +6,7 @@ import { BirthdayVideo } from '../birthday/BirthdayVideo'
 import { Empty, Row, Rows, Screen, ScreenHead, SectionLabel } from '../ui/Screen'
 import { ClearAllData } from './ClearAllData'
 import { FilmRefresh } from './FilmRefresh'
+import { LineForThem } from './LineForThem'
 import { loadWatchlistSummary } from '../import/watchlistWrites'
 import type { WatchlistSummary } from '../import/watchlistWrites'
 
@@ -134,6 +135,10 @@ export function SettingsScreen({
           </>
         )}
       </section>
+
+      {partnerId && (
+        <LineForThem userId={userId} partnerId={partnerId} partnerName={partnerName} />
+      )}
 
       <section>
         <SectionLabel>Sound</SectionLabel>

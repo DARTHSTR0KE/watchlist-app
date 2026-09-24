@@ -69,6 +69,9 @@ const StatsScreen = lazy(() =>
 import { PendingWatchPrompt } from './social/PendingWatchPrompt'
 import { LetterboxdPrompt } from './social/LetterboxdPrompt'
 import { Splash } from './brand/Splash'
+import { SplashLinePrompt } from './social/SplashLinePrompt'
+import { loadLineFromMe, promptSkippedThisMonth } from './social/splashLines'
+import type { SplashLine } from './social/splashLines'
 import { EmptyArt } from './brand/EmptyArt'
 import { NudgeBanner } from './social/NudgeBanner'
 import { BinMoment, NightMoment } from './brand/Moments'
@@ -1009,6 +1012,9 @@ function AuthenticatedApp() {
   // Both read from profiles.mascot, never decided here.
   const [myMascot, setMyMascot] = useState<Mascot | null>(null)
   const [partnerMascot, setPartnerMascot] = useState<Mascot | null>(null)
+  // The line I wrote for them, while the prompt to write one is up. The
+  // prompt comes before anything else once the splash has gone.
+  const [linePrompt, setLinePrompt] = useState<{ current: SplashLine | null } | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -1033,6 +1039,14 @@ function AuthenticatedApp() {
         setPartnerMascot(partner.mascot)
       }
       setCheckingWatchlist(false)
+
+      // Only while I have never written them one, and not again this
+      // month once skipped. A failed read asks nothing: better silent than
+      // asking someone who already wrote one.
+      if (partner && !promptSkippedThisMonth()) {
+        const mine = await loadLineFromMe(userId, partner.id).catch(() => undefined)
+        if (!cancelled && mine === null) setLinePrompt({ current: null })
+      }
 
       // Asked on opening, which is the whole point of not asking at the
       // moment of watching.
@@ -1183,7 +1197,17 @@ function AuthenticatedApp() {
         )}
         <Footer />
 
-        {needsOnboarding && (
+        {linePrompt && partnerId && (
+          <SplashLinePrompt
+            userId={userId}
+            partnerId={partnerId}
+            partnerName={partnerName}
+            current={linePrompt.current}
+            onDone={() => setLinePrompt(null)}
+          />
+        )}
+
+        {!linePrompt && needsOnboarding && (
           <Onboarding
             partnerName={partnerName}
             onDone={() => {
@@ -1202,7 +1226,8 @@ function AuthenticatedApp() {
 
         {/* The walkthrough comes first: a new account has nothing to be
             asked about anyway. */}
-        {!needsOnboarding &&
+        {!linePrompt &&
+          !needsOnboarding &&
           !promptDismissed &&
           // One at a time: the rating step stands in front of the next
           // film's question until it is answered either way.
