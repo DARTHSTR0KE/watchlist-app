@@ -88,6 +88,7 @@ import { BinMoment, NightMoment } from './brand/Moments'
 import { WheelDust, WheelWatcher } from './brand/Ambient'
 import { useAmbient } from './ambient/ambientStore'
 import { setFilterExit } from './wheel/filterExit'
+import { applyWarmth, loadReunionDate } from './reunion/reunion'
 import { reactionFor } from './ambient/ambient'
 import type { Reaction } from './ambient/ambient'
 import { loadLandingFacts } from './ambient/landing'
@@ -1183,6 +1184,9 @@ function AuthenticatedApp() {
       }
       setCheckingWatchlist(false)
 
+      // The shared date, and how warm that makes everything. Never waited on.
+      void loadReunionDate(userId)
+
       // Logged quietly and never waited on by anything else.
       void recordOpen(userId).then((opened) => {
         if (cancelled || !opened) return
@@ -1448,6 +1452,21 @@ function App() {
   // resuming a backgrounded app does not re-run it. Nothing here is
   // awaited: the app mounts and loads underneath the splash.
   const [splashing, setSplashing] = useState(claimColdStart)
+
+  // The day turns over at midnight and the app may be open across it, or
+  // left in the background for days: re-read the warmth whenever it comes
+  // back into view, and once a minute while it is.
+  useEffect(() => {
+    const recheck = () => {
+      if (document.visibilityState === 'visible') applyWarmth()
+    }
+    document.addEventListener('visibilitychange', recheck)
+    const timer = window.setInterval(recheck, 60 * 1000)
+    return () => {
+      document.removeEventListener('visibilitychange', recheck)
+      window.clearInterval(timer)
+    }
+  }, [])
 
   return (
     <AuthProvider>

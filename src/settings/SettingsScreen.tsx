@@ -13,6 +13,7 @@ import { countMySpins, loadLastWatchedPoster, plural } from '../social/ticketFac
 import { ClearAllData } from './ClearAllData'
 import { FilmRefresh } from './FilmRefresh'
 import { LineForThem } from './LineForThem'
+import { Reunion } from './Reunion'
 import { ForTheirWrapped } from '../gifts/ForTheirWrapped'
 import { giftWindow } from '../gifts/giftWindow'
 import { QuietFailure } from './QuietFailure'
@@ -181,6 +182,8 @@ export function SettingsScreen({
       {partnerId && (
         <LineForThem userId={userId} partnerId={partnerId} partnerName={partnerName} />
       )}
+
+      {partnerId && <Reunion />}
 
       {/* Only from 1 to 14 December; the rest of the year it isn't here. */}
       {partnerId && giftWindow(new Date()) === 'open' && (

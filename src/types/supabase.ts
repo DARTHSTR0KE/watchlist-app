@@ -17,6 +17,7 @@ export interface Database {
           onboarded_at: string | null
           mascot: 'raccoon' | 'goldfish' | null
           last_open_at: string | null
+          reunion_date: string | null
         }
         Insert: {
           id: string
@@ -25,6 +26,7 @@ export interface Database {
           onboarded_at?: string | null
           mascot?: 'raccoon' | 'goldfish' | null
           last_open_at?: string | null
+          reunion_date?: string | null
         }
         Update: {
           id?: string
@@ -33,6 +35,7 @@ export interface Database {
           onboarded_at?: string | null
           mascot?: 'raccoon' | 'goldfish' | null
           last_open_at?: string | null
+          reunion_date?: string | null
         }
         Relationships: []
       }
@@ -551,6 +554,14 @@ export interface Database {
       gift_waiting: {
         Args: { p_year: number }
         Returns: boolean
+      }
+      /**
+       * Sets (or, with null, clears) the reunion date on my profile and
+       * my partner's together, so whoever sets it sets it for both.
+       */
+      set_reunion_date: {
+        Args: { p_date: string | null }
+        Returns: undefined
       }
       touch_last_open: {
         Args: Record<string, never>

@@ -4976,3 +4976,113 @@ a.pending-action {
     animation: none !important;
   }
 }
+
+/* Warmth ------------------------------------------------------------------ */
+
+/* As the date we next see each other comes closer, the app warms. The
+   stage is set on the root element; nothing on screen names it.
+   week: very slightly warmer. two: warmer, and the fish brightens.
+   eve: warmest yet, and the pair sit up. day: unmistakable. */
+
+.raccoon-smile {
+  display: none;
+}
+
+.ground::after,
+.film-backdrop::after,
+.splash::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(ellipse 130% 75% at 50% 0%, rgba(255, 150, 78, 0.6), rgba(255, 118, 72, 0) 72%),
+    linear-gradient(180deg, rgba(255, 128, 72, 0.14), rgba(120, 40, 30, 0.1));
+}
+
+/* Under the splash's own drawing, over its background. */
+.splash::before {
+  z-index: -1;
+}
+
+html[data-warmth='week'] .ground::after,
+html[data-warmth='week'] .film-backdrop::after,
+html[data-warmth='week'] .splash::before {
+  opacity: 0.16;
+}
+
+html[data-warmth='two'] .ground::after,
+html[data-warmth='two'] .film-backdrop::after,
+html[data-warmth='two'] .splash::before {
+  opacity: 0.32;
+}
+
+html[data-warmth='eve'] .ground::after,
+html[data-warmth='eve'] .film-backdrop::after,
+html[data-warmth='eve'] .splash::before {
+  opacity: 0.5;
+}
+
+html[data-warmth='day'] .ground::after,
+html[data-warmth='day'] .film-backdrop::after,
+html[data-warmth='day'] .splash::before {
+  opacity: 0.9;
+}
+
+/* On the day the near-black itself goes warm, header and footer too. */
+html[data-warmth='day'] {
+  background-color: #1b110d;
+}
+
+html[data-warmth='day'] .app-header,
+html[data-warmth='day'] .app-footer {
+  background-color: rgba(58, 26, 16, 0.6);
+}
+
+html[data-warmth='day'] .ground {
+  background-color: #1b110d;
+}
+
+/* From two days out, the fish's orange brightens. */
+html[data-warmth='two'] .fish-body {
+  fill: #f0823f;
+}
+
+html[data-warmth='two'] .fish-fin {
+  fill: #cc5626;
+}
+
+html[data-warmth='eve'] .fish-body,
+html[data-warmth='day'] .fish-body {
+  fill: #ff9446;
+}
+
+html[data-warmth='eve'] .fish-fin,
+html[data-warmth='day'] .fish-fin {
+  fill: #e0602a;
+}
+
+/* The day before, and the day: the pair sit up. A small smile on the
+   raccoon, and the fish up near the top of its water. */
+html[data-warmth='eve'] .raccoon-smile,
+html[data-warmth='day'] .raccoon-smile {
+  display: inline;
+}
+
+.bowl-fish-perch {
+  transform-box: view-box;
+}
+
+html[data-warmth='eve'] .bowl-fish-perch,
+html[data-warmth='day'] .bowl-fish-perch {
+  transform: translateY(-9px);
+}
+
+.reunion-count {
+  margin: 0 0 0.6rem;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text);
+}

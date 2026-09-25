@@ -94,6 +94,15 @@ export function RaccoonShapes({
         />
       )}
       <path d={r.snout} fill={BRAND.mask} />
+      {/* Hidden unless the stylesheet shows it: the day before, and the day. */}
+      <path
+        className="raccoon-smile"
+        d="M44 82 Q50 87 56 82"
+        stroke={BRAND.mask}
+        strokeWidth="2.6"
+        strokeLinecap="round"
+        fill="none"
+      />
     </g>
   )
 }
@@ -106,10 +115,11 @@ export function GoldfishShapes({ eye = 'open' }: { eye?: FishEye } = {}) {
   return (
     <g>
       {/* Tail and fins first, so the body sits over where they join. */}
-      <path d={g.tail} fill={BRAND.fin} />
-      <path d={g.dorsal} fill={BRAND.fin} />
-      <path d={g.pelvic} fill={BRAND.fin} />
-      <path d={g.body} fill={BRAND.fish} />
+      {/* Classed so the stylesheet can brighten them as a date nears. */}
+      <path className="fish-fin" d={g.tail} fill={BRAND.fin} />
+      <path className="fish-fin" d={g.dorsal} fill={BRAND.fin} />
+      <path className="fish-fin" d={g.pelvic} fill={BRAND.fin} />
+      <path className="fish-body" d={g.body} fill={BRAND.fish} />
       {eye === 'closed' ? (
         <path
           d={`M${g.eye.cx - 4} ${g.eye.cy} Q${g.eye.cx} ${g.eye.cy + 3.5} ${g.eye.cx + 4} ${g.eye.cy}`}
@@ -124,6 +134,7 @@ export function GoldfishShapes({ eye = 'open' }: { eye?: FishEye } = {}) {
       {eye === 'tired' && (
         <path
           d={`M${g.eye.cx - g.eye.r - 0.4} ${g.eye.cy + 0.6} A${g.eye.r + 0.4} ${g.eye.r + 0.4} 0 0 1 ${g.eye.cx + g.eye.r + 0.4} ${g.eye.cy + 0.6} Z`}
+          className="fish-body"
           fill={BRAND.fish}
         />
       )}
@@ -286,8 +297,11 @@ export function BowlShapes({
         </g>
         {!empty && (
           <g className={fishClass}>
-            <g transform={b.fishTransform}>
-              <GoldfishShapes eye={fishEye} />
+            {/* Its own group, so sitting up can't fight the swim's transform. */}
+            <g className="bowl-fish-perch">
+              <g transform={b.fishTransform}>
+                <GoldfishShapes eye={fishEye} />
+              </g>
             </g>
           </g>
         )}
