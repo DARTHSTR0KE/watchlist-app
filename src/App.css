@@ -5295,3 +5295,260 @@ html[data-warmth='day'] .raccoon-smile {
   gap: 0.5rem;
   margin-bottom: 0.8rem;
 }
+
+/* Truth or dare ---------------------------------------------------------- */
+
+/* Both of them, at the top: this screen belongs to both of us. */
+.td-pair {
+  display: flex;
+  justify-content: center;
+  margin: -0.5rem 0 1rem;
+}
+
+.td-pair .pair-scene {
+  width: 132px;
+}
+
+.td-note {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--text-soft);
+}
+
+.td-switch {
+  display: inline-block;
+  margin: 0 0 1rem;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.td-step {
+  margin: 0.9rem 0 0.45rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.td-chips {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.td-chips-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.td-chip {
+  padding: 0.65rem 0.25rem;
+  border: 1px solid rgba(245, 245, 245, 0.18);
+  border-radius: 12px;
+  background-color: var(--field);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.td-chip-on {
+  border-color: var(--rust);
+  background-color: rgba(200, 90, 50, 0.22);
+  color: var(--text-bright);
+}
+
+.td-emptied {
+  margin-top: 1rem;
+}
+
+/* The card in play: bone paper, like the ticket, edged in its deck's colour. */
+.td-card {
+  margin: 0 0 0.9rem;
+  padding: 1.1rem 1.1rem 1.25rem;
+  border-radius: 16px;
+  border-left: 6px solid var(--deck-colour, var(--rust));
+  background-color: var(--bone);
+  color: #1a1a20;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.td-deck-serious {
+  --deck-colour: var(--slate);
+}
+
+.td-deck-funny {
+  --deck-colour: var(--amber);
+}
+
+.td-deck-flirty {
+  --deck-colour: var(--mauve);
+}
+
+.td-deck-spicy {
+  --deck-colour: var(--rust);
+}
+
+.td-chip.td-chip-on[class*='td-deck-'] {
+  border-color: var(--deck-colour);
+}
+
+.td-card-head {
+  margin: 0 0 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.td-card-prompt {
+  margin: 0;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.td-answer {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid rgba(245, 245, 245, 0.2);
+  border-radius: 14px;
+  background-color: var(--field);
+  font: inherit;
+  font-size: 0.92rem;
+  color: var(--text);
+  resize: vertical;
+}
+
+.td-answer::placeholder {
+  color: var(--text-placeholder);
+}
+
+.td-photo-pick {
+  display: block;
+  margin-top: 0.6rem;
+  padding: 0.7rem 1rem;
+  border: 1px dashed rgba(245, 245, 245, 0.25);
+  border-radius: 14px;
+  font-size: 0.85rem;
+  text-align: center;
+  color: var(--text-soft);
+  cursor: pointer;
+}
+
+.td-photo-pick input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.td-photo {
+  display: block;
+  max-width: 100%;
+  max-height: 360px;
+  margin: 0.6rem 0 0;
+  border-radius: 12px;
+  object-fit: contain;
+}
+
+.td-answer-text {
+  margin: 0 0 0.25rem;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+.td-passed {
+  margin: 0;
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--text-dim);
+}
+
+.td-reactions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: space-between;
+}
+
+.td-reaction {
+  flex: 1;
+  padding: 0.6rem 0;
+  border: 1px solid rgba(245, 245, 245, 0.18);
+  border-radius: 12px;
+  background-color: var(--field);
+  font-size: 1.3rem;
+  cursor: pointer;
+}
+
+/* The history: quiet, newest first. */
+.td-history {
+  margin-top: 2rem;
+}
+
+.td-history-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.td-history-item {
+  padding: 0.8rem 0;
+  border-top: 1px solid rgba(245, 245, 245, 0.08);
+}
+
+.td-history-meta {
+  margin: 0 0 0.3rem;
+  font-size: 0.7rem;
+  color: var(--text-faint);
+}
+
+.td-history-prompt {
+  margin: 0 0 0.35rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--text-soft);
+}
+
+.td-history-item .td-answer-text {
+  font-size: 0.85rem;
+}
+
+.td-history-item .td-photo {
+  max-height: 200px;
+}
+
+.td-history-reaction {
+  margin: 0.3rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+/* Their turn is waiting: one line under the header, a way straight in. */
+.td-waiting-line {
+  flex-shrink: 0;
+  display: block;
+  width: 100%;
+  max-width: 460px;
+  margin: 0.5rem auto 0;
+  padding: 0 1.25rem;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.8rem;
+  text-align: left;
+  color: var(--rust);
+  cursor: pointer;
+}

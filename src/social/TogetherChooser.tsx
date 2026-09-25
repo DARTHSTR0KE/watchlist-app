@@ -6,7 +6,7 @@ import { DriftingGround } from '../ui/Ground'
 import { TINT } from '../ui/posterColor'
 import { ScreenCharacter } from '../brand/Ambient'
 import { reportQuietly } from '../lib/dbError'
-import { possessiveName } from '../utils/names'
+import { possessiveName, subjectName } from '../utils/names'
 import type { TogetherMode } from '../wheel/filters'
 import { loadSharedList } from './sharedList'
 import type { SharedListEntry } from './sharedList'
@@ -19,6 +19,9 @@ interface TogetherChooserProps {
   onChoose: (mode: TogetherMode) => void
   // The shared list still needs somewhere to be added to.
   onEditSharedList: () => void
+  onPlayTruthOrDare: () => void
+  // Their truth or dare turns I haven't seen yet.
+  truthOrDareWaiting: number
 }
 
 /**
@@ -33,6 +36,8 @@ export function TogetherChooser({
   sharedCount,
   onChoose,
   onEditSharedList,
+  onPlayTruthOrDare,
+  truthOrDareWaiting,
 }: TogetherChooserProps) {
   const [entries, setEntries] = useState<SharedListEntry[] | null>(null)
   const [byYear, setByYear] = useState<Map<number, number> | null>(null)
@@ -122,6 +127,18 @@ export function TogetherChooser({
       <button type="button" className="btn-field" onClick={onEditSharedList}>
         Add to our list
       </button>
+
+      <Rows>
+        <Row
+          name="Truth or dare"
+          meta={
+            truthOrDareWaiting > 0
+              ? `${subjectName(partnerName, true)} took a turn — yours next`
+              : 'In person or apart, one card at a time'
+          }
+          onOpen={onPlayTruthOrDare}
+        />
+      </Rows>
 
       {entries && entries.length > 0 && (
         <PosterGrid>

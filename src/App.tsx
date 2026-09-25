@@ -56,6 +56,8 @@ import { Header } from './auth/Header'
 import type { Screen } from './auth/Header'
 import { lazyScreen, takeReopenScreen } from './lib/lazyScreen'
 import { ScreenBoundary } from './ui/ScreenBoundary'
+import { TruthOrDareScreen } from './truthOrDare/TruthOrDareScreen'
+import { countWaitingForMe } from './truthOrDare/truthOrDare'
 import { RecommendedScreen } from './social/RecommendedScreen'
 import { SettingsScreen } from './settings/SettingsScreen'
 import { Onboarding } from './onboarding/Onboarding'
@@ -1137,6 +1139,11 @@ function AuthenticatedApp() {
   // The shared list is edited from the chooser rather than being it, so
   // it needs its own way in.
   const [editingSharedList, setEditingSharedList] = useState(false)
+  // Truth or dare lives inside Together, the same way.
+  const [playingTruthOrDare, setPlayingTruthOrDare] = useState(false)
+  // Their turns waiting for me, counted on opening: the game is
+  // asynchronous, so this is how I hear it's my go.
+  const [truthOrDareWaiting, setTruthOrDareWaiting] = useState(0)
   // Watches recorded but not yet asked about. Dismissing hides the prompt
   // for this session only; the rows stay unanswered and come back next
   // time the app opens.
@@ -1191,6 +1198,14 @@ function AuthenticatedApp() {
         setPartnerMascot(partner.mascot)
       }
       setCheckingWatchlist(false)
+
+      if (partner) {
+        void countWaitingForMe(userId)
+          .then((waiting) => {
+            if (!cancelled) setTruthOrDareWaiting(waiting)
+          })
+          .catch((error: unknown) => reportQuietly('Checking for a truth or dare turn', error))
+      }
 
       // The shared date, and how warm that makes everything. Never waited on.
       void loadReunionDate(userId)
@@ -1299,10 +1314,26 @@ function AuthenticatedApp() {
             setWheelSource(null)
             setWheelTogetherMode(null)
             setEditingSharedList(false)
+            setPlayingTruthOrDare(false)
             setScreen(next)
           }}
         />
         {milestone && <p className="milestone-line">{milestoneLine(milestone, partnerName)}</p>}
+        {truthOrDareWaiting > 0 && !(screen === 'together' && playingTruthOrDare) && (
+          <button
+            type="button"
+            className="td-waiting-line"
+            onClick={() => {
+              setMilestone(null)
+              setEditingSharedList(false)
+              setPlayingTruthOrDare(true)
+              setTruthOrDareWaiting(0)
+              setScreen('together')
+            }}
+          >
+            {subjectName(partnerName, true)} took a turn at truth or dare. Yours next ›
+          </button>
+        )}
         {/* Keyed by screen, so moving on clears a screen that broke. */}
         <ScreenBoundary key={screen}>
           {screen === 'wheel' && (
@@ -1317,7 +1348,9 @@ function AuthenticatedApp() {
             <WatchedTogetherScreen userId={userId} partnerName={partnerName} />
           )}
           {screen === 'together' &&
-            (editingSharedList ? (
+            (playingTruthOrDare ? (
+            <TruthOrDareScreen userId={userId} partnerId={partnerId} partnerName={partnerName} />
+          ) : editingSharedList ? (
               <SharedListScreen
                 userId={userId}
                 partnerId={partnerId}
@@ -1341,6 +1374,13 @@ function AuthenticatedApp() {
                   setScreen('wheel')
                 }}
                 onEditSharedList={() => setEditingSharedList(true)}
+                onPlayTruthOrDare={() => {
+                  setPlayingTruthOrDare(true)
+                  // Opening the game is seeing them; the game itself
+                  // puts their turns in front of me.
+                  setTruthOrDareWaiting(0)
+                }}
+                truthOrDareWaiting={truthOrDareWaiting}
               />
             ))}
           {screen === 'import' && <ImportScreen onGoToWheel={() => setScreen('wheel')} />}

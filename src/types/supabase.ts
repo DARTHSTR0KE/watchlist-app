@@ -530,6 +530,38 @@ export interface Database {
         }
         Relationships: []
       }
+      /**
+       * Truth or dare, as played: readable by the two of us, written only
+       * through draw_card, answer_turn, pass_turn, react_turn and
+       * td_mark_seen. The cards themselves (td_cards) are deliberately
+       * absent from these types: that table is not readable and must never
+       * be queried.
+       */
+      td_turns: {
+        Row: {
+          id: string
+          drawn_by: string
+          player: string
+          partner: string
+          mode: 'in_person' | 'virtual'
+          deck: 'serious' | 'funny' | 'flirty' | 'spicy'
+          kind: 'truth' | 'dare'
+          card_id: string | null
+          prompt: string
+          status: 'open' | 'answered' | 'passed'
+          answer_text: string | null
+          answer_photo: string | null
+          answered_at: string | null
+          reaction: string | null
+          reacted_at: string | null
+          seen_at: string | null
+          created_at: string
+        }
+        // Never inserted or updated directly.
+        Insert: Record<never, never>
+        Update: Record<never, never>
+        Relationships: []
+      }
     }
     Views: Record<never, never>
     Functions: {
@@ -562,6 +594,36 @@ export interface Database {
       set_reunion_date: {
         Args: { p_date: string | null }
         Returns: undefined
+      }
+      /**
+       * Security definer. Draws one card I haven't drawn since my last
+       * reset of that deck and kind, and opens a turn with it. No row back
+       * means that deck and kind have run out for me.
+       */
+      draw_card: {
+        Args: { p_deck: string; p_kind: string; p_mode: string; p_player?: string }
+        Returns: Database['public']['Tables']['td_turns']['Row'][]
+      }
+      answer_turn: {
+        Args: { p_turn: string; p_text: string | null; p_photo?: string | null }
+        Returns: Database['public']['Tables']['td_turns']['Row']
+      }
+      pass_turn: {
+        Args: { p_turn: string }
+        Returns: Database['public']['Tables']['td_turns']['Row']
+      }
+      react_turn: {
+        Args: { p_turn: string; p_reaction: string }
+        Returns: Database['public']['Tables']['td_turns']['Row']
+      }
+      td_mark_seen: {
+        Args: { p_turns: string[] }
+        Returns: undefined
+      }
+      /** Reshuffles one deck and kind for me alone; how many came back. */
+      reset_deck: {
+        Args: { p_deck: string; p_kind: string }
+        Returns: number
       }
       touch_last_open: {
         Args: Record<string, never>
