@@ -1,4 +1,4 @@
--- Truth or dare. Run this first, then truth-or-dare-seed.sql.
+-- Truth or dare. Run this first, then the four truth-or-dare-seed-*.sql files.
 --
 -- Safe to run more than once.
 --
