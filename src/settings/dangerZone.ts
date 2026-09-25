@@ -171,6 +171,9 @@ export async function clearAllData(userId: string, partnerId: string | null): Pr
     supabase.from('splash_lines').delete().in('from_user', ids),
     supabase.from('events').delete().in('user_id', ids),
     supabase.from('milestones').delete().in('user_id', ids),
+    // Both our game records, and any "your record was beaten" either way.
+    supabase.from('game_scores').delete().in('user_id', ids),
+    supabase.from('game_record_notices').delete().in('to_user', ids),
   ])
   await supabase.from('custom_wheels').delete().in('user_id', ids)
 

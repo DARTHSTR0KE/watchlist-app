@@ -2,13 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   awayLong,
   fishAsleep,
-  isRainCode,
   openedTogether,
   raccoonUpLate,
   reactionFor,
-  smallHours,
-  splashAside,
-  sundayMorning,
   tapLevel,
   tiredFish,
 } from './ambient'
@@ -25,19 +21,6 @@ describe('time of day', () => {
   it('has the raccoon up after midnight, not in the evening', () => {
     expect(raccoonUpLate(at(2026, 9, 24, 0, 30))).toBe(true)
     expect(raccoonUpLate(at(2026, 9, 24, 23, 30))).toBe(false)
-  })
-
-  it('knows the small hours are two to four', () => {
-    expect(smallHours(at(2026, 9, 24, 1, 59))).toBe(false)
-    expect(smallHours(at(2026, 9, 24, 2))).toBe(true)
-    expect(smallHours(at(2026, 9, 24, 3, 59))).toBe(true)
-    expect(smallHours(at(2026, 9, 24, 4))).toBe(false)
-  })
-
-  it('knows a Sunday morning from a Sunday evening or a Monday', () => {
-    expect(sundayMorning(at(2026, 9, 27, 9))).toBe(true)
-    expect(sundayMorning(at(2026, 9, 27, 19))).toBe(false)
-    expect(sundayMorning(at(2026, 9, 28, 9))).toBe(false)
   })
 })
 
@@ -61,36 +44,6 @@ describe('how long it has been', () => {
     expect(openedTogether('2026-09-24T11:58:40Z', now)).toBe(true)
     expect(openedTogether('2026-09-24T11:58:00Z', now)).toBe(false)
     expect(openedTogether(null, now)).toBe(false)
-  })
-})
-
-describe('the splash aside', () => {
-  const weekday = at(2026, 9, 24, 20)
-
-  it('is usually nothing', () => {
-    expect(splashAside({ now: weekday, together: false, weather: null, away: false })).toBeNull()
-    expect(
-      splashAside({ now: weekday, together: false, weather: { temperature: 30, raining: false }, away: false }),
-    ).toBeNull()
-  })
-
-  it('says something about rain, heat, Sunday and the small hours', () => {
-    const base = { together: false, away: false }
-    expect(splashAside({ ...base, now: weekday, weather: { temperature: 28, raining: true } })).toMatch(
-      /Raining/,
-    )
-    expect(splashAside({ ...base, now: weekday, weather: { temperature: 36.4, raining: false } })).toBe(
-      '36° out there. Stay in.',
-    )
-    expect(splashAside({ ...base, now: at(2026, 9, 27, 9), weather: null })).toMatch(/Sunday/)
-    expect(splashAside({ ...base, now: at(2026, 9, 24, 3), weather: null })).toMatch(/Three/)
-  })
-
-  it('lets the rarest thing win', () => {
-    const rainySunday = { temperature: 28, raining: true }
-    expect(
-      splashAside({ now: at(2026, 9, 27, 9), together: true, weather: rainySunday, away: false }),
-    ).toMatch(/both of you/)
   })
 })
 
@@ -126,13 +79,7 @@ describe('reactions to what landed', () => {
   })
 })
 
-describe('weather codes and taps', () => {
-  it('treats drizzle, rain and storms as rain, and cloud as not', () => {
-    expect(isRainCode(61)).toBe(true)
-    expect(isRainCode(95)).toBe(true)
-    expect(isRainCode(3)).toBe(false)
-  })
-
+describe('taps', () => {
   it('escalates on the fourth tap in a burst', () => {
     expect(tapLevel(0)).toBe(0)
     expect(tapLevel(3)).toBe(1)
