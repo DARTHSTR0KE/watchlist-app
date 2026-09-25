@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { IdleScene } from '../brand/PairScene'
 import { useAuth } from '../auth/AuthProvider'
 import { ensureAudioContext, playTick, useMuted } from '../wheel/tickSound'
 import { NoRowsAffected, saveDisplayName } from '../onboarding/onboardingState'
@@ -132,7 +133,12 @@ export function SettingsScreen({
   return (
     <Screen
       ground={<Ground tints={lastColor && lastColor.length > 0 ? lastColor : [TINT.slate]} />}
-      character={<ScreenCharacter kind="raccoon-asleep" />}
+      character={
+        <IdleScene
+          busy={saving || summary === null || spins === null}
+          fallback={<ScreenCharacter kind="raccoon-asleep" />}
+        />
+      }
     >
       <Ticket
         heading="YOUR FILMS"

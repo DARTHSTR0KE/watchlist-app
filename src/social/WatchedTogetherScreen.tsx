@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { IdleScene } from '../brand/PairScene'
 import { Empty, Loading, PosterCell, PosterGrid, Screen, SectionLabel } from '../ui/Screen'
 import { Ticket } from '../ui/Ticket'
 import { Ground } from '../ui/Ground'
@@ -59,7 +60,10 @@ export function WatchedTogetherScreen({ userId, partnerName }: WatchedScreenProp
   const thisYear = togetherThisYear + aloneThisYear
 
   return (
-    <Screen ground={ground} character={<ScreenCharacter kind="fish-asleep" />}>
+    <Screen
+      ground={ground}
+      character={<IdleScene busy={false} fallback={<ScreenCharacter kind="fish-asleep" />} />}
+    >
       <Ticket
         heading={heading}
         figure={`${thisYear} film${thisYear === 1 ? '' : 's'}`}

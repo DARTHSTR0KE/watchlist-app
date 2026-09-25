@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { IdleScene } from '../brand/PairScene'
 import { Empty, PosterCell, PosterGrid, Row, Rows, Screen } from '../ui/Screen'
 import { Ticket } from '../ui/Ticket'
 import { DriftingGround } from '../ui/Ground'
@@ -87,7 +88,15 @@ export function TogetherChooser({
   ]
 
   return (
-    <Screen ground={ground} character={<ScreenCharacter kind="pair" />}>
+    <Screen
+      ground={ground}
+      character={
+        <IdleScene
+          busy={entries === null || byYear === null}
+          fallback={<ScreenCharacter kind="pair" />}
+        />
+      }
+    >
       <Ticket
         heading="TOGETHER"
         figure={count === null ? '…' : `${count} on the list`}

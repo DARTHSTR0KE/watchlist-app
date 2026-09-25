@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { IdleScene } from '../brand/PairScene'
 import { agree, subjectName } from '../utils/names'
 import { buildPosterUrl } from '../wheel/posters'
 import { Empty, Loading, PosterThumb, Row, Rows, Screen, SectionLabel } from '../ui/Screen'
@@ -218,7 +219,18 @@ export function RecommendedScreen({
   const { sentThisYear, watchedOfThem } = forMeCounts(received, watchedIds, year)
 
   return (
-    <Screen ground={ground} character={<ScreenCharacter kind="raccoon" />}>
+    <Screen
+      ground={ground}
+      character={
+        <IdleScene
+          // Choosing, writing or sending something is being mid-task.
+          busy={
+            sending || busyId !== null || composing || chosen !== null || nudgeState === 'sending'
+          }
+          fallback={<ScreenCharacter kind="raccoon" />}
+        />
+      }
+    >
       <Ticket
         heading={heading}
         figure={`${waiting.length} waiting`}

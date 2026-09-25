@@ -5086,3 +5086,169 @@ html[data-warmth='day'] .bowl-fish-perch {
   font-weight: 700;
   color: var(--text);
 }
+
+/* The pair together ------------------------------------------------------- */
+
+.character-center {
+  justify-content: center;
+}
+
+.pair-scene {
+  display: block;
+  width: 150px;
+  height: auto;
+  overflow: visible;
+}
+
+/* Pivots: her head at the neck, her arms at the shoulders, each of them
+   from their base, the fish from its own middle. */
+.pair-scene .sp-head {
+  transform-box: view-box;
+  transform-origin: 60px 62px;
+}
+
+.pair-scene .sp-arms {
+  transform-box: view-box;
+  transform-origin: 60px 78px;
+}
+
+.pair-scene .sc-raccoon,
+.pair-scene .sc-bowl {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+.pair-scene .bowl-fish {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+
+.pair-scene .sc-yawn-raccoon,
+.pair-scene .sc-yawn-fish,
+.pair-scene .sc-burst,
+.pair-scene .sc-bubble {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+
+/* Props are only there while a scene uses them. */
+.pair-scene .sc-prop,
+.pair-scene .sc-bubble {
+  opacity: 0;
+}
+
+/* Each scene below runs once (the shorthand's default) and its keyframes
+   end where they started, so it stops back in the resting pose. */
+
+/* 1. High five: she leans in, the fish rises, paw meets fin. */
+.scene-high-five .sc-raccoon { animation: hf-lean 3s ease-in-out; }
+.scene-high-five .sp-arms { animation: hf-arms 3s ease-in-out; }
+.scene-high-five .bowl-fish { animation: hf-fish 3s ease-in-out; }
+.scene-high-five .sc-burst { animation: hf-burst 3s ease-out; }
+@keyframes hf-lean { 0%, 100% { transform: rotate(0); } 30%, 62% { transform: rotate(7deg); } }
+@keyframes hf-arms { 0%, 100% { transform: rotate(0); } 32%, 60% { transform: rotate(-118deg); } }
+@keyframes hf-fish { 0%, 100% { transform: translate(0, 0) rotate(0); } 30%, 60% { transform: translate(0, -24px) rotate(-14deg); } }
+@keyframes hf-burst { 0%, 40% { opacity: 0; transform: scale(0.3); } 46% { opacity: 1; transform: scale(1); } 64%, 100% { opacity: 0; transform: scale(1.5); } }
+
+/* 2. Sharing a blanket: dragged across, most of it hers, half the bowl under. */
+.scene-blanket .sc-blanket { animation: bl-drag 3.6s ease-in-out; }
+.scene-blanket .sp-arms { animation: bl-arms 3.6s ease-in-out; }
+@keyframes bl-drag { 0% { opacity: 1; transform: translateX(-200px); } 55%, 88% { opacity: 1; transform: translateX(0); } 100% { opacity: 0; transform: translateX(0); } }
+@keyframes bl-arms { 0%, 100% { transform: rotate(0); } 15%, 50% { transform: rotate(38deg); } 60%, 90% { transform: rotate(-12deg); } }
+
+/* 3. Swaying, out of time; the fish goes round twice. */
+.scene-sway .sc-raccoon { animation: sw-raccoon 3.6s ease-in-out; }
+.scene-sway .sc-bowl { animation: sw-bowl 3.6s ease-in-out 0.35s; }
+.scene-sway .bowl-fish { animation: sw-fish 3.6s ease-in-out; }
+@keyframes sw-raccoon { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(-7deg); } 45% { transform: rotate(6deg); } 70% { transform: rotate(-5deg); } }
+@keyframes sw-bowl { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(6deg); } 50% { transform: rotate(-6deg); } 78% { transform: rotate(4deg); } }
+@keyframes sw-fish { 0%, 18% { transform: rotate(0); } 82%, 100% { transform: rotate(720deg); } }
+
+/* 4. Polishing: circles on the glass until it gleams; the fish looks pleased. */
+.scene-polish .sc-cloth { animation: po-cloth 4s ease-in-out; }
+.scene-polish .sp-arms { animation: po-arms 4s ease-in-out; }
+.scene-polish .sc-gleam { animation: po-gleam 4s ease-out; }
+@keyframes po-cloth {
+  0% { opacity: 0; transform: translate(0, 0); }
+  8% { opacity: 1; transform: translate(0, 0); }
+  20% { transform: translate(8px, -8px); }
+  32% { transform: translate(0, -14px); }
+  44% { transform: translate(-8px, -6px); }
+  56% { transform: translate(0, 0); }
+  68% { transform: translate(8px, -8px); }
+  76% { opacity: 1; transform: translate(0, -12px); }
+  84%, 100% { opacity: 0; transform: translate(0, -12px); }
+}
+@keyframes po-arms { 0%, 100% { transform: rotate(0); } 10%, 76% { transform: rotate(-92deg); } 32%, 56% { transform: rotate(-104deg); } 44%, 68% { transform: rotate(-86deg); } }
+@keyframes po-gleam { 0%, 78% { opacity: 0; } 86% { opacity: 0.95; } 100% { opacity: 0; } }
+
+/* 5. A yawn passed on: hers, then his two seconds later. */
+.scene-yawn .sc-yawn-raccoon { animation: yw-open 3.6s ease-in-out; }
+.scene-yawn .sp-head { animation: yw-head 3.6s ease-in-out; }
+.scene-yawn .sc-yawn-fish { animation: yw-open-late 3.6s ease-in-out; }
+@keyframes yw-open { 0%, 4% { opacity: 0; transform: scale(0.2); } 14%, 30% { opacity: 1; transform: scale(1); } 40%, 100% { opacity: 0; transform: scale(0.2); } }
+@keyframes yw-head { 0%, 100% { transform: rotate(0); } 14%, 30% { transform: rotate(-5deg); } 40% { transform: rotate(0); } }
+@keyframes yw-open-late { 0%, 60% { opacity: 0; transform: scale(0.2); } 70%, 86% { opacity: 1; transform: scale(1.2); } 96%, 100% { opacity: 0; transform: scale(0.2); } }
+
+/* 6. Both look off to the left, then at each other. Nothing is shown. */
+.scene-look-off .sp-head { animation: lo-head 3.4s ease-in-out; }
+.scene-look-off .bowl-fish { animation: lo-fish 3.4s ease-in-out; }
+@keyframes lo-head { 0%, 10% { transform: rotate(0); } 22%, 48% { transform: rotate(-16deg); } 62%, 90% { transform: rotate(14deg); } 100% { transform: rotate(0); } }
+@keyframes lo-fish { 0%, 10% { transform: translate(0, 0) rotate(0); } 22%, 48% { transform: translate(0, -4px) rotate(10deg); } 62%, 100% { transform: translate(0, 0) rotate(0); } }
+
+/* 7. Splashed: a flick of water, a shake, unimpressed. */
+.scene-splash .bowl-fish { animation: sp-flick 3.2s ease-in-out; }
+.scene-splash .sc-drops { animation: sp-drops 3.2s ease-out; }
+.scene-splash .sp-head { animation: sp-shake 3.2s ease-in-out; }
+@keyframes sp-flick { 0%, 8% { transform: rotate(0); } 14% { transform: rotate(-24deg); } 22%, 100% { transform: rotate(0); } }
+@keyframes sp-drops { 0%, 14% { opacity: 0; transform: translate(0, 0); } 18% { opacity: 1; } 40% { opacity: 1; transform: translate(-88px, -32px); } 48%, 100% { opacity: 0; transform: translate(-92px, -26px); } }
+@keyframes sp-shake { 0%, 44% { transform: rotate(0); } 50% { transform: rotate(-9deg); } 56% { transform: rotate(9deg); } 62% { transform: rotate(-7deg); } 68% { transform: rotate(6deg); } 74%, 100% { transform: rotate(0); } }
+
+/* 8. Sulking: back turned in the bowl; she comes over and taps the glass. */
+.scene-sulk .bowl-fish { animation: su-fish 4s ease-in-out; }
+.scene-sulk .sc-raccoon { animation: su-come 4s ease-in-out; }
+.scene-sulk .sp-arms { animation: su-tap 4s ease-in-out; }
+@keyframes su-fish { 0%, 4% { transform: scaleX(1); } 12%, 80% { transform: scaleX(-1); } 88%, 100% { transform: scaleX(1); } }
+@keyframes su-come { 0%, 18% { transform: translateX(0); } 32%, 84% { transform: translateX(14px); } 100% { transform: translateX(0); } }
+@keyframes su-tap {
+  0%, 34% { transform: rotate(0); }
+  40% { transform: rotate(-96deg); } 46% { transform: rotate(-84deg); }
+  52% { transform: rotate(-96deg); } 58% { transform: rotate(-84deg); }
+  64% { transform: rotate(-96deg); } 72% { transform: rotate(-84deg); }
+  84%, 100% { transform: rotate(0); }
+}
+
+/* 9. Bubbles: three go up; she bats the last and it pops. */
+.scene-bubbles .sc-bubble-1 { animation: bu-rise 4s ease-out; }
+.scene-bubbles .sc-bubble-2 { animation: bu-rise 4s ease-out 0.45s; }
+.scene-bubbles .sc-bubble-3 { animation: bu-last 4s ease-out; }
+.scene-bubbles .sp-arms { animation: bu-bat 4s ease-in-out; }
+@keyframes bu-rise { 0% { opacity: 0; transform: translate(0, 0); } 8% { opacity: 1; } 45% { opacity: 1; transform: translate(-2px, -70px); } 55%, 100% { opacity: 0; transform: translate(-2px, -80px); } }
+@keyframes bu-last {
+  0%, 24% { opacity: 0; transform: translate(0, 0) scale(1); }
+  30% { opacity: 1; }
+  66% { opacity: 1; transform: translate(-30px, -62px) scale(1); }
+  72% { opacity: 1; transform: translate(-32px, -64px) scale(1.9); }
+  78%, 100% { opacity: 0; transform: translate(-32px, -64px) scale(2.4); }
+}
+@keyframes bu-bat { 0%, 56% { transform: rotate(0); } 66%, 72% { transform: rotate(-140deg); } 86%, 100% { transform: rotate(0); } }
+
+/* 10. Dozing off: her head goes; the bowl shunts into her until she wakes. */
+.scene-doze .sp-head { animation: dz-head 3.8s ease-in-out; }
+.scene-doze .sc-bowl { animation: dz-shunt 3.8s ease-in-out; }
+.scene-doze .sc-raccoon { animation: dz-wake 3.8s ease-out; }
+@keyframes dz-head { 0%, 6% { transform: rotate(0); } 44%, 76% { transform: rotate(14deg); } 80%, 100% { transform: rotate(0); } }
+@keyframes dz-shunt {
+  0%, 48% { transform: translateX(0); }
+  54% { transform: translateX(-9px); } 58% { transform: translateX(0); }
+  66% { transform: translateX(-12px); } 72%, 100% { transform: translateX(0); }
+}
+@keyframes dz-wake { 0%, 76% { transform: translateY(0); } 80% { transform: translateY(-5px); } 86%, 100% { transform: translateY(0); } }
+
+/* Never animates when motion is turned down: the resting pose, still. */
+@media (prefers-reduced-motion: reduce) {
+  .pair-scene *,
+  .pair-scene.is-playing * {
+    animation: none !important;
+  }
+}
