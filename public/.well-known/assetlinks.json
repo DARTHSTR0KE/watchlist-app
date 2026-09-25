@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "app.vercel.watchlist_app_rho.twa",
+    "sha256_cert_fingerprints": ["FC:57:BE:AC:78:A7:56:E3:56:75:2B:C7:F8:24:61:93:76:95:20:6E:4C:51:41:5B:88:B6:92:0A:25:00:4B:DE"]
+  }
+}]
