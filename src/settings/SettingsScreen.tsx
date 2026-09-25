@@ -18,6 +18,8 @@ import { Reunion } from './Reunion'
 import { ForTheirWrapped } from '../gifts/ForTheirWrapped'
 import { giftWindow } from '../gifts/giftWindow'
 import { QuietFailure } from './QuietFailure'
+import { SceneCheck } from './SceneCheck'
+import type { Mascot } from '../brand/mascots'
 import { loadWatchlistSummary } from '../import/watchlistWrites'
 import type { WatchlistSummary } from '../import/watchlistWrites'
 
@@ -26,6 +28,8 @@ interface SettingsScreenProps {
   partnerId: string | null
   partnerName: string | null
   displayName: string | null
+  // Decides who sets the reunion date: the goldfish, and only the goldfish.
+  myMascot: Mascot | null
   // 'unreadable' is a real condition worth naming: it means the profile
   // row is missing or unreadable, which an empty field would disguise as
   // a name nobody has chosen yet.
@@ -43,6 +47,7 @@ export function SettingsScreen({
   partnerId,
   partnerName,
   displayName,
+  myMascot,
   profileStatus,
   onDisplayNameChange,
   onGoToImport,
@@ -65,6 +70,10 @@ export function SettingsScreen({
   const [showIntro, setShowIntro] = useState(false)
   const [summary, setSummary] = useState<WatchlistSummary | null>(null)
   const [spins, setSpins] = useState<number | null>(null)
+  // Whether the counts have come back either way. A failed count stays
+  // null, and waiting on null alone kept the screen busy for good.
+  const [spinsSettled, setSpinsSettled] = useState(false)
+  const [summarySettled, setSummarySettled] = useState(false)
   const [lastPoster, setLastPoster] = useState<string | null>(null)
   const lastColor = usePosterColors([lastPoster])
 
@@ -75,6 +84,9 @@ export function SettingsScreen({
         if (!cancelled) setSpins(count)
       })
       .catch((error: unknown) => reportQuietly('Counting spins', error))
+      .finally(() => {
+        if (!cancelled) setSpinsSettled(true)
+      })
     void loadLastWatchedPoster(userId)
       .then((poster) => {
         if (!cancelled) setLastPoster(poster)
@@ -90,7 +102,9 @@ export function SettingsScreen({
     void loadWatchlistSummary(userId)
       .catch(() => null)
       .then((rows) => {
-        if (!cancelled) setSummary(rows)
+        if (cancelled) return
+        setSummary(rows)
+        setSummarySettled(true)
       })
     return () => {
       cancelled = true
@@ -135,7 +149,7 @@ export function SettingsScreen({
       ground={<Ground tints={lastColor && lastColor.length > 0 ? lastColor : [TINT.slate]} />}
       character={
         <IdleScene
-          busy={saving || summary === null || spins === null}
+          busy={saving || !summarySettled || !spinsSettled}
           fallback={<ScreenCharacter kind="raccoon-asleep" />}
         />
       }
@@ -189,7 +203,8 @@ export function SettingsScreen({
         <LineForThem userId={userId} partnerId={partnerId} partnerName={partnerName} />
       )}
 
-      {partnerId && <Reunion />}
+      {/* Mine alone to set. ac sees no date anywhere, only the warming. */}
+      {partnerId && myMascot === 'goldfish' && <Reunion />}
 
       {/* Only from 1 to 14 December; the rest of the year it isn't here. */}
       {partnerId && giftWindow(new Date()) === 'open' && (
@@ -215,6 +230,10 @@ export function SettingsScreen({
       <FilmRefresh />
 
       <QuietFailure />
+
+      {/* TEMPORARY: for confirming the idle scenes. Comes out once all ten
+          have been seen. */}
+      <SceneCheck />
 
       <section>
         <SectionLabel>Help</SectionLabel>

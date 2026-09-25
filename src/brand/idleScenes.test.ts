@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { IDLE_SCENES, PLAY_CHANCE, chooseScene } from './idleScenes'
+import { IDLE_SCENES, PLAY_CHANCE, chooseScene, nextInTurn } from './idleScenes'
 
 // A fixed sequence of "random" numbers, so each rule can be pinned down.
 const sequence = (...values: number[]) => {
@@ -37,5 +37,19 @@ describe('chooseScene', () => {
 
   it('has ten', () => {
     expect(IDLE_SCENES).toHaveLength(10)
+  })
+})
+
+// Temporary, with the forcing it tests.
+describe('nextInTurn', () => {
+  it('goes through all ten in order and wraps round', () => {
+    const seen: string[] = []
+    let last: (typeof IDLE_SCENES)[number] | null = null
+    for (let i = 0; i < 11; i++) {
+      last = nextInTurn(last)
+      seen.push(last)
+    }
+    expect(seen.slice(0, 10)).toEqual([...IDLE_SCENES])
+    expect(seen[10]).toBe(IDLE_SCENES[0])
   })
 })

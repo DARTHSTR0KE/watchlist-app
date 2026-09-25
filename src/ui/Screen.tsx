@@ -5,6 +5,7 @@ import { EmptyArt } from '../brand/EmptyArt'
 import type { EmptyArtKind } from '../brand/EmptyArt'
 import { BowlMoment } from '../brand/Moments'
 import { PeerMoment } from '../brand/Ambient'
+import { CharacterRoom } from './characterRoom'
 
 /**
  * One pattern, used by every section. Rows for things you manage, grids
@@ -67,7 +68,14 @@ export function Screen({
       <div className="screen" ref={scrollerRef}>
         {children}
       </div>
-      {character && room && <div className="screen-character">{character}</div>}
+      {/* Mounted for the whole visit and only hidden while there is no room,
+          so the character keeps its state as the content grows and shrinks
+          — an idle scene is decided once per visit, not again each time. */}
+      {character && (
+        <div className="screen-character" hidden={!room}>
+          <CharacterRoom.Provider value={room}>{character}</CharacterRoom.Provider>
+        </div>
+      )}
       <div className="grain" aria-hidden="true" />
     </>
   )

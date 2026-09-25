@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { agree, subjectName } from './utils/names'
 import type { Json } from './types/supabase'
 import './App.css'
@@ -54,6 +54,8 @@ import { AuthProvider, useAuth } from './auth/AuthProvider'
 import { SignInScreen } from './auth/SignInScreen'
 import { Header } from './auth/Header'
 import type { Screen } from './auth/Header'
+import { lazyScreen, takeReopenScreen } from './lib/lazyScreen'
+import { ScreenBoundary } from './ui/ScreenBoundary'
 import { RecommendedScreen } from './social/RecommendedScreen'
 import { SettingsScreen } from './settings/SettingsScreen'
 import { Onboarding } from './onboarding/Onboarding'
@@ -65,8 +67,8 @@ import { buildTogetherWheel } from './social/togetherWheels'
 import { loadSharedList } from './social/sharedList'
 import type { TogetherMode } from './wheel/filters'
 // Split out on its own: recharts is large, and it is only needed here.
-const StatsScreen = lazy(() =>
-  import('./stats/StatsScreen').then((m) => ({ default: m.StatsScreen })),
+const { Component: StatsScreen, prefetch: prefetchStats } = lazyScreen('stats', () =>
+  import('./stats/StatsScreen').then((m) => m.StatsScreen),
 )
 import { PendingWatchPrompt } from './social/PendingWatchPrompt'
 import { LetterboxdPrompt } from './social/LetterboxdPrompt'
@@ -1111,7 +1113,11 @@ function WheelScreen({
 function AuthenticatedApp() {
   const { session } = useAuth()
   const userId = session?.user.id ?? ''
-  const [screen, setScreen] = useState<Screen>('wheel')
+  // Back where you were if the app had to reload onto a new deploy to
+  // open Stats; otherwise the wheel.
+  const [screen, setScreen] = useState<Screen>(() =>
+    takeReopenScreen() === 'stats' ? 'stats' : 'wheel',
+  )
   const [checkingWatchlist, setCheckingWatchlist] = useState(true)
   const [unseenRecommendations, setUnseenRecommendations] = useState(0)
   const [partnerName, setPartnerName] = useState<string | null>(null)
@@ -1162,6 +1168,8 @@ function AuthenticatedApp() {
 
   useEffect(() => {
     let cancelled = false
+    // Straight away, while the build this page came from is still cached.
+    prefetchStats()
     Promise.all([
       hasWatchlistItems(userId).catch(() => true),
       loadMyProfile(userId).catch(() => null),
@@ -1295,79 +1303,83 @@ function AuthenticatedApp() {
           }}
         />
         {milestone && <p className="milestone-line">{milestoneLine(milestone, partnerName)}</p>}
-        {screen === 'wheel' && (
-          <WheelScreen startSource={wheelSource} startTogetherMode={wheelTogetherMode} />
-        )}
-        {screen === 'stats' && (
-          <Suspense fallback={null}>
-            <StatsScreen userId={userId} partnerId={partnerId} partnerName={partnerName} />
-          </Suspense>
-        )}
-        {screen === 'watched-together' && (
-          <WatchedTogetherScreen userId={userId} partnerName={partnerName} />
-        )}
-        {screen === 'together' &&
-          (editingSharedList ? (
-            <SharedListScreen
+        {/* Keyed by screen, so moving on clears a screen that broke. */}
+        <ScreenBoundary key={screen}>
+          {screen === 'wheel' && (
+            <WheelScreen startSource={wheelSource} startTogetherMode={wheelTogetherMode} />
+          )}
+          {screen === 'stats' && (
+            <Suspense fallback={null}>
+              <StatsScreen userId={userId} partnerId={partnerId} partnerName={partnerName} />
+            </Suspense>
+          )}
+          {screen === 'watched-together' && (
+            <WatchedTogetherScreen userId={userId} partnerName={partnerName} />
+          )}
+          {screen === 'together' &&
+            (editingSharedList ? (
+              <SharedListScreen
+                userId={userId}
+                partnerId={partnerId}
+                onSpinList={() => {
+                  setEditingSharedList(false)
+                  setWheelSource('shared')
+                  setWheelTogetherMode('ours')
+                  setScreen('wheel')
+                }}
+              />
+            ) : (
+              <TogetherChooser
+                partnerId={partnerId}
+                partnerName={partnerName}
+                sharedCount={sharedCount}
+                // Picking builds the wheel and goes to it: one tap for one
+                // intention, rather than choosing a mode and then navigating.
+                onChoose={(mode) => {
+                  setWheelSource('shared')
+                  setWheelTogetherMode(mode)
+                  setScreen('wheel')
+                }}
+                onEditSharedList={() => setEditingSharedList(true)}
+              />
+            ))}
+          {screen === 'import' && <ImportScreen onGoToWheel={() => setScreen('wheel')} />}
+          {screen === 'settings' && (
+            <SettingsScreen
               userId={userId}
               partnerId={partnerId}
-              onSpinList={() => {
-                setEditingSharedList(false)
-                setWheelSource('shared')
-                setWheelTogetherMode('ours')
-                setScreen('wheel')
+              partnerName={partnerName}
+              displayName={myName}
+              myMascot={myMascot}
+              profileStatus={profileStatus}
+              onDisplayNameChange={setMyName}
+              onGoToImport={() => setScreen('import')}
+              onDataCleared={() => {
+                // Nothing the shell is holding survived the wipe: the queue
+                // is empty, the shared list is empty, and an account with no
+                // watchlist belongs on the import screen again.
+                setPendingWatches([])
+                setNudge(null)
+                setSharedCount(0)
+                setUnseenRecommendations(0)
+                setWheelSource(null)
+                setWheelTogetherMode(null)
+                setNeedsOnboarding(true)
+                setScreen('import')
               }}
             />
-          ) : (
-            <TogetherChooser
+          )}
+          {screen === 'recommended' && (
+            <RecommendedScreen
+              userId={userId}
               partnerId={partnerId}
               partnerName={partnerName}
-              sharedCount={sharedCount}
-              // Picking builds the wheel and goes to it: one tap for one
-              // intention, rather than choosing a mode and then navigating.
-              onChoose={(mode) => {
-                setWheelSource('shared')
-                setWheelTogetherMode(mode)
-                setScreen('wheel')
-              }}
-              onEditSharedList={() => setEditingSharedList(true)}
+              partnerMascot={partnerMascot}
+              myMascot={myMascot}
+              onSeen={() => setUnseenRecommendations(0)}
             />
-          ))}
-        {screen === 'import' && <ImportScreen onGoToWheel={() => setScreen('wheel')} />}
-        {screen === 'settings' && (
-          <SettingsScreen
-            userId={userId}
-            partnerId={partnerId}
-            partnerName={partnerName}
-            displayName={myName}
-            profileStatus={profileStatus}
-            onDisplayNameChange={setMyName}
-            onGoToImport={() => setScreen('import')}
-            onDataCleared={() => {
-              // Nothing the shell is holding survived the wipe: the queue
-              // is empty, the shared list is empty, and an account with no
-              // watchlist belongs on the import screen again.
-              setPendingWatches([])
-              setNudge(null)
-              setSharedCount(0)
-              setUnseenRecommendations(0)
-              setWheelSource(null)
-              setWheelTogetherMode(null)
-              setNeedsOnboarding(true)
-              setScreen('import')
-            }}
-          />
-        )}
-        {screen === 'recommended' && (
-          <RecommendedScreen
-            userId={userId}
-            partnerId={partnerId}
-            partnerName={partnerName}
-            partnerMascot={partnerMascot}
-            myMascot={myMascot}
-            onSeen={() => setUnseenRecommendations(0)}
-          />
-        )}
+          )}
+        </ScreenBoundary>
         <Footer />
 
         {linePrompt && partnerId && (

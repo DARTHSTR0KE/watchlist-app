@@ -68,3 +68,32 @@ export function writeHistory(history: IdleHistory): void {
     // Nothing to do.
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* TEMPORARY: forcing one on every visit, to confirm all ten play      */
+/* ------------------------------------------------------------------ */
+
+const FORCE_KEY = 'idle-scene-force'
+
+export function isForcing(): boolean {
+  try {
+    return window.localStorage.getItem(FORCE_KEY) === 'on'
+  } catch {
+    return false
+  }
+}
+
+export function setForcing(on: boolean): void {
+  try {
+    if (on) window.localStorage.setItem(FORCE_KEY, 'on')
+    else window.localStorage.removeItem(FORCE_KEY)
+  } catch {
+    // Nothing to do.
+  }
+}
+
+// While forcing, each visit plays the next of the ten in order.
+export function nextInTurn(last: IdleScene | null): IdleScene {
+  const index = last === null ? -1 : IDLE_SCENES.indexOf(last)
+  return IDLE_SCENES[(index + 1) % IDLE_SCENES.length]
+}

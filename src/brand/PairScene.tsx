@@ -3,7 +3,8 @@ import type { ReactNode } from 'react'
 import { BRAND } from './paths'
 import { BowlShapes, RaccoonSeatedShapes } from './mark'
 import { prefersReducedMotion } from './coldStart'
-import { chooseScene, readHistory, writeHistory } from './idleScenes'
+import { chooseScene, isForcing, nextInTurn, readHistory, writeHistory } from './idleScenes'
+import { useCharacterRoom } from '../ui/characterRoom'
 import type { IdleScene as SceneName } from './idleScenes'
 
 /**
@@ -159,10 +160,16 @@ export function PairScene({ scene, playing }: { scene: SceneName | null; playing
 export function IdleScene({ busy, fallback }: { busy: boolean; fallback: ReactNode }) {
   // Decided once per visit. Pure here: the record is written when the
   // scene actually starts, so StrictMode's double call can't skew it.
-  const [scene] = useState<SceneName | null>(() => chooseScene(readHistory(), Math.random))
+  const [scene] = useState<SceneName | null>(() =>
+    isForcing() ? nextInTurn(readHistory().lastScene) : chooseScene(readHistory(), Math.random),
+  )
   const [playing, setPlaying] = useState(false)
   const [done, setDone] = useState(false)
   const still = prefersReducedMotion()
+  // Hidden for want of room counts as not now: a scene nobody can see
+  // would be spent for nothing.
+  const room = useCharacterRoom()
+  const waiting = busy || !room
 
   // Every eligible visit counts, played or not: it is what "never twice
   // in a row" is measured in.
@@ -172,7 +179,7 @@ export function IdleScene({ busy, fallback }: { busy: boolean; fallback: ReactNo
 
   // Start once, after a beat, only while nothing is going on.
   useEffect(() => {
-    if (scene === null || still || done || playing || busy) return
+    if (scene === null || still || done || playing || waiting) return
     const timer = window.setTimeout(() => {
       const field = document.activeElement
       if (field && field.matches('input, textarea, select')) return
@@ -180,7 +187,7 @@ export function IdleScene({ busy, fallback }: { busy: boolean; fallback: ReactNo
       setPlaying(true)
     }, START_AFTER_MS)
     return () => window.clearTimeout(timer)
-  }, [scene, still, done, playing, busy])
+  }, [scene, still, done, playing, waiting])
 
   // Once through and stopped, back to the resting pose.
   useEffect(() => {
@@ -193,7 +200,7 @@ export function IdleScene({ busy, fallback }: { busy: boolean; fallback: ReactNo
   }, [playing, scene])
 
   // Something started mid-scene: stop at once and don't come back to it.
-  if (playing && busy) {
+  if (playing && waiting) {
     setPlaying(false)
     setDone(true)
   }

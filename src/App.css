@@ -5044,7 +5044,15 @@ html[data-warmth='day'] .ground {
   background-color: #1b110d;
 }
 
-/* From two days out, the fish's orange brightens. */
+/* The fish's orange brightens a step at each stage. */
+html[data-warmth='week'] .fish-body {
+  fill: #e87b3d;
+}
+
+html[data-warmth='week'] .fish-fin {
+  fill: #c05022;
+}
+
 html[data-warmth='two'] .fish-body {
   fill: #f0823f;
 }
@@ -5053,38 +5061,59 @@ html[data-warmth='two'] .fish-fin {
   fill: #cc5626;
 }
 
-html[data-warmth='eve'] .fish-body,
+html[data-warmth='eve'] .fish-body {
+  fill: #f98b43;
+}
+
+html[data-warmth='eve'] .fish-fin {
+  fill: #d85b28;
+}
+
 html[data-warmth='day'] .fish-body {
-  fill: #ff9446;
+  fill: #ff9a4c;
 }
 
-html[data-warmth='eve'] .fish-fin,
 html[data-warmth='day'] .fish-fin {
-  fill: #e0602a;
+  fill: #e8672d;
 }
 
-/* The day before, and the day: the pair sit up. A small smile on the
-   raccoon, and the fish up near the top of its water. */
-html[data-warmth='eve'] .raccoon-smile,
-html[data-warmth='day'] .raccoon-smile {
-  display: inline;
+/* Both perk up a little more at each stage: the fish rises in its water
+   and the raccoon sits taller. `translate` rather than `transform`, so it
+   adds to a scene's own movement instead of being replaced by it. */
+html {
+  --perk: 0;
+}
+
+html[data-warmth='week'] {
+  --perk: 1;
+}
+
+html[data-warmth='two'] {
+  --perk: 2;
+}
+
+html[data-warmth='eve'] {
+  --perk: 3;
+}
+
+html[data-warmth='day'] {
+  --perk: 4;
 }
 
 .bowl-fish-perch {
   transform-box: view-box;
+  translate: 0 calc(var(--perk) * -2.25px);
 }
 
-html[data-warmth='eve'] .bowl-fish-perch,
-html[data-warmth='day'] .bowl-fish-perch {
-  transform: translateY(-9px);
+.character-raccoon,
+.pair-scene .sc-raccoon {
+  translate: 0 calc(var(--perk) * -1.5px);
 }
 
-.reunion-count {
-  margin: 0 0 0.6rem;
-  font-family: 'Space Grotesk', system-ui, sans-serif;
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: var(--text);
+/* The day before, and the day: a small smile on the raccoon as well. */
+html[data-warmth='eve'] .raccoon-smile,
+html[data-warmth='day'] .raccoon-smile {
+  display: inline;
 }
 
 /* The pair together ------------------------------------------------------- */
@@ -5251,4 +5280,18 @@ html[data-warmth='day'] .bowl-fish-perch {
   .pair-scene.is-playing * {
     animation: none !important;
   }
+}
+
+/* TEMPORARY: the idle scene check in Settings. */
+.scene-check-stage {
+  display: flex;
+  justify-content: center;
+  margin: 0.4rem 0 0.8rem;
+}
+
+.scene-check-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
 }
