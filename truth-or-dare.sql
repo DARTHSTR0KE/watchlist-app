@@ -363,3 +363,6 @@ create policy td_photos_delete_own on storage.objects
     bucket_id = 'truth-or-dare'
     and (storage.foldername(name))[1] = auth.uid()::text
   );
+
+-- So the API sees the new functions straight away.
+notify pgrst, 'reload schema';
