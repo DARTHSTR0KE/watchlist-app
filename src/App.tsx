@@ -56,6 +56,7 @@ import { Header } from './auth/Header'
 import type { Screen } from './auth/Header'
 import { lazyScreen, takeReopenScreen } from './lib/lazyScreen'
 import { ScreenBoundary } from './ui/ScreenBoundary'
+import { StartupWait } from './ui/StartupWait'
 import { TruthOrDareScreen } from './truthOrDare/TruthOrDareScreen'
 import { countWaitingForMe } from './truthOrDare/truthOrDare'
 import { GameScreen } from './games/GameScreen'
@@ -872,7 +873,9 @@ function WheelScreen({
     setDisplayedBackdrop(pointerBackdrop)
   }
 
-  if (loadingItems) return null
+  // Never a blank screen while the pool loads: if Supabase is slow, this
+  // says so.
+  if (loadingItems) return <StartupWait />
 
   // Filling a wheel is a screen of its own, not a panel over the wheel.
   if (editorWheel) {
@@ -1301,7 +1304,7 @@ function AuthenticatedApp() {
     setRatePrompt(watch)
   }
 
-  if (checkingWatchlist) return null
+  if (checkingWatchlist) return <StartupWait />
 
   return (
     <EnrichmentProvider>
@@ -1533,9 +1536,9 @@ function AuthenticatedApp() {
 function Gate() {
   const { session, loading } = useAuth()
 
-  // Still restoring the persisted session — show nothing rather than
-  // flashing the sign-in screen.
-  if (loading) return null
+  // Still restoring the persisted session: a wait, rather than flashing
+  // the sign-in screen or showing nothing.
+  if (loading) return <StartupWait />
 
   if (!session) return <SignInScreen />
 

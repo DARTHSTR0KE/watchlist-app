@@ -19,10 +19,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
-      setLoading(false)
-    })
+    supabase.auth
+      .getSession()
+      .then(({ data }) => setSession(data.session))
+      // Restoring can fail when Supabase isn't answering. It must still
+      // finish, or the app waits on it forever; the sign-in screen is the
+      // honest answer when no session could be read.
+      .catch(() => setSession(null))
+      .finally(() => setLoading(false))
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession)

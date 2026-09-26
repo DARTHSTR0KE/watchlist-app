@@ -5912,3 +5912,21 @@ html[data-warmth='day'] .raccoon-smile {
   justify-content: center;
   gap: 1.5rem;
 }
+
+/* Waiting on Supabase before anything can be drawn. */
+.startup-wait {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.startup-wait .loading-line {
+  justify-content: center;
+}
