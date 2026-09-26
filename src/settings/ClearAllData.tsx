@@ -96,8 +96,13 @@ export function ClearAllData({ userId, partnerId, partnerName, onCleared }: Clea
             {plural(counts.wheels, 'custom wheel')}, {plural(counts.sharedList, 'film')} on the shared
             list, {plural(counts.presets, 'filter preset')}, {plural(counts.spins, 'spin')},{' '}
             {plural(counts.imports, 'import')}, {plural(counts.nudges, 'nudge')},{' '}
-            {plural(counts.splashLines, 'splash line')}, {plural(counts.events, 'logged event')} and{' '}
-            {plural(counts.milestones, 'milestone')} —{' '}
+            {plural(counts.splashLines, 'splash line')}, {plural(counts.events, 'logged event')},{' '}
+            {plural(counts.milestones, 'milestone')}, {plural(counts.wheelItems, 'film')} on custom
+            wheels, {plural(counts.gameScores, 'game score')},{' '}
+            {plural(counts.recordNotices, 'record notice')},{' '}
+            {plural(counts.truthOrDareTurns, 'truth or dare turn')},{' '}
+            {plural(counts.seenCards, 'drawn card')} and{' '}
+            {plural(counts.reunionDates, 'reunion date')} —{' '}
             {plural(totalRecords(counts), 'record')} in all.
           </p>
           <p className="screen-empty">

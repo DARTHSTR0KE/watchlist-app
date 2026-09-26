@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabaseClient'
 import { clearPlayedRecord } from '../birthday/birthdayDate'
 import { clearSplashLineRecords } from '../social/splashLines'
+import { saveReunionDate } from '../reunion/reunion'
 
 /**
  * Clearing everything, for both accounts.
@@ -12,7 +13,8 @@ import { clearSplashLineRecords } from '../social/splashLines'
  * data should not cost you that. Only `onboarded_at` is cleared, so the
  * walkthrough runs again on an account that is genuinely empty.
  *
- * Neither account is deleted, and nothing here touches auth.
+ * Neither account is deleted, and nothing here touches auth. The truth or
+ * dare card deck stays too: it is the game, not anything either of us did.
  */
 
 export interface DataCounts {
@@ -28,6 +30,15 @@ export interface DataCounts {
   splashLines: number
   events: number
   milestones: number
+  wheelItems: number
+  gameScores: number
+  recordNotices: number
+  truthOrDareTurns: number
+  // Cards either of us has drawn. Left behind, they stay "already drawn"
+  // and the decks look emptier than they are.
+  seenCards: number
+  // Profiles still holding a reunion date.
+  reunionDates: number
 }
 
 export const EMPTY_COUNTS: DataCounts = {
@@ -43,6 +54,12 @@ export const EMPTY_COUNTS: DataCounts = {
   splashLines: 0,
   events: 0,
   milestones: 0,
+  wheelItems: 0,
+  gameScores: 0,
+  recordNotices: 0,
+  truthOrDareTurns: 0,
+  seenCards: 0,
+  reunionDates: 0,
 }
 
 // Every count is of what the policies actually let me see, which for the
@@ -53,6 +70,23 @@ async function countOf(table: string): Promise<number> {
   const { count, error } = await supabase
     .from(table as 'watched')
     .select('*', { count: 'exact', head: true })
+  if (error) throw error
+  return count ?? 0
+}
+
+// Only a count: which cards were drawn is never readable.
+async function countSeenCards(): Promise<number> {
+  const { data, error } = await supabase.rpc('td_seen_count')
+  if (error) throw error
+  return data ?? 0
+}
+
+// Both our profiles are readable, so this counts both dates.
+async function countReunionDates(): Promise<number> {
+  const { count, error } = await supabase
+    .from('profiles')
+    .select('id', { count: 'exact', head: true })
+    .not('reunion_date', 'is', null)
   if (error) throw error
   return count ?? 0
 }
@@ -71,6 +105,12 @@ export async function countEverything(): Promise<DataCounts> {
     splashLines,
     events,
     milestones,
+    wheelItems,
+    gameScores,
+    recordNotices,
+    truthOrDareTurns,
+    seenCards,
+    reunionDates,
   ] = await Promise.all([
     countOf('watchlist_items'),
     countOf('watched'),
@@ -87,6 +127,16 @@ export async function countEverything(): Promise<DataCounts> {
     // Only my own: each of us reads our own stream and milestones.
     countOf('events'),
     countOf('milestones'),
+    // Visible through the wheels they belong to, ours and any shared.
+    countOf('custom_wheel_items'),
+    // Both of ours: the record is between us.
+    countOf('game_scores'),
+    // Mine only.
+    countOf('game_record_notices'),
+    // Every turn either of us played; both of us can read them.
+    countOf('td_turns'),
+    countSeenCards(),
+    countReunionDates(),
   ])
   return {
     watchlist,
@@ -101,6 +151,12 @@ export async function countEverything(): Promise<DataCounts> {
     splashLines,
     events,
     milestones,
+    wheelItems,
+    gameScores,
+    recordNotices,
+    truthOrDareTurns,
+    seenCards,
+    reunionDates,
   }
 }
 
@@ -133,6 +189,12 @@ const LABELS: Record<keyof DataCounts, string> = {
   splashLines: 'splash lines',
   events: 'the event log',
   milestones: 'milestones',
+  wheelItems: 'films on custom wheels',
+  gameScores: 'game scores',
+  recordNotices: 'record notices',
+  truthOrDareTurns: 'truth or dare turns',
+  seenCards: 'truth or dare cards marked as drawn',
+  reunionDates: 'reunion dates',
 }
 
 /**
@@ -174,6 +236,12 @@ export async function clearAllData(userId: string, partnerId: string | null): Pr
     // Both our game records, and any "your record was beaten" either way.
     supabase.from('game_scores').delete().in('user_id', ids),
     supabase.from('game_record_notices').delete().in('to_user', ids),
+    // Every turn and every drawn card, for both of us, so the decks are
+    // full again. A function, because the drawn-card record is never
+    // readable or writable by the app itself.
+    supabase.rpc('td_clear_ours'),
+    // On both our profiles at once, and the copy this phone keeps.
+    saveReunionDate(null).catch(() => undefined),
   ])
   await supabase.from('custom_wheels').delete().in('user_id', ids)
 

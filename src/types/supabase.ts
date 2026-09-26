@@ -666,6 +666,16 @@ export interface Database {
         Args: { p_ids: number[] }
         Returns: undefined
       }
+      /** Security definer. Wipes our truth or dare turns and drawn cards. */
+      td_clear_ours: {
+        Args: Record<never, never>
+        Returns: undefined
+      }
+      /** How many drawn cards the two of us have on record; never which. */
+      td_seen_count: {
+        Args: Record<never, never>
+        Returns: number
+      }
       touch_last_open: {
         Args: Record<string, never>
         Returns: string | null
