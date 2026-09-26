@@ -1,7 +1,12 @@
 import { supabase } from '../lib/supabaseClient'
 import { DbError } from '../lib/dbError'
 import type { Database } from '../types/supabase'
+import { WARMUP_DECKS, shuffled } from './turnRules'
 import type { Deck, Kind, Mode, Turn } from './turnRules'
+
+// When this run of the app started. Closing the app ends an in-person
+// session, so the warm-up counts only cards drawn since then.
+export const APP_OPENED_AT = Date.now()
 
 /**
  * Truth or dare against the database. A card only ever arrives through
@@ -115,6 +120,26 @@ export async function markSeen(turnIds: string[]): Promise<void> {
   if (turnIds.length === 0) return
   const { error } = await supabase.rpc('td_mark_seen', { p_turns: turnIds })
   if (error) throw DbError.from(error)
+}
+
+/**
+ * A draw for this session. In the warm-up, spicy is left out: the other
+ * three are tried in a random order until one has a card for me, which is
+ * the same as the database's own random pick with spicy never in it.
+ * After the warm-up, the database picks among all four.
+ */
+export async function drawForSession(
+  kind: Kind,
+  mode: Mode,
+  player: string | undefined,
+  warm: boolean,
+): Promise<Turn | null> {
+  if (!warm) return drawCard(null, kind, mode, player)
+  for (const deck of shuffled(WARMUP_DECKS, Math.random)) {
+    const turn = await drawCard(deck, kind, mode, player)
+    if (turn) return turn
+  }
+  return null
 }
 
 // Reshuffles a kind for me alone: one deck, or with null, all four.

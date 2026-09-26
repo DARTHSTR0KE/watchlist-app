@@ -6,6 +6,11 @@ import {
   passesLeft,
   virtualState,
   waitingForMe,
+  WARMUP_DECKS,
+  inWarmup,
+  sessionCards,
+  shuffled,
+  warmupLength,
 } from './turnRules'
 import type { Turn } from './turnRules'
 
@@ -140,5 +145,65 @@ describe('historyEntries', () => {
     expect(historyEntries([theirsOpen, mineOpen, inPersonOpen, done], ME).map((t) => t.id)).toEqual(
       [done.id, theirsOpen.id],
     )
+  })
+})
+
+describe('the warm-up', () => {
+  const at = (minutesAfterNoon: number) =>
+    new Date(Date.UTC(2026, 8, 26, 12, minutesAfterNoon)).toISOString()
+  const card = (id: string, minutes: number, overrides: Partial<Turn> = {}): Turn =>
+    turn({ id, createdAt: at(minutes), mode: 'in_person', drawnBy: ME, ...overrides })
+  const openedAt = Date.UTC(2026, 8, 26, 11, 0)
+
+  it('lifts after 5, 6 or 7 cards, the same every time for the same session', () => {
+    const lengths = new Set<number>()
+    for (let i = 0; i < 300; i++) {
+      const length = warmupLength(`card-${i}`)
+      expect(length).toBeGreaterThanOrEqual(5)
+      expect(length).toBeLessThanOrEqual(7)
+      lengths.add(length)
+    }
+    expect([...lengths].sort()).toEqual([5, 6, 7])
+    expect(warmupLength('abc')).toBe(warmupLength('abc'))
+  })
+
+  it('starts a session warm, and lifts once enough cards are drawn', () => {
+    const now = new Date(at(20))
+    expect(inWarmup([], 'in_person', ME, now, openedAt)).toBe(true)
+    const history = Array.from({ length: 7 }, (_, i) => card(`c${i}`, i))
+    const lift = warmupLength('c0')
+    expect(inWarmup(history.slice(0, lift - 1), 'in_person', ME, now, openedAt)).toBe(true)
+    expect(inWarmup(history.slice(0, lift), 'in_person', ME, now, openedAt)).toBe(false)
+  })
+
+  it('starts again after a long gap', () => {
+    const history = Array.from({ length: 7 }, (_, i) => card(`c${i}`, i))
+    expect(inWarmup(history, 'in_person', ME, new Date(at(10)), openedAt)).toBe(false)
+    // Forty minutes after the last card: a new session, warm again.
+    expect(inWarmup(history, 'in_person', ME, new Date(at(46)), openedAt)).toBe(true)
+  })
+
+  it('starts again when the app is opened again', () => {
+    const history = Array.from({ length: 7 }, (_, i) => card(`c${i}`, i))
+    const reopened = Date.UTC(2026, 8, 26, 12, 7)
+    expect(inWarmup(history, 'in_person', ME, new Date(at(8)), reopened)).toBe(true)
+  })
+
+  it('counts only this phone in person, and both of us virtually', () => {
+    const now = new Date(at(20))
+    const onTheirPhone = Array.from({ length: 7 }, (_, i) => card(`t${i}`, i, { drawnBy: THEM }))
+    expect(inWarmup(onTheirPhone, 'in_person', ME, now, openedAt)).toBe(true)
+    const virtual = Array.from({ length: 7 }, (_, i) =>
+      card(`v${i}`, i * 60, { mode: 'virtual', player: i % 2 ? THEM : ME, drawnBy: i % 2 ? THEM : ME }),
+    )
+    // Hours apart, but within twelve of each other: one session.
+    expect(inWarmup(virtual, 'virtual', ME, new Date(at(7 * 60)), openedAt)).toBe(false)
+    expect(sessionCards(virtual, 'virtual', ME, new Date(at(7 * 60)), openedAt)).toHaveLength(7)
+  })
+
+  it('shuffles the warm-up decks without losing any', () => {
+    const order = shuffled(WARMUP_DECKS, Math.random)
+    expect([...order].sort()).toEqual(['flirty', 'funny', 'serious'])
+    expect(order).not.toContain('spicy')
   })
 })

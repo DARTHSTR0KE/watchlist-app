@@ -7,8 +7,9 @@ import { TINT } from '../ui/posterColor'
 import { describeError, reportQuietly } from '../lib/dbError'
 import { agree, possessiveName, subjectName } from '../utils/names'
 import {
+  APP_OPENED_AT,
   answerTurn,
-  drawCard,
+  drawForSession,
   loadTurns,
   markSeen,
   passTurn,
@@ -20,6 +21,7 @@ import {
 import {
   deckLabel,
   historyEntries,
+  inWarmup,
   nextInPersonPlayer,
   openInPersonTurn,
   passesLeft,
@@ -263,6 +265,7 @@ function VirtualTable({
       mode="virtual"
       player={userId}
       heading="Your turn"
+      warm={inWarmup(turns, 'virtual', userId, new Date(), APP_OPENED_AT)}
       partnerName={partnerName}
       onDrawn={onChanged}
     />
@@ -365,6 +368,7 @@ function InPersonTable({
       player={next}
       heading={theirs ? `${possessiveName(partnerName)} turn` : 'Your turn'}
       handOver={theirs ? `Pass the phone to ${subjectName(partnerName)}.` : null}
+      warm={inWarmup(turns, 'in_person', userId, new Date(), APP_OPENED_AT)}
       partnerName={partnerName}
       onDrawn={onChanged}
     />
@@ -380,6 +384,7 @@ function Draw({
   player,
   heading,
   handOver = null,
+  warm,
   partnerName,
   onDrawn,
 }: {
@@ -387,6 +392,8 @@ function Draw({
   player: string
   heading: string
   handOver?: string | null
+  // Still in the session's warm-up: no spicy yet. Never shown.
+  warm: boolean
   partnerName: string | null
   onDrawn: () => Promise<void>
 }) {
@@ -404,7 +411,12 @@ function Draw({
     setWorking(true)
     setProblem(null)
     try {
-      const turn = await drawCard(null, kind, mode, mode === 'in_person' ? player : undefined)
+      const turn = await drawForSession(
+        kind,
+        mode,
+        mode === 'in_person' ? player : undefined,
+        warm,
+      )
       if (turn === null) {
         setEmptied(kind)
         setWorking(false)

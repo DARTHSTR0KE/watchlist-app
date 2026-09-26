@@ -117,3 +117,83 @@ export function historyEntries(turns: readonly Turn[], me: string): Turn[] {
 export function deckLabel(deck: Deck): string {
   return deck.charAt(0).toUpperCase() + deck.slice(1)
 }
+
+/* ------------------------------------------------------------------ */
+/* The warm-up                                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The first 5 to 7 cards of a session never come from spicy. Nothing on
+ * screen says so: the draw just leaves that deck out until it lifts.
+ */
+export const WARMUP_DECKS: readonly Deck[] = ['serious', 'funny', 'flirty']
+
+// How long without a card before a session is over and the next one
+// starts cold again. Virtual turns are hours apart by nature, so its
+// session is the run of turns between us rather than one sitting.
+export const SESSION_GAP_MS: Record<Mode, number> = {
+  in_person: 30 * 60 * 1000,
+  virtual: 12 * 60 * 60 * 1000,
+}
+
+// When the warm-up lifts: after 5, 6 or 7 cards, read from the session's
+// first card so it can't be predicted and doesn't change if the app is
+// reopened mid-session.
+export function warmupLength(firstCardId: string): number {
+  let hash = 2166136261
+  for (let index = 0; index < firstCardId.length; index++) {
+    hash ^= firstCardId.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return 5 + ((hash >>> 0) % 3)
+}
+
+/**
+ * The cards of the current session, oldest first. In person: drawn on
+ * this phone since the app was opened, with no gap of more than half an
+ * hour. Virtual: our turns with no gap longer than twelve hours.
+ */
+export function sessionCards(
+  turns: readonly Turn[],
+  mode: Mode,
+  me: string,
+  now: Date,
+  openedAt: number,
+): Turn[] {
+  const gap = SESSION_GAP_MS[mode]
+  const session: Turn[] = []
+  let later = now.getTime()
+  for (const turn of newestFirst(turns)) {
+    if (turn.mode !== mode) continue
+    if (mode === 'in_person' && turn.drawnBy !== me) continue
+    const at = new Date(turn.createdAt).getTime()
+    if (later - at > gap) break
+    if (mode === 'in_person' && at < openedAt) break
+    session.push(turn)
+    later = at
+  }
+  return session.reverse()
+}
+
+// Whether the next draw is still in the warm-up.
+export function inWarmup(
+  turns: readonly Turn[],
+  mode: Mode,
+  me: string,
+  now: Date,
+  openedAt: number,
+): boolean {
+  const session = sessionCards(turns, mode, me, now, openedAt)
+  if (session.length === 0) return true
+  return session.length < warmupLength(session[0].id)
+}
+
+// The warm-up decks in a random order, tried in turn until one has a card.
+export function shuffled<T>(list: readonly T[], random: () => number): T[] {
+  const copy = [...list]
+  for (let index = copy.length - 1; index > 0; index--) {
+    const other = Math.floor(random() * (index + 1))
+    ;[copy[index], copy[other]] = [copy[other], copy[index]]
+  }
+  return copy
+}
