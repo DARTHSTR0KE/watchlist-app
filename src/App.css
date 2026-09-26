@@ -4201,22 +4201,6 @@ a.pending-action {
 
 /* Ambient ---------------------------------------------------------------- */
 
-/* The splash's second line: under their tagline, quieter, and in step
-   with it. Usually absent. */
-.splash-aside {
-  margin: 0.35rem 0 0;
-  font-size: 0.78rem;
-  line-height: 1.4;
-  color: var(--text-faint);
-  opacity: 0;
-  animation: sp-tag 5s linear forwards;
-}
-
-.splash-still .splash-aside {
-  opacity: 1;
-  animation: none;
-}
-
 /* Away a fortnight: both asleep, so nobody gets up to fetch the bowl. */
 .splash.splash-asleep .sp-raccoon,
 .splash.splash-asleep .sp-arms,
@@ -4563,7 +4547,6 @@ a.pending-action {
 /* The system setting wins: every drawing above stays, every movement
    goes, and anything that ends somewhere is shown where it ends. */
 @media (prefers-reduced-motion: reduce) {
-  .splash-aside,
   .amb-zzz,
   .bowl-fish-tired,
   .amb-peer-bob,
@@ -5551,4 +5534,381 @@ html[data-warmth='day'] .raccoon-smile {
   text-align: left;
   color: var(--rust);
   cursor: pointer;
+}
+
+/* Together: both of them, in the page ------------------------------------ */
+
+.together-pair {
+  margin: -0.5rem 0 1rem;
+}
+
+.together-pair .pair-scene {
+  width: 132px;
+}
+
+.together-pair .character {
+  padding: 0;
+}
+
+/* The games -------------------------------------------------------------- */
+
+.game-screen {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto;
+  padding: 0.75rem 1.25rem 1rem;
+  box-sizing: border-box;
+}
+
+.game-bar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.game-back {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.game-title {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-bright);
+}
+
+.game-panel {
+  margin: auto 0;
+  text-align: center;
+}
+
+.game-panel .btn-field {
+  margin-top: 0.75rem;
+}
+
+.game-message {
+  margin: 0.75rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--text-soft);
+}
+
+.game-rules {
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text-soft);
+}
+
+.game-rules li + li {
+  margin-top: 0.35rem;
+}
+
+.game-record {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  color: var(--amber);
+}
+
+.game-best {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.game-score-final {
+  margin: 0;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 4rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-bright);
+}
+
+.game-hud {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.game-score {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-bright);
+  font-variant-numeric: tabular-nums;
+}
+
+.game-score-label,
+.game-banked {
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+
+.game-lives {
+  font-size: 1.1rem;
+  letter-spacing: 0.15em;
+  color: var(--rust);
+}
+
+.life-lost {
+  opacity: 0.2;
+}
+
+.game-start {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border: none;
+  background: rgba(0, 0, 0, 0.35);
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-bright);
+  cursor: pointer;
+}
+
+/* Catch: a field the posters fall through, her at the bottom. */
+.catch {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.catch-field {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.25);
+  /* The finger drives her; the page must not scroll or zoom under it. */
+  touch-action: none;
+  user-select: none;
+}
+
+.catch-poster {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 58px;
+  height: 87px;
+  visibility: hidden;
+  will-change: transform;
+  contain: layout paint;
+}
+
+.catch-poster img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.catch-tick {
+  display: none;
+}
+
+/* Watched: dimmed and ticked, readable at a glance while it falls. */
+.catch-watched img {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+
+.catch-watched .catch-tick {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--rust);
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #fff;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.45);
+}
+
+.catch-raccoon {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 84px;
+  height: 98px;
+  will-change: transform;
+}
+
+.catch-raccoon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.catch-caught svg {
+  animation: catch-pop 0.26s ease-out;
+}
+
+.catch-hurt svg {
+  animation: catch-hurt 0.26s ease-out;
+}
+
+@keyframes catch-pop {
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes catch-hurt {
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+/* The bait: the fish above a table of cards. */
+.bait {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  min-height: 0;
+}
+
+.bait .game-hud {
+  align-self: stretch;
+}
+
+.bait-fish svg {
+  display: block;
+  width: 84px;
+  height: auto;
+}
+
+.bait-prompt {
+  min-height: 1.4em;
+  margin: 0.25rem 0 0.75rem;
+  font-size: 0.95rem;
+  color: var(--text-soft);
+}
+
+.bait-table {
+  position: relative;
+  width: 100%;
+  touch-action: manipulation;
+}
+
+.bait-card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 5px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition-property: transform;
+  transition-timing-function: ease-in-out;
+}
+
+.bait-card:disabled {
+  cursor: default;
+}
+
+.bait-face {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  animation: bait-in 0.35s ease-out;
+}
+
+.bait-still .bait-face {
+  animation: none;
+}
+
+@keyframes bait-in {
+  from { opacity: 0; transform: translateY(-10px); }
+}
+
+.bait-face img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bait-back {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 2px solid rgba(245, 245, 245, 0.18);
+  border-radius: 8px;
+  box-sizing: border-box;
+  background:
+    repeating-linear-gradient(45deg, rgba(245, 245, 245, 0.06) 0 6px, transparent 6px 12px),
+    var(--raised);
+}
+
+.bait-card:not(:disabled):active .bait-back {
+  border-color: var(--amber);
+}
+
+.bait-hook {
+  position: absolute;
+  top: 0;
+  right: 6px;
+  width: 26px;
+  height: 38px;
+  color: var(--amber);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8));
+}
+
+.bait-hook svg {
+  width: 100%;
+  height: 100%;
+}
+
+.bait-picked .bait-face {
+  box-shadow: 0 0 0 3px var(--amber);
+}
+
+.bait-bank {
+  align-self: stretch;
+  margin-top: auto;
+}
+
+/* Motion turned down: the game still plays, nothing moves for show. */
+@media (prefers-reduced-motion: reduce) {
+  .catch-caught svg,
+  .catch-hurt svg,
+  .bait-face {
+    animation: none;
+  }
+}
+
+/* In the page they sit together, not at opposite edges. */
+.together-pair .character-both {
+  justify-content: center;
+  gap: 1.5rem;
 }

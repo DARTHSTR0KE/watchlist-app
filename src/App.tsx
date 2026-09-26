@@ -58,6 +58,10 @@ import { lazyScreen, takeReopenScreen } from './lib/lazyScreen'
 import { ScreenBoundary } from './ui/ScreenBoundary'
 import { TruthOrDareScreen } from './truthOrDare/TruthOrDareScreen'
 import { countWaitingForMe } from './truthOrDare/truthOrDare'
+import { GameScreen } from './games/GameScreen'
+import { dismissRecordNotices, loadRecordNotices } from './games/games'
+import { noticeLine } from './games/gameRules'
+import type { GameId, RecordNotice } from './games/gameRules'
 import { RecommendedScreen } from './social/RecommendedScreen'
 import { SettingsScreen } from './settings/SettingsScreen'
 import { Onboarding } from './onboarding/Onboarding'
@@ -1144,6 +1148,11 @@ function AuthenticatedApp() {
   // Their turns waiting for me, counted on opening: the game is
   // asynchronous, so this is how I hear it's my go.
   const [truthOrDareWaiting, setTruthOrDareWaiting] = useState(0)
+  // One of the two games, inside Together, while it is open.
+  const [playingGame, setPlayingGame] = useState<GameId | null>(null)
+  // Records of mine they beat since I last looked. Told in the nudge
+  // banner, after any nudge they wrote.
+  const [recordNotices, setRecordNotices] = useState<RecordNotice[]>([])
   // Watches recorded but not yet asked about. Dismissing hides the prompt
   // for this session only; the rows stay unanswered and come back next
   // time the app opens.
@@ -1200,6 +1209,11 @@ function AuthenticatedApp() {
       setCheckingWatchlist(false)
 
       if (partner) {
+        void loadRecordNotices()
+          .then((notices) => {
+            if (!cancelled) setRecordNotices(notices)
+          })
+          .catch((error: unknown) => reportQuietly('Checking for a beaten record', error))
         void countWaitingForMe(userId)
           .then((waiting) => {
             if (!cancelled) setTruthOrDareWaiting(waiting)
@@ -1295,13 +1309,27 @@ function AuthenticatedApp() {
         {/* Above everything, dismissible, never in the way. */}
         {bannerNudge && (
           <NudgeBanner
-            nudge={bannerNudge}
+            message={bannerNudge.message}
             fromName={partnerName}
             fromMascot={partnerMascot}
             onDismiss={() => {
               const from = bannerNudge.fromUser
               setNudge(null)
               void dismissNudge(userId, from).catch(() => {})
+            }}
+          />
+        )}
+        {!bannerNudge && noticeLine(recordNotices) && (
+          <NudgeBanner
+            message={noticeLine(recordNotices) ?? ''}
+            fromName={partnerName}
+            fromMascot={partnerMascot}
+            onDismiss={() => {
+              const ids = recordNotices.map((notice) => notice.id)
+              setRecordNotices([])
+              void dismissRecordNotices(ids).catch((error: unknown) =>
+                reportQuietly('Dismissing a beaten record', error),
+              )
             }}
           />
         )}
@@ -1315,6 +1343,7 @@ function AuthenticatedApp() {
             setWheelTogetherMode(null)
             setEditingSharedList(false)
             setPlayingTruthOrDare(false)
+            setPlayingGame(null)
             setScreen(next)
           }}
         />
@@ -1348,7 +1377,19 @@ function AuthenticatedApp() {
             <WatchedTogetherScreen userId={userId} partnerName={partnerName} />
           )}
           {screen === 'together' &&
-            (playingTruthOrDare ? (
+            (playingGame ? (
+            <GameScreen
+              game={playingGame}
+              userId={userId}
+              partnerId={partnerId}
+              partnerName={partnerName}
+              onBack={() => setPlayingGame(null)}
+              onGoToImport={() => {
+                setPlayingGame(null)
+                setScreen('import')
+              }}
+            />
+          ) : playingTruthOrDare ? (
             <TruthOrDareScreen userId={userId} partnerId={partnerId} partnerName={partnerName} />
           ) : editingSharedList ? (
               <SharedListScreen
@@ -1363,6 +1404,7 @@ function AuthenticatedApp() {
               />
             ) : (
               <TogetherChooser
+              userId={userId}
                 partnerId={partnerId}
                 partnerName={partnerName}
                 sharedCount={sharedCount}
@@ -1381,6 +1423,7 @@ function AuthenticatedApp() {
                   setTruthOrDareWaiting(0)
                 }}
                 truthOrDareWaiting={truthOrDareWaiting}
+                onPlayGame={setPlayingGame}
               />
             ))}
           {screen === 'import' && <ImportScreen onGoToWheel={() => setScreen('wheel')} />}
