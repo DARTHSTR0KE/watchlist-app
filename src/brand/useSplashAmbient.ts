@@ -5,8 +5,11 @@ import {
   fishAsleep,
   openedTogether,
   raccoonUpLate,
+  splashAside,
   tiredFish,
 } from '../ambient/ambient'
+import type { Weather } from '../ambient/ambient'
+import { loadWeather } from '../ambient/weather'
 import { loadOpenSignals } from '../events/presence'
 
 /**
@@ -25,6 +28,7 @@ export interface SplashAmbient {
   moon: boolean
   // The two of you opened it within ninety seconds of each other.
   together: boolean
+  aside: string | null
 }
 
 function inTime(startedAt: number): boolean {
@@ -36,12 +40,23 @@ export function useSplashAmbient(): SplashAmbient {
   const userId = session?.user.id ?? null
   const [now] = useState(() => new Date())
   const [startedAt] = useState(() => performance.now())
+  const [weather, setWeather] = useState<Weather | null>(null)
   const [signals, setSignals] = useState<{
     away: boolean
     tired: boolean
     together: boolean
   } | null>(null)
 
+
+  useEffect(() => {
+    let cancelled = false
+    void loadWeather().then((result) => {
+      if (!cancelled && result && inTime(startedAt)) setWeather(result)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [startedAt])
 
   useEffect(() => {
     if (!userId) return
@@ -67,5 +82,6 @@ export function useSplashAmbient(): SplashAmbient {
     fishTired: signals?.tired ?? false,
     moon: raccoonUpLate(now),
     together,
+    aside: splashAside({ now, together, weather, away }),
   }
 }

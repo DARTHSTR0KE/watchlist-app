@@ -11,12 +11,8 @@ import type { TogetherMode } from '../wheel/filters'
 import { loadSharedList } from './sharedList'
 import type { SharedListEntry } from './sharedList'
 import { comparedToLastYear, loadTogetherWatched, plural, togetherByYear } from './ticketFacts'
-import { loadScores } from '../games/games'
-import { GAMES, recordFor } from '../games/gameRules'
-import type { GameId, GameScore } from '../games/gameRules'
 
 interface TogetherChooserProps {
-  userId: string
   partnerId: string | null
   partnerName: string | null
   sharedCount: number | null
@@ -24,7 +20,6 @@ interface TogetherChooserProps {
   // The shared list still needs somewhere to be added to.
   onEditSharedList: () => void
   onPlayTruthOrDare: () => void
-  onPlayGame: (game: GameId) => void
   // Their truth or dare turns I haven't seen yet.
   truthOrDareWaiting: number
 }
@@ -36,7 +31,6 @@ interface TogetherChooserProps {
  * sits underneath as posters, to look at rather than manage.
  */
 export function TogetherChooser({
-  userId,
   partnerId,
   partnerName,
   sharedCount,
@@ -44,11 +38,9 @@ export function TogetherChooser({
   onEditSharedList,
   onPlayTruthOrDare,
   truthOrDareWaiting,
-  onPlayGame,
 }: TogetherChooserProps) {
   const [entries, setEntries] = useState<SharedListEntry[] | null>(null)
   const [byYear, setByYear] = useState<Map<number, number> | null>(null)
-  const [scores, setScores] = useState<GameScore[] | null>(null)
 
   useEffect(() => {
     if (!partnerId) return
@@ -66,14 +58,6 @@ export function TogetherChooser({
         if (!cancelled) setByYear(togetherByYear(rows))
       })
       .catch((error: unknown) => reportQuietly('Counting films watched together', error))
-    void loadScores()
-      .then((rows) => {
-        if (!cancelled) setScores(rows)
-      })
-      .catch((error: unknown) => {
-        reportQuietly('Reading the game records', error)
-        if (!cancelled) setScores([])
-      })
     return () => {
       cancelled = true
     }
@@ -109,7 +93,15 @@ export function TogetherChooser({
   ]
 
   return (
-    <Screen ground={ground}>
+    <Screen
+      ground={ground}
+      character={
+        <IdleScene
+          busy={entries === null || byYear === null}
+          fallback={<ScreenCharacter kind="pair" />}
+        />
+      }
+    >
       <Ticket
         heading="TOGETHER"
         figure={count === null ? '…' : `${count} on the list`}
@@ -121,15 +113,6 @@ export function TogetherChooser({
         perforation={byYear === null ? undefined : comparedToLastYear(thisYear, lastYear)}
       />
 
-      {/* Both of them, always: this screen is the two of us. In the page
-          rather than pinned at the bottom, so it never waits for room. */}
-      <div className="together-pair">
-        <IdleScene
-          busy={entries === null || byYear === null || scores === null}
-          fallback={<ScreenCharacter kind="pair" />}
-        />
-      </div>
-
       <Rows>
         {options.map((option) => (
           <Row
@@ -139,32 +122,6 @@ export function TogetherChooser({
             onOpen={() => onChoose(option.mode)}
           />
         ))}
-      </Rows>
-
-      {/* The games sit under the wheel options, not instead of them. */}
-      <Rows>
-        {GAMES.map((game) => {
-          const record = scores ? recordFor(scores, game.id) : null
-          const holder = record
-            ? record.holder === userId
-              ? 'you'
-              : subjectName(partnerName)
-            : null
-          return (
-            <Row
-              key={game.id}
-              name={game.name}
-              meta={
-                scores === null
-                  ? `With ${game.who}`
-                  : record
-                    ? `Record ${record.score} · ${holder} · ${new Date(record.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
-                    : `With ${game.who} · no record yet`
-              }
-              onOpen={() => onPlayGame(game.id)}
-            />
-          )
-        })}
       </Rows>
 
       <button type="button" className="btn-field" onClick={onEditSharedList}>

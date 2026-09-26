@@ -562,35 +562,6 @@ export interface Database {
         Update: Record<never, never>
         Relationships: []
       }
-      /** Each person's best per game. Written only by submit_score. */
-      game_scores: {
-        Row: {
-          user_id: string
-          game: 'catch' | 'bait'
-          best_score: number
-          best_at: string | null
-          plays: number
-        }
-        Insert: Record<never, never>
-        Update: Record<never, never>
-        Relationships: []
-      }
-      /** "Your record was beaten", for the next open. Read by to_user only. */
-      game_record_notices: {
-        Row: {
-          id: number
-          to_user: string
-          by_user: string
-          game: 'catch' | 'bait'
-          score: number
-          previous_score: number
-          dismissed: boolean
-          created_at: string
-        }
-        Insert: Record<never, never>
-        Update: Record<never, never>
-        Relationships: []
-      }
     }
     Views: Record<never, never>
     Functions: {
@@ -653,18 +624,6 @@ export interface Database {
       reset_deck: {
         Args: { p_deck: string; p_kind: string }
         Returns: number
-      }
-      /**
-       * Security definer. Records a finished game: keeps my best, leaves
-       * them a notice if it beat the record they held, logs it to events.
-       */
-      submit_score: {
-        Args: { p_game: string; p_score: number }
-        Returns: { best: number; beat_their_record: boolean }
-      }
-      dismiss_record_notices: {
-        Args: { p_ids: number[] }
-        Returns: undefined
       }
       touch_last_open: {
         Args: Record<string, never>

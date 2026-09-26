@@ -62,8 +62,7 @@ export function Splash({ onDone }: { onDone: () => void }) {
   const visibleRef = useRef(false)
   // Written for me by the other person; neither of us writes our own.
   const tagline = useLineForMe()
-  // What the hour and the two of you change in the drawing. Never waited
-  // on, and never words: the only line is the one written for me.
+  // What the hour, the weather and the two of you add. Never waited on.
   const ambient = useSplashAmbient()
 
   useEffect(() => {
@@ -158,6 +157,8 @@ export function Splash({ onDone }: { onDone: () => void }) {
         <p className="splash-name">Chhobidam</p>
         <p className="splash-gloss">chhobi + padam</p>
         <p className="splash-tag">{tagline}</p>
+        {/* Beneath their line, never instead of it, and usually absent. */}
+        {ambient.aside && <p className="splash-aside">{ambient.aside}</p>}
       </div>
 
       {/* Five seconds is long enough that it needs saying. */}

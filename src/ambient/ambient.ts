@@ -18,6 +18,17 @@ export function raccoonUpLate(now: Date): boolean {
   return now.getHours() < 5
 }
 
+// Between two and four: the hour itself gets acknowledged.
+export function smallHours(now: Date): boolean {
+  const hour = now.getHours()
+  return hour >= 2 && hour < 4
+}
+
+export function sundayMorning(now: Date): boolean {
+  const hour = now.getHours()
+  return now.getDay() === 0 && hour >= 6 && hour < 12
+}
+
 // Night, for what a film means at this hour.
 export function isNight(now: Date): boolean {
   const hour = now.getHours()
@@ -65,6 +76,56 @@ export function openedTogether(partnerLastOpenAt: string | null, now: Date): boo
   const then = new Date(partnerLastOpenAt).getTime()
   if (Number.isNaN(then)) return false
   return Math.abs(now.getTime() - then) <= TOGETHER_WINDOW_MS
+}
+
+/* ------------------------------------------------------------------ */
+/* Weather                                                             */
+/* ------------------------------------------------------------------ */
+
+export interface Weather {
+  temperature: number
+  raining: boolean
+}
+
+export const HOT_ABOVE = 35
+
+// WMO codes that mean something is falling: drizzle, rain, showers,
+// thunderstorms.
+export function isRainCode(code: number): boolean {
+  return (code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95
+}
+
+/* ------------------------------------------------------------------ */
+/* The splash's second line                                            */
+/* ------------------------------------------------------------------ */
+
+export interface SplashSignals {
+  now: Date
+  together: boolean
+  weather: Weather | null
+  away: boolean
+}
+
+/**
+ * At most one line under the tagline, and usually none. The tagline is
+ * theirs to write, so this never replaces it — it sits beneath.
+ *
+ * The order is rarity: seeing each other open it is rarest, the hour next,
+ * then the weather, then Sunday.
+ */
+export function splashAside(signals: SplashSignals): string | null {
+  const { now } = signals
+  if (signals.together) return 'Oh. Hello, both of you.'
+  if (smallHours(now)) {
+    return now.getHours() === 2 ? "It's gone two." : 'Three in the morning. Of course.'
+  }
+  if (signals.away) return 'The wheel got dusty.'
+  if (signals.weather?.raining) return 'Raining in Mumbai. Stay in.'
+  if (signals.weather && signals.weather.temperature > HOT_ABOVE) {
+    return `${Math.round(signals.weather.temperature)}° out there. Stay in.`
+  }
+  if (sundayMorning(now)) return 'Sunday morning. No rush.'
+  return null
 }
 
 /* ------------------------------------------------------------------ */
