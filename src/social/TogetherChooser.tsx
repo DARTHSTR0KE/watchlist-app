@@ -11,20 +11,16 @@ import type { TogetherMode } from '../wheel/filters'
 import { loadSharedList } from './sharedList'
 import type { SharedListEntry } from './sharedList'
 import { comparedToLastYear, loadTogetherWatched, plural, togetherByYear } from './ticketFacts'
-import { loadScores } from '../games/games'
-import { GAMES, recordFor } from '../games/gameRules'
-import type { GameId, GameScore } from '../games/gameRules'
 
 interface TogetherChooserProps {
-  userId: string
   partnerId: string | null
   partnerName: string | null
   sharedCount: number | null
   onChoose: (mode: TogetherMode) => void
   // The shared list still needs somewhere to be added to.
   onEditSharedList: () => void
-  onPlayTruthOrDare: () => void
-  onPlayGame: (game: GameId) => void
+  // Catch, The bait and truth or dare, on their own screen.
+  onOpenGames: () => void
   // Their truth or dare turns I haven't seen yet.
   truthOrDareWaiting: number
 }
@@ -36,19 +32,16 @@ interface TogetherChooserProps {
  * sits underneath as posters, to look at rather than manage.
  */
 export function TogetherChooser({
-  userId,
   partnerId,
   partnerName,
   sharedCount,
   onChoose,
   onEditSharedList,
-  onPlayTruthOrDare,
+  onOpenGames,
   truthOrDareWaiting,
-  onPlayGame,
 }: TogetherChooserProps) {
   const [entries, setEntries] = useState<SharedListEntry[] | null>(null)
   const [byYear, setByYear] = useState<Map<number, number> | null>(null)
-  const [scores, setScores] = useState<GameScore[] | null>(null)
 
   useEffect(() => {
     if (!partnerId) return
@@ -66,14 +59,6 @@ export function TogetherChooser({
         if (!cancelled) setByYear(togetherByYear(rows))
       })
       .catch((error: unknown) => reportQuietly('Counting films watched together', error))
-    void loadScores()
-      .then((rows) => {
-        if (!cancelled) setScores(rows)
-      })
-      .catch((error: unknown) => {
-        reportQuietly('Reading the game records', error)
-        if (!cancelled) setScores([])
-      })
     return () => {
       cancelled = true
     }
@@ -125,7 +110,7 @@ export function TogetherChooser({
           rather than pinned at the bottom, so it never waits for room. */}
       <div className="together-pair">
         <IdleScene
-          busy={entries === null || byYear === null || scores === null}
+          busy={entries === null || byYear === null}
           fallback={<ScreenCharacter kind="pair" />}
         />
       </div>
@@ -141,45 +126,20 @@ export function TogetherChooser({
         ))}
       </Rows>
 
-      {/* The games sit under the wheel options, not instead of them. */}
-      <Rows>
-        {GAMES.map((game) => {
-          const record = scores ? recordFor(scores, game.id) : null
-          const holder = record
-            ? record.holder === userId
-              ? 'you'
-              : subjectName(partnerName)
-            : null
-          return (
-            <Row
-              key={game.id}
-              name={game.name}
-              meta={
-                scores === null
-                  ? `With ${game.who}`
-                  : record
-                    ? `Record ${record.score} · ${holder} · ${new Date(record.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
-                    : `With ${game.who} · no record yet`
-              }
-              onOpen={() => onPlayGame(game.id)}
-            />
-          )
-        })}
-      </Rows>
-
       <button type="button" className="btn-field" onClick={onEditSharedList}>
         Add to our list
       </button>
 
+      {/* Everything that isn't choosing a film lives one level down. */}
       <Rows>
         <Row
-          name="Truth or dare"
+          name="Games"
           meta={
             truthOrDareWaiting > 0
-              ? `${subjectName(partnerName, true)} took a turn — yours next`
-              : 'In person or apart, one card at a time'
+              ? `${subjectName(partnerName, true)} took a turn at truth or dare`
+              : 'Catch, The bait and truth or dare'
           }
-          onOpen={onPlayTruthOrDare}
+          onOpen={onOpenGames}
         />
       </Rows>
 

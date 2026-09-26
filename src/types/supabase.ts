@@ -630,7 +630,7 @@ export interface Database {
        * means that deck and kind have run out for me.
        */
       draw_card: {
-        Args: { p_deck: string; p_kind: string; p_mode: string; p_player?: string }
+        Args: { p_deck: string | null; p_kind: string; p_mode: string; p_player?: string }
         Returns: Database['public']['Tables']['td_turns']['Row'][]
       }
       answer_turn: {
@@ -651,7 +651,7 @@ export interface Database {
       }
       /** Reshuffles one deck and kind for me alone; how many came back. */
       reset_deck: {
-        Args: { p_deck: string; p_kind: string }
+        Args: { p_deck: string | null; p_kind: string }
         Returns: number
       }
       /**

@@ -112,7 +112,7 @@ export function GameScreen({
     <div className={`game-screen game-${game}`}>
       <div className="game-bar">
         <button type="button" className="game-back" onClick={onBack}>
-          ‹ Together
+          ‹ Games
         </button>
         <span className="game-title">{gameName(game)}</span>
       </div>
@@ -186,7 +186,7 @@ export function GameScreen({
             Play again
           </button>
           <button type="button" className="btn-field" onClick={onBack}>
-            Back to Together
+            Back to Games
           </button>
         </div>
       )}

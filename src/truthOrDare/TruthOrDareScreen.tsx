@@ -18,7 +18,6 @@ import {
   uploadPhoto,
 } from './truthOrDare'
 import {
-  DECKS,
   deckLabel,
   historyEntries,
   nextInPersonPlayer,
@@ -27,12 +26,14 @@ import {
   virtualState,
   waitingForMe,
 } from './turnRules'
-import type { Deck, Kind, Mode, Turn } from './turnRules'
+import type { Kind, Mode, Turn } from './turnRules'
 
 interface TruthOrDareProps {
   userId: string
   partnerId: string | null
   partnerName: string | null
+  // Back to the Games screen it was opened from.
+  onBack: () => void
 }
 
 const REACTIONS = ['❤️', '😂', '😮', '🔥', '🥺']
@@ -61,7 +62,7 @@ function when(iso: string | null): string {
  * app, react, and take theirs. Virtual never deals a dare that needs the
  * same room; draw_card leaves those out on its own.
  */
-export function TruthOrDareScreen({ userId, partnerId, partnerName }: TruthOrDareProps) {
+export function TruthOrDareScreen({ userId, partnerId, partnerName, onBack }: TruthOrDareProps) {
   const [turns, setTurns] = useState<Turn[] | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
   const [mode, setMode] = useState<Mode | null>(null)
@@ -105,6 +106,11 @@ export function TruthOrDareScreen({ userId, partnerId, partnerName }: TruthOrDar
   }
 
   const ground = <DriftingGround left={TINT.rust} right={TINT.mauve} />
+  const back = (
+    <button type="button" className="td-switch" onClick={onBack}>
+      ‹ Games
+    </button>
+  )
   const pair = (
     <div className="td-pair" aria-hidden="true">
       <PairScene scene={null} playing={false} />
@@ -114,6 +120,7 @@ export function TruthOrDareScreen({ userId, partnerId, partnerName }: TruthOrDar
   if (!partnerId) {
     return (
       <Screen ground={ground}>
+        {back}
         <Ticket heading="TRUTH OR DARE" figure="—" line="No partner is linked to this account" />
         {pair}
         <Empty>There is nobody to play with yet.</Empty>
@@ -124,6 +131,7 @@ export function TruthOrDareScreen({ userId, partnerId, partnerName }: TruthOrDar
   if (failure && turns === null) {
     return (
       <Screen ground={ground}>
+        {back}
         <Ticket heading="TRUTH OR DARE" figure="—" line="Couldn't load" />
         {pair}
         <ErrorLine>Couldn't load the game: {failure}</ErrorLine>
@@ -134,6 +142,7 @@ export function TruthOrDareScreen({ userId, partnerId, partnerName }: TruthOrDar
   if (turns === null) {
     return (
       <Screen ground={ground}>
+        {back}
         <Ticket heading="TRUTH OR DARE" figure="…" line="Shuffling" />
         {pair}
         <Loading />
@@ -146,6 +155,7 @@ export function TruthOrDareScreen({ userId, partnerId, partnerName }: TruthOrDar
 
   return (
     <Screen ground={ground}>
+      {back}
       <Ticket
         heading="TRUTH OR DARE"
         figure={mode === null ? 'Two of you' : mode === 'in_person' ? 'In person' : 'Virtual'}
@@ -380,22 +390,23 @@ function Draw({
   partnerName: string | null
   onDrawn: () => Promise<void>
 }) {
-  const [deck, setDeck] = useState<Deck | null>(null)
   const [kind, setKind] = useState<Kind | null>(null)
   const [working, setWorking] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
-  // The deck and kind that just ran out, while the offer to reshuffle it
-  // is up.
-  const [emptied, setEmptied] = useState<{ deck: Deck; kind: Kind } | null>(null)
+  // The kind that just ran out across every deck, while the offer to
+  // reshuffle it is up.
+  const [emptied, setEmptied] = useState<Kind | null>(null)
 
+  // No deck is ever chosen: the draw picks one at random, and it only
+  // shows on the card once it is drawn.
   const draw = async () => {
-    if (!deck || !kind) return
+    if (!kind) return
     setWorking(true)
     setProblem(null)
     try {
-      const turn = await drawCard(deck, kind, mode, mode === 'in_person' ? player : undefined)
+      const turn = await drawCard(null, kind, mode, mode === 'in_person' ? player : undefined)
       if (turn === null) {
-        setEmptied({ deck, kind })
+        setEmptied(kind)
         setWorking(false)
         return
       }
@@ -411,7 +422,7 @@ function Draw({
     setWorking(true)
     setProblem(null)
     try {
-      await resetDeck(emptied.deck, emptied.kind)
+      await resetDeck(null, emptied)
       setEmptied(null)
     } catch (error) {
       setProblem(explain(error, partnerName))
@@ -424,26 +435,6 @@ function Draw({
       <SectionLabel tone="rust">{heading}</SectionLabel>
       {handOver && <p className="td-note">{handOver}</p>}
 
-      <p className="td-step">Pick a deck</p>
-      <div className="td-chips" role="radiogroup" aria-label="Deck">
-        {DECKS.map((name) => (
-          <button
-            key={name}
-            type="button"
-            role="radio"
-            aria-checked={deck === name}
-            className={`td-chip td-deck-${name}${deck === name ? ' td-chip-on' : ''}`}
-            onClick={() => {
-              setDeck(name)
-              setEmptied(null)
-            }}
-          >
-            {deckLabel(name)}
-          </button>
-        ))}
-      </div>
-
-      <p className="td-step">Truth or dare</p>
       <div className="td-chips td-chips-two" role="radiogroup" aria-label="Truth or dare">
         {(['truth', 'dare'] as const).map((name) => (
           <button
@@ -466,8 +457,8 @@ function Draw({
         <div className="td-emptied">
           <p className="td-note">
             {mode === 'virtual'
-              ? `Every ${emptied.deck} ${emptied.kind} you can play apart has been drawn.`
-              : `Every ${emptied.deck} ${emptied.kind} has been drawn.`}{' '}
+              ? `Every ${emptied} you can play apart has been drawn.`
+              : `Every ${emptied} has been drawn.`}{' '}
             Reshuffling brings them all back, for you alone.
           </p>
           <button
@@ -476,14 +467,14 @@ function Draw({
             disabled={working}
             onClick={() => void reshuffle()}
           >
-            {working ? 'Reshuffling…' : `Reshuffle ${emptied.deck} ${emptied.kind}s`}
+            {working ? 'Reshuffling…' : `Reshuffle the ${emptied}s`}
           </button>
         </div>
       ) : (
         <button
           type="button"
           className="btn-primary"
-          disabled={!deck || !kind || working}
+          disabled={!kind || working}
           onClick={() => void draw()}
         >
           {working ? 'Drawing…' : 'Draw'}

@@ -60,6 +60,7 @@ import { StartupWait } from './ui/StartupWait'
 import { TruthOrDareScreen } from './truthOrDare/TruthOrDareScreen'
 import { countWaitingForMe } from './truthOrDare/truthOrDare'
 import { GameScreen } from './games/GameScreen'
+import { GamesScreen } from './games/GamesScreen'
 import { dismissRecordNotices, loadRecordNotices } from './games/games'
 import { noticeLine } from './games/gameRules'
 import type { GameId, RecordNotice } from './games/gameRules'
@@ -1153,6 +1154,8 @@ function AuthenticatedApp() {
   const [truthOrDareWaiting, setTruthOrDareWaiting] = useState(0)
   // One of the two games, inside Together, while it is open.
   const [playingGame, setPlayingGame] = useState<GameId | null>(null)
+  // The Games screen inside Together, which holds all three.
+  const [showingGames, setShowingGames] = useState(false)
   // Records of mine they beat since I last looked. Told in the nudge
   // banner, after any nudge they wrote.
   const [recordNotices, setRecordNotices] = useState<RecordNotice[]>([])
@@ -1347,6 +1350,7 @@ function AuthenticatedApp() {
             setEditingSharedList(false)
             setPlayingTruthOrDare(false)
             setPlayingGame(null)
+            setShowingGames(false)
             setScreen(next)
           }}
         />
@@ -1358,6 +1362,7 @@ function AuthenticatedApp() {
             onClick={() => {
               setMilestone(null)
               setEditingSharedList(false)
+              setShowingGames(true)
               setPlayingTruthOrDare(true)
               setTruthOrDareWaiting(0)
               setScreen('together')
@@ -1393,7 +1398,26 @@ function AuthenticatedApp() {
               }}
             />
           ) : playingTruthOrDare ? (
-            <TruthOrDareScreen userId={userId} partnerId={partnerId} partnerName={partnerName} />
+            <TruthOrDareScreen
+              userId={userId}
+              partnerId={partnerId}
+              partnerName={partnerName}
+              onBack={() => setPlayingTruthOrDare(false)}
+            />
+          ) : showingGames ? (
+            <GamesScreen
+              userId={userId}
+              partnerId={partnerId}
+              partnerName={partnerName}
+              onBack={() => setShowingGames(false)}
+              onPlayGame={setPlayingGame}
+              onPlayTruthOrDare={() => {
+                setPlayingTruthOrDare(true)
+                // Opening the game is seeing them; the game itself
+                // puts their turns in front of me.
+                setTruthOrDareWaiting(0)
+              }}
+            />
           ) : editingSharedList ? (
               <SharedListScreen
                 userId={userId}
@@ -1407,7 +1431,6 @@ function AuthenticatedApp() {
               />
             ) : (
               <TogetherChooser
-              userId={userId}
                 partnerId={partnerId}
                 partnerName={partnerName}
                 sharedCount={sharedCount}
@@ -1419,14 +1442,8 @@ function AuthenticatedApp() {
                   setScreen('wheel')
                 }}
                 onEditSharedList={() => setEditingSharedList(true)}
-                onPlayTruthOrDare={() => {
-                  setPlayingTruthOrDare(true)
-                  // Opening the game is seeing them; the game itself
-                  // puts their turns in front of me.
-                  setTruthOrDareWaiting(0)
-                }}
+                onOpenGames={() => setShowingGames(true)}
                 truthOrDareWaiting={truthOrDareWaiting}
-                onPlayGame={setPlayingGame}
               />
             ))}
           {screen === 'import' && <ImportScreen onGoToWheel={() => setScreen('wheel')} />}

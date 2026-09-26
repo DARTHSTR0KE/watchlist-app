@@ -63,8 +63,10 @@ export async function countWaitingForMe(userId: string): Promise<number> {
 }
 
 // A new turn, or null when that deck and kind have run out for me.
+// deck null: the database picks one at random among those with a card
+// left for me. The app never chooses one.
 export async function drawCard(
-  deck: Deck,
+  deck: Deck | null,
   kind: Kind,
   mode: Mode,
   player?: string,
@@ -115,8 +117,8 @@ export async function markSeen(turnIds: string[]): Promise<void> {
   if (error) throw DbError.from(error)
 }
 
-// Reshuffles one deck and kind for me alone.
-export async function resetDeck(deck: Deck, kind: Kind): Promise<number> {
+// Reshuffles a kind for me alone: one deck, or with null, all four.
+export async function resetDeck(deck: Deck | null, kind: Kind): Promise<number> {
   const { data, error } = await supabase.rpc('reset_deck', { p_deck: deck, p_kind: kind })
   if (error) throw DbError.from(error)
   return data ?? 0
