@@ -64,3 +64,26 @@ describe('the day a play is recorded against', () => {
     expect(localDateKey(new Date(2026, 11, 31, 12, 0))).toBe('2026-12-31')
   })
 })
+
+describe('clearing the test-burnt day (temporary)', () => {
+  it('removes 2026-09-30 once, and never touches the record again', async () => {
+    const { vi } = await import('vitest')
+    const { readPlayedRecord, unburnTestDay, markPlayedToday } = await import('./birthdayDate')
+    const stored = new Map<string, string>()
+    vi.stubGlobal('window', {
+      localStorage: {
+        getItem: (key: string) => stored.get(key) ?? null,
+        setItem: (key: string, value: string) => void stored.set(key, value),
+        removeItem: (key: string) => void stored.delete(key),
+      },
+    })
+    stored.set('spin-birthday-played', '2026-09-30')
+    unburnTestDay()
+    expect(readPlayedRecord()).toBeNull()
+    // The real day plays and records; a later open must leave that alone.
+    markPlayedToday(new Date(2026, 8, 30, 9))
+    unburnTestDay()
+    expect(readPlayedRecord()).toBe('2026-09-30')
+    vi.unstubAllGlobals()
+  })
+})

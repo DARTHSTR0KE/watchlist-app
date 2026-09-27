@@ -11,7 +11,7 @@
 const BIRTHDAY_MONTH_INDEX = 8
 const BIRTHDAY_DATE = 30
 
-const PLAYED_KEY = 'spin-birthday-played'
+export const PLAYED_KEY = 'spin-birthday-played'
 
 export function isBirthday(now: Date = new Date()): boolean {
   return now.getMonth() === BIRTHDAY_MONTH_INDEX && now.getDate() === BIRTHDAY_DATE
@@ -51,6 +51,34 @@ export function clearPlayedRecord(): boolean {
     return true
   } catch {
     return false
+  }
+}
+
+// What the record holds right now, for the temporary check in Settings.
+export function readPlayedRecord(): string | null {
+  try {
+    return window.localStorage.getItem(PLAYED_KEY)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * TEMPORARY. Testing with the phone set to 30 September 2026 may have
+ * written the real day into the record. Removed once, before the gate first
+ * looks, on the first open of this build; a flag stops it running again, so
+ * the real day's own record is never touched after that.
+ */
+const UNBURN_FLAG = 'spin-birthday-unburnt-2026'
+export function unburnTestDay(): void {
+  try {
+    if (window.localStorage.getItem(UNBURN_FLAG)) return
+    if (window.localStorage.getItem(PLAYED_KEY) === '2026-09-30') {
+      window.localStorage.removeItem(PLAYED_KEY)
+    }
+    window.localStorage.setItem(UNBURN_FLAG, '1')
+  } catch {
+    // Nothing to do; Settings can clear it by hand.
   }
 }
 

@@ -19,6 +19,7 @@ import { ForTheirWrapped } from '../gifts/ForTheirWrapped'
 import { giftWindow } from '../gifts/giftWindow'
 import { QuietFailure } from './QuietFailure'
 import { SceneCheck } from './SceneCheck'
+import { BirthdayCheck } from './BirthdayCheck'
 import type { Mascot } from '../brand/mascots'
 import { loadWatchlistSummary } from '../import/watchlistWrites'
 import type { WatchlistSummary } from '../import/watchlistWrites'
@@ -234,6 +235,9 @@ export function SettingsScreen({
       {/* TEMPORARY: for confirming the idle scenes. Comes out once all ten
           have been seen. */}
       <SceneCheck />
+
+      {/* TEMPORARY: for diagnosing the birthday video. */}
+      <BirthdayCheck />
 
       <section>
         <SectionLabel>Help</SectionLabel>
