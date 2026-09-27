@@ -6,6 +6,7 @@ import {
   CATCH_MAX_FALLING,
   LIVES,
   catchFallRate,
+  catchPoster,
   catchSpawnMs,
   catchWatchedChance,
 } from './gameRules'
@@ -169,19 +170,20 @@ export function CatchGame({ pool, onOver }: { pool: GamePool; onOver: (score: nu
         if (before < pawsY && after >= pawsY && Math.abs(centre - x) <= REACH) {
           falling.splice(index, 1)
           release(item)
+          const next = catchPoster({ points, lives: left }, item.watched)
+          points = next.points
+          left = next.lives
           if (item.watched) {
-            left -= 1
             setLives(left)
             show('hurt')
-            if (left <= 0) {
-              over = true
-              onOverRef.current(points)
-              return
-            }
           } else {
-            points += 1
             setScore(points)
             show('caught')
+          }
+          if (next.over) {
+            over = true
+            onOverRef.current(points)
+            return
           }
           continue
         }

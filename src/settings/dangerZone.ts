@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabaseClient'
 import { clearPlayedRecord } from '../birthday/birthdayDate'
 import { clearSplashLineRecords } from '../social/splashLines'
 import { saveReunionDate } from '../reunion/reunion'
+import { ROW_DELETES } from './clearLists'
 
 /**
  * Clearing everything, for both accounts.
@@ -216,26 +217,13 @@ export async function clearAllData(userId: string, partnerId: string | null): Pr
   }
 
   await Promise.all([
-    supabase.from('watchlist_items').delete().in('user_id', ids),
-    supabase.from('watched').delete().in('user_id', ids),
-    supabase.from('spins').delete().in('user_id', ids),
-    supabase.from('filter_presets').delete().in('user_id', ids),
-    supabase.from('imports').delete().in('user_id', ids),
-    supabase.from('shared_list_items').delete().in('added_by', ids),
-    // Either direction: a recommendation is one record belonging to both.
-    supabase.from('recommendations').delete().in('from_user', ids),
-    supabase.from('recommendations').delete().in('to_user', ids),
-    // Both directions at once: ids holds us both, and from_user is
-    // whoever sent it.
-    supabase.from('nudges').delete().in('from_user', ids),
-    // Same again: the line each of us wrote for the other. Gone, the
-    // prompt to write one comes back on the next open.
-    supabase.from('splash_lines').delete().in('from_user', ids),
-    supabase.from('events').delete().in('user_id', ids),
-    supabase.from('milestones').delete().in('user_id', ids),
-    // Both our game records, and any "your record was beaten" either way.
-    supabase.from('game_scores').delete().in('user_id', ids),
-    supabase.from('game_record_notices').delete().in('to_user', ids),
+    // Every per-person table, by whichever column names us: see clearLists.
+    ...ROW_DELETES.map(({ table, column }) =>
+      supabase
+        .from(table as 'watched')
+        .delete()
+        .in(column as 'user_id', ids),
+    ),
     // Every turn and every drawn card, for both of us, so the decks are
     // full again. A function, because the drawn-card record is never
     // readable or writable by the app itself.

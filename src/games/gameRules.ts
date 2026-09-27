@@ -205,3 +205,59 @@ export function noticeLine(notices: readonly RecordNotice[]): string | null {
   }
   return `beat your records at ${games.map((notice) => `${gameName(notice.game)} (${notice.score})`).join(' and ')}.`
 }
+
+/* ------------------------------------------------------------------ */
+/* A run of the bait                                                   */
+/* ------------------------------------------------------------------ */
+
+export interface BaitRun {
+  chain: number
+  // The longest chain banked so far, which is what the run scores.
+  banked: number
+  lives: number
+}
+
+export const START_BAIT: BaitRun = { chain: 0, banked: 0, lives: LIVES }
+
+// Safe grows the chain. Hooked costs a life and the chain, and the third
+// life lost ends the run. An unbanked chain is lost with it.
+export function baitPick(run: BaitRun, hooked: boolean): BaitRun & { over: boolean } {
+  if (!hooked) return { ...run, chain: run.chain + 1, over: false }
+  const lives = run.lives - 1
+  return { chain: 0, banked: run.banked, lives, over: lives <= 0 }
+}
+
+// Nothing to keep at a chain of zero.
+export function canBank(run: BaitRun): boolean {
+  return run.chain > 0 && run.lives > 0
+}
+
+// Keeps the chain and starts a new one. Only the longest counts, never
+// the total banked.
+export function baitBank(run: BaitRun): BaitRun {
+  if (!canBank(run)) return run
+  return { ...run, chain: 0, banked: Math.max(run.banked, run.chain) }
+}
+
+export function baitScore(run: BaitRun): number {
+  return run.banked
+}
+
+/* ------------------------------------------------------------------ */
+/* A run of catch                                                      */
+/* ------------------------------------------------------------------ */
+
+export interface CatchRun {
+  points: number
+  lives: number
+}
+
+export const START_CATCH: CatchRun = { points: 0, lives: LIVES }
+
+// Catching a film I haven't watched is a point; one I have costs a life,
+// and the third ends the run.
+export function catchPoster(run: CatchRun, watched: boolean): CatchRun & { over: boolean } {
+  if (!watched) return { ...run, points: run.points + 1, over: false }
+  const lives = run.lives - 1
+  return { points: run.points, lives, over: lives <= 0 }
+}

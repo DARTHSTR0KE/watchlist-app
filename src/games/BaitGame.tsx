@@ -2,7 +2,17 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { BowlShapes } from '../brand/mark'
 import { prefersReducedMotion } from '../brand/coldStart'
 import { buildPosterUrl } from '../wheel/posters'
-import { LIVES, applyShuffle, baitRound, sample, shufflePlan } from './gameRules'
+import {
+  LIVES,
+  applyShuffle,
+  baitBank,
+  baitPick,
+  baitRound,
+  baitScore,
+  canBank,
+  sample,
+  shufflePlan,
+} from './gameRules'
 import type { GamePool, PosterFilm } from './gameRules'
 
 /**
@@ -103,26 +113,22 @@ export function BaitGame({ pool, onOver }: { pool: GamePool; onOver: (score: num
     if (phase !== 'pick') return
     setPicked(cardIndex)
     setPhase('reveal')
-    if (cards[cardIndex].hooked) {
-      const left = lives - 1
-      setLives(left)
-      setChain(0)
-      later(REVEAL_MS, () => {
-        if (left <= 0) onOverRef.current(banked)
-        else deal(0)
-      })
-    } else {
-      const next = chain + 1
-      setChain(next)
-      later(REVEAL_MS, () => deal(next))
-    }
+    const next = baitPick({ chain, banked, lives }, cards[cardIndex].hooked)
+    setChain(next.chain)
+    setLives(next.lives)
+    later(REVEAL_MS, () => {
+      if (next.over) onOverRef.current(baitScore(next))
+      else deal(next.chain)
+    })
   }
 
   // Keeps the chain and starts a new one, back at the gentlest round.
   const bank = () => {
-    if (chain === 0) return
-    setBanked((best) => Math.max(best, chain))
-    setChain(0)
+    const run = { chain, banked, lives }
+    if (!canBank(run)) return
+    const next = baitBank(run)
+    setBanked(next.banked)
+    setChain(next.chain)
     deal(0)
   }
 
@@ -213,7 +219,7 @@ export function BaitGame({ pool, onOver }: { pool: GamePool; onOver: (score: num
       <button
         type="button"
         className="btn-field btn-primary bait-bank"
-        disabled={chain === 0 || phase === 'reveal'}
+        disabled={!canBank({ chain, banked, lives }) || phase === 'reveal'}
         onClick={bank}
       >
         {chain === 0 ? 'Bank' : `Bank a chain of ${chain}`}
