@@ -53,13 +53,12 @@ describe('Clear all data', () => {
     expect(NEVER_CLEARED).toEqual(expect.arrayContaining(['films', 'profiles', 'td_cards', 'auth.users']))
   })
 
-  it('resets the onboarding and reunion date on the profiles it keeps', () => {
-    expect([...PROFILE_FIELDS_RESET].sort()).toEqual(['onboarded_at', 'reunion_date'])
+  it('resets the reunion date on the profiles it keeps, and never the walkthrough', () => {
+    expect([...PROFILE_FIELDS_RESET]).toEqual(['reunion_date'])
   })
 
-  it('leaves the seen-card record to the function, since the app cannot touch it', () => {
+  it('clears the seen-card record', () => {
     expect(CLEARED_BY_FUNCTION).toContain('td_draws')
-    expect(ROW_DELETES.map((entry) => entry.table)).not.toContain('td_draws')
   })
 
   it('clears recommendations in both directions', () => {
@@ -72,5 +71,41 @@ describe('Clear all data', () => {
     const tables = typedTables()
     expect(tables.length).toBeGreaterThan(10)
     expect(tables.filter((table) => !known.has(table))).toEqual([])
+  })
+})
+
+// The body of one function in pair-admin.sql.
+function sqlFunction(name: string): string {
+  const source = readFileSync(new URL('../../pair-admin.sql', import.meta.url), 'utf8')
+  const start = source.indexOf(`function public.${name}()`)
+  expect(start).toBeGreaterThan(-1)
+  const open = source.indexOf('$$', start)
+  return source.slice(open + 2, source.indexOf('$$', open + 2))
+}
+
+const keysIn = (body: string) => [...body.matchAll(/'([a-zA-Z]+)'/g)].map((match) => match[1]).sort()
+
+describe('the wipe in the database', () => {
+  const clear = sqlFunction('clear_pair_data')
+
+  it('deletes from exactly the tables on the list', () => {
+    const deleted = [...new Set([...clear.matchAll(/delete from (\w+)/g)].map((match) => match[1]))]
+    expect(deleted.sort()).toEqual(clearedTables().sort())
+  })
+
+  it('never touches the walkthrough record or anything it must keep', () => {
+    expect(clear).not.toMatch(/onboarded_at/)
+    const updates = [...clear.matchAll(/update (\w+) set (\w+)/g)].map((match) => `${match[1]}.${match[2]}`)
+    expect(updates).toEqual(['profiles.reunion_date'])
+    for (const table of NEVER_CLEARED) expect(clear).not.toMatch(new RegExp(`delete from ${table}\\b`))
+  })
+
+  it('counts afterwards exactly what it clears', () => {
+    expect(keysIn(sqlFunction('pair_data_counts'))).toEqual(keysIn(clear))
+  })
+
+  it('reaches only a partner who names me back', () => {
+    expect(sqlFunction('pair_ids')).toMatch(/p\.partner_id = auth\.uid\(\)/)
+    expect(clear).toMatch(/public\.pair_ids\(\)/)
   })
 })

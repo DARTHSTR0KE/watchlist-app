@@ -4,8 +4,6 @@ import { clearAllData, countEverything, totalRecords } from './dangerZone'
 import type { DataCounts } from './dangerZone'
 
 interface ClearAllDataProps {
-  userId: string
-  partnerId: string | null
   partnerName: string | null
   // The shell reloads what it holds; nothing left on screen should still be
   // describing data that has just gone.
@@ -24,7 +22,7 @@ function plural(count: number, one: string, many = `${one}s`) {
  * person's data as well as your own and there is no undo, so it should not
  * be reachable by two taps in the wrong place.
  */
-export function ClearAllData({ userId, partnerId, partnerName, onCleared }: ClearAllDataProps) {
+export function ClearAllData({ partnerName, onCleared }: ClearAllDataProps) {
   const [open, setOpen] = useState(false)
   const [counts, setCounts] = useState<DataCounts | null>(null)
   const [typed, setTyped] = useState('')
@@ -50,16 +48,14 @@ export function ClearAllData({ userId, partnerId, partnerName, onCleared }: Clea
     setBusy(true)
     setOutcome(null)
     try {
-      const result = await clearAllData(userId, partnerId)
+      const result = await clearAllData()
       onCleared()
       setOpen(false)
       setTyped('')
       setOutcome(
         result.survivors.length === 0
-          ? result.onboardingReset
-            ? 'Everything is gone, and the walkthrough will run again.'
-            : "Everything is gone, but the walkthrough record couldn't be cleared, so it may not run again."
-          : `Some rows a policy wouldn't let this app delete are still there: ${result.survivors.join(', ')}.`,
+          ? 'Everything is gone, from both accounts.'
+          : `Some rows are still there after the wipe: ${result.survivors.join(', ')}.`,
       )
     } catch {
       setOutcome("That didn't go through. Nothing is guaranteed to have been deleted.")
@@ -103,18 +99,14 @@ export function ClearAllData({ userId, partnerId, partnerName, onCleared }: Clea
             {plural(counts.truthOrDareTurns, 'truth or dare turn')},{' '}
             {plural(counts.seenCards, 'drawn card')} and{' '}
             {plural(counts.reunionDates, 'reunion date')} —{' '}
-            {plural(totalRecords(counts), 'record')} in all.
-          </p>
-          <p className="screen-empty">
-            That count is only what this account can see. {them}'s own watchlist, watched history,
-            wheels, presets, spins, imports, events and milestones go as well, and can't be counted from here.
+            {plural(totalRecords(counts), 'record')} in all, across both accounts.
           </p>
         </>
       )}
 
       <p className="screen-empty">
-        Kept: both names, the link between you, and the film catalogue. Neither account is deleted.
-        The walkthrough will run again for both of you.
+        Kept: both names, the link between you, the film catalogue and the walkthrough record.
+        Neither account is deleted.
       </p>
 
       <label className="clear-confirm-label" htmlFor="clear-confirm">

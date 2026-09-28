@@ -667,6 +667,31 @@ export interface Database {
         Returns: undefined
       }
       /** Security definer. Wipes our truth or dare turns and drawn cards. */
+      /** Whether the signed-in account is the master account. */
+      is_master: {
+        Args: Record<never, never>
+        Returns: boolean
+      }
+      /** Me and my partner, when each names the other. */
+      pair_ids: {
+        Args: Record<never, never>
+        Returns: string[]
+      }
+      /** Clears both accounts; rows removed per table. Never onboarded_at. */
+      clear_pair_data: {
+        Args: Record<never, never>
+        Returns: Json
+      }
+      /** What is left on both accounts, per table. */
+      pair_data_counts: {
+        Args: Record<never, never>
+        Returns: Json
+      }
+      /** Master only: clears the partner's onboarded_at. */
+      reset_partner_walkthrough: {
+        Args: Record<never, never>
+        Returns: Json
+      }
       td_clear_ours: {
         Args: Record<never, never>
         Returns: undefined

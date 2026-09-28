@@ -1,7 +1,7 @@
 /**
  * What Clear all data wipes and what it must leave alone, as plain lists.
- * dangerZone.ts deletes from these; keeping them here, away from Supabase,
- * lets the lists themselves be tested.
+ * The wipe itself is clear_pair_data in pair-admin.sql; the tests hold that
+ * function to these lists.
  */
 
 // A table cleared by deleting every row whose column holds either of our ids.
@@ -33,11 +33,12 @@ export const ROW_DELETES: readonly RowDelete[] = [
 // wheels, and the wheels after them.
 export const WHEEL_TABLES = ['custom_wheel_items', 'custom_wheels'] as const
 
-// Cleared by td_clear_ours, since the app can neither read nor delete them.
+// The truth or dare record, which the app itself can neither read nor delete.
 export const CLEARED_BY_FUNCTION = ['td_turns', 'td_draws'] as const
 
 // Columns set back to null on both profiles; the rows themselves stay.
-export const PROFILE_FIELDS_RESET = ['onboarded_at', 'reunion_date'] as const
+// Never onboarded_at: the walkthrough is reset on purpose, not by a wipe.
+export const PROFILE_FIELDS_RESET = ['reunion_date'] as const
 
 /**
  * Never touched. films is the shared catalogue, profiles are what make the

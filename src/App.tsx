@@ -1466,7 +1466,8 @@ function AuthenticatedApp() {
                 setUnseenRecommendations(0)
                 setWheelSource(null)
                 setWheelTogetherMode(null)
-                setNeedsOnboarding(true)
+                // The walkthrough stays as it was: it is reset on purpose,
+                // from the debug section, never by a wipe.
                 setScreen('import')
               }}
             />

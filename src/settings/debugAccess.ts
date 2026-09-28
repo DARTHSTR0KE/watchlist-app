@@ -1,11 +1,9 @@
-import type { Mascot } from '../brand/mascots'
-
 /**
- * The debug panels are for the goldfish's account alone. Read from the
- * profile, never a build flag, so the same build hides them from ac on
- * every device. Until the profile has loaded the mascot is null, which
- * hides them too: there is no state in which the raccoon sees them.
+ * The debug section is for the master account alone. Only a definite yes
+ * from the database shows it: while that is still being asked, or if it
+ * failed, the answer is null and nothing renders, so there is no state in
+ * which ac sees it.
  */
-export function showsDebugPanels(mascot: Mascot | null | undefined): boolean {
-  return mascot === 'goldfish'
+export function showsDebugPanels(isMaster: boolean | null): boolean {
+  return isMaster === true
 }

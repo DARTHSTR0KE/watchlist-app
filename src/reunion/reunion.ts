@@ -124,6 +124,11 @@ export async function loadReunionDate(userId: string): Promise<void> {
   setReunionState(data?.reunion_date ?? null)
 }
 
+// Just this phone's copy, once the database has already cleared the date.
+export function forgetReunionDate(): void {
+  setReunionState(null)
+}
+
 // Sets it, or clears it with null, on both of our rows at once.
 export async function saveReunionDate(date: string | null): Promise<void> {
   const { error } = await supabase.rpc('set_reunion_date', { p_date: date })

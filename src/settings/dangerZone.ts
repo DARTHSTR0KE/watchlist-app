@@ -1,8 +1,7 @@
 import { supabase } from '../lib/supabaseClient'
 import { clearPlayedRecord } from '../birthday/birthdayDate'
 import { clearSplashLineRecords } from '../social/splashLines'
-import { saveReunionDate } from '../reunion/reunion'
-import { ROW_DELETES } from './clearLists'
+import { forgetReunionDate } from '../reunion/reunion'
 
 /**
  * Clearing everything, for both accounts.
@@ -11,8 +10,8 @@ import { ROW_DELETES } from './clearLists'
  * catalogue — nothing personal lives in it and rebuilding it means
  * re-fetching every title, so it stays. `profiles` stays too: the names and
  * the partner link are what makes the two accounts a pair, and wiping the
- * data should not cost you that. Only `onboarded_at` is cleared, so the
- * walkthrough runs again on an account that is genuinely empty.
+ * data should not cost you that. `onboarded_at` stays too: the walkthrough
+ * is reset deliberately, from the master account's debug section.
  *
  * Neither account is deleted, and nothing here touches auth. The truth or
  * dare card deck stays too: it is the game, not anything either of us did.
@@ -63,102 +62,18 @@ export const EMPTY_COUNTS: DataCounts = {
   reunionDates: 0,
 }
 
-// Every count is of what the policies actually let me see, which for the
-// per-person tables is my own rows. The other person's copies go too; they
-// simply can't be counted from here, and the confirmation says so rather
-// than quoting a number that only covers half of it.
-async function countOf(table: string): Promise<number> {
-  const { count, error } = await supabase
-    .from(table as 'watched')
-    .select('*', { count: 'exact', head: true })
-  if (error) throw error
-  return count ?? 0
-}
-
-// Only a count: which cards were drawn is never readable.
-async function countSeenCards(): Promise<number> {
-  const { data, error } = await supabase.rpc('td_seen_count')
-  if (error) throw error
-  return data ?? 0
-}
-
-// Both our profiles are readable, so this counts both dates.
-async function countReunionDates(): Promise<number> {
-  const { count, error } = await supabase
-    .from('profiles')
-    .select('id', { count: 'exact', head: true })
-    .not('reunion_date', 'is', null)
-  if (error) throw error
-  return count ?? 0
-}
-
+// Both accounts, counted in the database past the per-person policies, so
+// the confirmation and the re-count see exactly what the wipe reaches.
+// Anything missing from the answer counts as zero.
 export async function countEverything(): Promise<DataCounts> {
-  const [
-    watchlist,
-    watched,
-    recommendations,
-    wheels,
-    sharedList,
-    presets,
-    spins,
-    imports,
-    nudges,
-    splashLines,
-    events,
-    milestones,
-    wheelItems,
-    gameScores,
-    recordNotices,
-    truthOrDareTurns,
-    seenCards,
-    reunionDates,
-  ] = await Promise.all([
-    countOf('watchlist_items'),
-    countOf('watched'),
-    countOf('recommendations'),
-    countOf('custom_wheels'),
-    countOf('shared_list_items'),
-    countOf('filter_presets'),
-    countOf('spins'),
-    countOf('imports'),
-    countOf('nudges'),
-    // Both directions are visible to either of us, so this one counts
-    // the other person's line too.
-    countOf('splash_lines'),
-    // Only my own: each of us reads our own stream and milestones.
-    countOf('events'),
-    countOf('milestones'),
-    // Visible through the wheels they belong to, ours and any shared.
-    countOf('custom_wheel_items'),
-    // Both of ours: the record is between us.
-    countOf('game_scores'),
-    // Mine only.
-    countOf('game_record_notices'),
-    // Every turn either of us played; both of us can read them.
-    countOf('td_turns'),
-    countSeenCards(),
-    countReunionDates(),
-  ])
-  return {
-    watchlist,
-    watched,
-    recommendations,
-    wheels,
-    sharedList,
-    presets,
-    spins,
-    imports,
-    nudges,
-    splashLines,
-    events,
-    milestones,
-    wheelItems,
-    gameScores,
-    recordNotices,
-    truthOrDareTurns,
-    seenCards,
-    reunionDates,
+  const { data, error } = await supabase.rpc('pair_data_counts')
+  if (error) throw error
+  const counts = (data ?? {}) as Partial<Record<keyof DataCounts, number>>
+  const result = { ...EMPTY_COUNTS }
+  for (const key of Object.keys(EMPTY_COUNTS) as (keyof DataCounts)[]) {
+    result[key] = Number(counts[key] ?? 0)
   }
+  return result
 }
 
 export function totalRecords(counts: DataCounts): number {
@@ -166,17 +81,15 @@ export function totalRecords(counts: DataCounts): number {
 }
 
 export interface ClearResult {
-  // What the counts came back as afterwards. Anything above zero is a row
-  // a policy would not let this client delete.
+  // What the counts came back as afterwards, across both accounts.
+  // Anything above zero survived the wipe.
   remaining: DataCounts
   survivors: string[]
-  onboardingReset: boolean
   // The birthday video's record lives in localStorage, not the database.
   birthdayReset: boolean
   // The prompt's skip and the cached line, also in localStorage.
   splashLineReset: boolean
 }
-
 const LABELS: Record<keyof DataCounts, string> = {
   watchlist: 'watchlist',
   watched: 'watched',
@@ -199,50 +112,24 @@ const LABELS: Record<keyof DataCounts, string> = {
 }
 
 /**
- * Deletes are checked by counting again afterwards rather than trusting the
- * response: a DELETE matching no rows succeeds in PostgREST exactly as a
- * DELETE that removed a thousand does. If a policy only permits deleting
- * your own rows, the other account's survive silently — so the caller is
- * told what is still there instead of being shown a clean result.
+ * One database function clears both accounts. Deleting from here could
+ * only ever reach my own rows: the delete policies are per person, and a
+ * DELETE that matches nothing succeeds exactly like one that removed
+ * everything. The re-count afterwards runs in the database too, so it sees
+ * both accounts rather than only what my policies let me see.
+ *
+ * The walkthrough record (onboarded_at) is deliberately left alone.
  */
-export async function clearAllData(userId: string, partnerId: string | null): Promise<ClearResult> {
-  const ids = partnerId ? [userId, partnerId] : [userId]
+export async function clearAllData(): Promise<ClearResult> {
+  const { error } = await supabase.rpc('clear_pair_data')
+  if (error) throw error
 
-  // Wheel items are keyed by wheel, not by person, so the wheels have to be
-  // looked up before they go or their films are orphaned.
-  const { data: wheelRows } = await supabase.from('custom_wheels').select('id').in('user_id', ids)
-  const wheelIds = (wheelRows ?? []).map((row) => row.id)
-  if (wheelIds.length > 0) {
-    await supabase.from('custom_wheel_items').delete().in('wheel_id', wheelIds)
-  }
+  // The database has already cleared both dates; this empties the copy
+  // this phone keeps, so the warmth goes at once.
+  forgetReunionDate()
 
-  await Promise.all([
-    // Every per-person table, by whichever column names us: see clearLists.
-    ...ROW_DELETES.map(({ table, column }) =>
-      supabase
-        .from(table as 'watched')
-        .delete()
-        .in(column as 'user_id', ids),
-    ),
-    // Every turn and every drawn card, for both of us, so the decks are
-    // full again. A function, because the drawn-card record is never
-    // readable or writable by the app itself.
-    supabase.rpc('td_clear_ours'),
-    // On both our profiles at once, and the copy this phone keeps.
-    saveReunionDate(null).catch(() => undefined),
-  ])
-  await supabase.from('custom_wheels').delete().in('user_id', ids)
-
-  // Asked for back, so "the walkthrough will run again" is something we
-  // know rather than something we hope.
-  const { data: reset } = await supabase
-    .from('profiles')
-    .update({ onboarded_at: null })
-    .in('id', ids)
-    .select('id')
-
-  // Not a table, but it is data about this account all the same, and a
-  // wipe that left it behind would quietly skip the video on the day.
+  // Not tables, but data on this phone all the same. A wipe that left the
+  // birthday record behind would quietly skip the video on the day.
   const birthdayReset = clearPlayedRecord()
   const splashLineReset = clearSplashLineRecords()
 
@@ -251,11 +138,5 @@ export async function clearAllData(userId: string, partnerId: string | null): Pr
     .filter((key) => remaining[key] > 0)
     .map((key) => `${remaining[key]} in ${LABELS[key]}`)
 
-  return {
-    remaining,
-    survivors,
-    onboardingReset: (reset ?? []).length > 0,
-    birthdayReset,
-    splashLineReset,
-  }
+  return { remaining, survivors, birthdayReset, splashLineReset }
 }

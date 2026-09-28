@@ -21,6 +21,8 @@ import { QuietFailure } from './QuietFailure'
 import { SceneCheck } from './SceneCheck'
 import { BirthdayCheck } from './BirthdayCheck'
 import { showsDebugPanels } from './debugAccess'
+import { loadIsMaster } from './masterAccount'
+import { ResetWalkthrough } from './ResetWalkthrough'
 import type { Mascot } from '../brand/mascots'
 import { loadWatchlistSummary } from '../import/watchlistWrites'
 import type { WatchlistSummary } from '../import/watchlistWrites'
@@ -70,6 +72,17 @@ export function SettingsScreen({
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [showIntro, setShowIntro] = useState(false)
+  // Null until the database answers; only a yes shows the debug section.
+  const [isMaster, setIsMaster] = useState<boolean | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    void loadIsMaster().then((answer) => {
+      if (!cancelled) setIsMaster(answer)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [userId])
   const [summary, setSummary] = useState<WatchlistSummary | null>(null)
   const [spins, setSpins] = useState<number | null>(null)
   // Whether the counts have come back either way. A failed count stays
@@ -249,21 +262,20 @@ export function SettingsScreen({
 
       {/* Last of the real settings, and the only thing here that can't be undone. */}
       <ClearAllData
-        userId={userId}
-        partnerId={partnerId}
         partnerName={partnerName}
         onCleared={onDataCleared}
       />
 
-      {/* Below everything, and on the goldfish's account only. */}
-      {showsDebugPanels(myMascot) && (
+      {/* Below everything, and on the master account only. */}
+      {showsDebugPanels(isMaster) && (
         <div className="debug-panels">
           <section>
-            <SectionLabel>Goldfish only: debug</SectionLabel>
+            <SectionLabel>Master account: debug</SectionLabel>
             <p className="filter-hint">
-              Only your account sees this section. ac never does, on any device.
+              Only your account sees this section. {partnerName ?? 'ac'} never does, on any device.
             </p>
           </section>
+          <ResetWalkthrough partnerName={partnerName} />
           {/* TEMPORARY: for confirming the idle scenes. */}
           <SceneCheck />
           {/* TEMPORARY: for diagnosing the birthday video. */}
