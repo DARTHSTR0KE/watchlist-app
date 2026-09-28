@@ -20,7 +20,7 @@ import { giftWindow } from '../gifts/giftWindow'
 import { QuietFailure } from './QuietFailure'
 import { SceneCheck } from './SceneCheck'
 import { BirthdayCheck } from './BirthdayCheck'
-import { showsDebugPanels } from './debugAccess'
+import { showsMasterOnly } from './debugAccess'
 import { loadIsMaster } from './masterAccount'
 import { ResetWalkthrough } from './ResetWalkthrough'
 import type { Mascot } from '../brand/mascots'
@@ -260,14 +260,17 @@ export function SettingsScreen({
         </button>
       </section>
 
-      {/* Last of the real settings, and the only thing here that can't be undone. */}
-      <ClearAllData
-        partnerName={partnerName}
-        onCleared={onDataCleared}
-      />
+      {/* Master account only, and the only thing here that can't be undone.
+          ac never sees it; the database refuses it from her account too. */}
+      {showsMasterOnly(isMaster) && (
+        <ClearAllData
+          partnerName={partnerName}
+          onCleared={onDataCleared}
+        />
+      )}
 
       {/* Below everything, and on the master account only. */}
-      {showsDebugPanels(isMaster) && (
+      {showsMasterOnly(isMaster) && (
         <div className="debug-panels">
           <section>
             <SectionLabel>Master account: debug</SectionLabel>

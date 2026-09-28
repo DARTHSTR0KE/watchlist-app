@@ -104,6 +104,10 @@ describe('the wipe in the database', () => {
     expect(keysIn(sqlFunction('pair_data_counts'))).toEqual(keysIn(clear))
   })
 
+  it('refuses anyone but the master account', () => {
+    expect(clear).toMatch(/if not public\.is_master\(\) then raise exception/)
+  })
+
   it('reaches only a partner who names me back', () => {
     expect(sqlFunction('pair_ids')).toMatch(/p\.partner_id = auth\.uid\(\)/)
     expect(clear).toMatch(/public\.pair_ids\(\)/)

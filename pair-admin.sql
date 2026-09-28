@@ -31,8 +31,9 @@ as $$
   )], null)
 $$;
 
--- Everything either of us made, on both accounts. Returns how many rows
--- went from each table. onboarded_at is never touched.
+-- Everything either of us made, on both accounts, from the master account
+-- only. Returns how many rows went from each table. onboarded_at is never
+-- touched.
 create or replace function public.clear_pair_data() returns jsonb
 language plpgsql security definer set search_path = public
 as $$
@@ -41,7 +42,7 @@ declare
   gone jsonb := '{}';
   n int;
 begin
-  if auth.uid() is null then raise exception 'not signed in'; end if;
+  if not public.is_master() then raise exception 'only the master account can clear all data'; end if;
   delete from custom_wheel_items where wheel_id in (select id from custom_wheels where user_id = any (us));
   get diagnostics n = row_count; gone := gone || jsonb_build_object('wheelItems', n);
   delete from custom_wheels where user_id = any (us); get diagnostics n = row_count; gone := gone || jsonb_build_object('wheels', n);
