@@ -20,6 +20,7 @@ import { giftWindow } from '../gifts/giftWindow'
 import { QuietFailure } from './QuietFailure'
 import { SceneCheck } from './SceneCheck'
 import { BirthdayCheck } from './BirthdayCheck'
+import { showsDebugPanels } from './debugAccess'
 import type { Mascot } from '../brand/mascots'
 import { loadWatchlistSummary } from '../import/watchlistWrites'
 import type { WatchlistSummary } from '../import/watchlistWrites'
@@ -232,13 +233,6 @@ export function SettingsScreen({
 
       <QuietFailure />
 
-      {/* TEMPORARY: for confirming the idle scenes. Comes out once all ten
-          have been seen. */}
-      <SceneCheck />
-
-      {/* TEMPORARY: for diagnosing the birthday video. */}
-      <BirthdayCheck />
-
       <section>
         <SectionLabel>Help</SectionLabel>
         <button type="button" className="btn-field" onClick={() => setShowIntro(true)}>
@@ -253,13 +247,29 @@ export function SettingsScreen({
         </button>
       </section>
 
-      {/* Last on the screen, and the only thing here that can't be undone. */}
+      {/* Last of the real settings, and the only thing here that can't be undone. */}
       <ClearAllData
         userId={userId}
         partnerId={partnerId}
         partnerName={partnerName}
         onCleared={onDataCleared}
       />
+
+      {/* Below everything, and on the goldfish's account only. */}
+      {showsDebugPanels(myMascot) && (
+        <div className="debug-panels">
+          <section>
+            <SectionLabel>Goldfish only: debug</SectionLabel>
+            <p className="filter-hint">
+              Only your account sees this section. ac never does, on any device.
+            </p>
+          </section>
+          {/* TEMPORARY: for confirming the idle scenes. */}
+          <SceneCheck />
+          {/* TEMPORARY: for diagnosing the birthday video. */}
+          <BirthdayCheck />
+        </div>
+      )}
 
       {/* Replaying from here never records the day as spent, so it can't
           stop the real one firing. */}

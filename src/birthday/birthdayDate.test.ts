@@ -87,3 +87,29 @@ describe('clearing the test-burnt day (temporary)', () => {
     vi.unstubAllGlobals()
   })
 })
+
+describe('clearing the played record', () => {
+  it('removes the key rather than writing to it, and leaves an absent one absent', async () => {
+    const { vi } = await import('vitest')
+    const { clearPlayedRecord } = await import('./birthdayDate')
+    const stored = new Map<string, string>()
+    const writes: string[] = []
+    vi.stubGlobal('window', {
+      localStorage: {
+        getItem: (key: string) => stored.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          writes.push(key)
+          stored.set(key, value)
+        },
+        removeItem: (key: string) => void stored.delete(key),
+      },
+    })
+    expect(clearPlayedRecord()).toBe(true)
+    expect(stored.has('spin-birthday-played')).toBe(false)
+    stored.set('spin-birthday-played', '2026-09-30')
+    expect(clearPlayedRecord()).toBe(true)
+    expect(stored.has('spin-birthday-played')).toBe(false)
+    expect(writes).toEqual([])
+    vi.unstubAllGlobals()
+  })
+})
