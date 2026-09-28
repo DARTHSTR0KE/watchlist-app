@@ -37,7 +37,7 @@ export const WHEEL_TABLES = ['custom_wheel_items', 'custom_wheels'] as const
 export const CLEARED_BY_FUNCTION = ['td_turns', 'td_draws'] as const
 
 // Columns set back to null on both profiles; the rows themselves stay.
-// Never onboarded_at: the walkthrough is reset on purpose, not by a wipe.
+// Nothing else: the old walkthrough column is kept in the database but unused.
 export const PROFILE_FIELDS_RESET = ['reunion_date'] as const
 
 /**

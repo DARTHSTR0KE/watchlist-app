@@ -10,8 +10,7 @@ import { forgetReunionDate } from '../reunion/reunion'
  * catalogue — nothing personal lives in it and rebuilding it means
  * re-fetching every title, so it stays. `profiles` stays too: the names and
  * the partner link are what makes the two accounts a pair, and wiping the
- * data should not cost you that. `onboarded_at` stays too: the walkthrough
- * is reset deliberately, from the master account's debug section.
+ * data should not cost you that.
  *
  * Neither account is deleted, and nothing here touches auth. The truth or
  * dare card deck stays too: it is the game, not anything either of us did.
@@ -117,8 +116,6 @@ const LABELS: Record<keyof DataCounts, string> = {
  * DELETE that matches nothing succeeds exactly like one that removed
  * everything. The re-count afterwards runs in the database too, so it sees
  * both accounts rather than only what my policies let me see.
- *
- * The walkthrough record (onboarded_at) is deliberately left alone.
  */
 export async function clearAllData(): Promise<ClearResult> {
   const { error } = await supabase.rpc('clear_pair_data')

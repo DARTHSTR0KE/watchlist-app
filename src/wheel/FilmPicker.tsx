@@ -353,7 +353,7 @@ export function FilmPicker({
                 <span className="picker-person-name">{person.name}</span>
                 <button
                   type="button"
-                  className="onboard-quiet"
+                  className="quiet-button"
                   onClick={() => {
                     setPerson(null)
                     setFilmography(null)

@@ -66,8 +66,7 @@ import { noticeLine } from './games/gameRules'
 import type { GameId, RecordNotice } from './games/gameRules'
 import { RecommendedScreen } from './social/RecommendedScreen'
 import { SettingsScreen } from './settings/SettingsScreen'
-import { Onboarding } from './onboarding/Onboarding'
-import { loadMyProfile, markOnboarded } from './onboarding/onboardingState'
+import { loadMyProfile } from './profile/myProfile'
 import { countUnseenRecommendations } from './social/recommendations'
 import { SharedListScreen } from './social/SharedListScreen'
 import { TogetherChooser } from './social/TogetherChooser'
@@ -1137,7 +1136,6 @@ function AuthenticatedApp() {
   // Three states, not one null: still loading, read, or unreadable. A
   // missing row is a real condition to report, not an empty name.
   const [profileStatus, setProfileStatus] = useState<'loading' | 'ready' | 'unreadable'>('loading')
-  const [needsOnboarding, setNeedsOnboarding] = useState(false)
   const [partnerId, setPartnerId] = useState<string | null>(null)
   // Set only by "Spin this list"; cleared by any ordinary navigation, so
   // the wheel doesn't keep reopening on the shared list afterwards.
@@ -1202,9 +1200,6 @@ function AuthenticatedApp() {
       setMyName(profile?.displayName ?? null)
       setMyMascot(profile?.mascot ?? null)
       setProfileStatus(profile ? 'ready' : 'unreadable')
-      // A profile that can't be read is not evidence the walkthrough is
-      // due, so it stays out of the way rather than showing on every open.
-      if (profile && profile.onboardedAt === null) setNeedsOnboarding(true)
       if (!has) setScreen('import')
       setUnseenRecommendations(unseen)
       if (partner) {
@@ -1466,8 +1461,6 @@ function AuthenticatedApp() {
                 setUnseenRecommendations(0)
                 setWheelSource(null)
                 setWheelTogetherMode(null)
-                // The walkthrough stays as it was: it is reset on purpose,
-                // from the debug section, never by a wipe.
                 setScreen('import')
               }}
             />
@@ -1494,26 +1487,7 @@ function AuthenticatedApp() {
           />
         )}
 
-        {!linePrompt && needsOnboarding && (
-          <Onboarding
-            partnerName={partnerName}
-            onDone={() => {
-              setNeedsOnboarding(false)
-              // Finishing and skipping are the same commitment; a failed
-              // write just means it is offered once more.
-              void markOnboarded(userId).catch(() => {})
-            }}
-            onGoToImport={() => {
-              setNeedsOnboarding(false)
-              void markOnboarded(userId).catch(() => {})
-              setScreen('import')
-            }}
-          />
-        )}
-
-        {/* The walkthrough comes first: a new account has nothing to be
-            asked about anyway. */}
-        {giftPrompt && !linePrompt && !needsOnboarding && (
+        {giftPrompt && !linePrompt && (
           <GiftPrompt
             partnerName={partnerName}
             onLeaveSomething={() => {
@@ -1530,7 +1504,6 @@ function AuthenticatedApp() {
 
         {!linePrompt &&
           !giftPrompt &&
-          !needsOnboarding &&
           !promptDismissed &&
           // One at a time: the rating step stands in front of the next
           // film's question until it is answered either way.

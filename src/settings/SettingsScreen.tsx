@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { IdleScene } from '../brand/PairScene'
 import { useAuth } from '../auth/AuthProvider'
 import { ensureAudioContext, playTick, useMuted } from '../wheel/tickSound'
-import { NoRowsAffected, saveDisplayName } from '../onboarding/onboardingState'
+import { NoRowsAffected, saveDisplayName } from '../profile/myProfile'
 import { BirthdayVideo } from '../birthday/BirthdayVideo'
 import { Empty, Screen, SectionLabel } from '../ui/Screen'
 import { Ticket } from '../ui/Ticket'
@@ -22,7 +22,6 @@ import { SceneCheck } from './SceneCheck'
 import { BirthdayCheck } from './BirthdayCheck'
 import { showsMasterOnly } from './debugAccess'
 import { loadIsMaster } from './masterAccount'
-import { ResetWalkthrough } from './ResetWalkthrough'
 import type { Mascot } from '../brand/mascots'
 import { loadWatchlistSummary } from '../import/watchlistWrites'
 import type { WatchlistSummary } from '../import/watchlistWrites'
@@ -278,7 +277,6 @@ export function SettingsScreen({
               Only your account sees this section. {partnerName ?? 'ac'} never does, on any device.
             </p>
           </section>
-          <ResetWalkthrough partnerName={partnerName} />
           {/* TEMPORARY: for confirming the idle scenes. */}
           <SceneCheck />
           {/* TEMPORARY: for diagnosing the birthday video. */}
