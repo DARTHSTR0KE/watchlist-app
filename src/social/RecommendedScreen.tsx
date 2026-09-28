@@ -32,7 +32,6 @@ interface RecommendedScreenProps {
   partnerName: string | null
   // Their animal, read the same way from profiles.mascot.
   partnerMascot: MascotName | null
-  myMascot: MascotName | null
   onSeen: () => void
 }
 
@@ -45,7 +44,6 @@ export function RecommendedScreen({
   partnerId,
   partnerName,
   partnerMascot,
-  myMascot,
   onSeen,
 }: RecommendedScreenProps) {
   const [received, setReceived] = useState<Recommendation[]>([])
@@ -243,7 +241,8 @@ export function RecommendedScreen({
       {message && <Empty>{message}</Empty>}
 
       {received.length === 0 ? (
-        <Empty art="raccoon">Nothing yet. Anything {subjectName(partnerName)}{' '}
+        // About what they send, so their animal, whichever of us is looking.
+        <Empty art={partnerMascot ?? undefined}>Nothing yet. Anything {subjectName(partnerName)}{' '}
           {agree(partnerName, 'sends', 'send')} lands here.</Empty>
       ) : (
         <Rows>
@@ -301,7 +300,8 @@ export function RecommendedScreen({
       )}
 
       <SectionLabel>
-        <Mascot who={myMascot} size={20} bowl className="mascot-inline" /> Sent to {them}
+        {/* Names them, so their animal: the same rule as the nudge label. */}
+        <Mascot who={partnerMascot} size={20} bowl className="mascot-inline" /> Sent to {them}
       </SectionLabel>
       {sent.length === 0 ? (
         <Empty>Nothing outstanding — {subjectName(partnerName)}{' '}

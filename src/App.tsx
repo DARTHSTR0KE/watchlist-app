@@ -1478,7 +1478,6 @@ function AuthenticatedApp() {
               partnerId={partnerId}
               partnerName={partnerName}
               partnerMascot={partnerMascot}
-              myMascot={myMascot}
               onSeen={() => setUnseenRecommendations(0)}
             />
           )}
