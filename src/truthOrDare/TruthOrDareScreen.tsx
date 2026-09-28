@@ -524,7 +524,9 @@ function CardInPlay({
   const [problem, setProblem] = useState<string | null>(null)
   const theirs = turn.player !== userId
   const words = text.trim()
-  const ready = turn.kind === 'truth' ? words.length > 0 : words.length > 0 || photo !== null
+  // Words and a photo are both optional: it may have been said out loud,
+  // or done right there in person.
+  const bare = words.length === 0 && photo === null
 
   // Let go of the preview once it is replaced or the card is gone.
   const previewUrl = photo?.preview ?? null
@@ -567,7 +569,7 @@ function CardInPlay({
         className="td-answer"
         rows={3}
         value={text}
-        placeholder={turn.kind === 'truth' ? 'The truth…' : 'How it went…'}
+        placeholder={turn.kind === 'truth' ? 'The truth… (optional)' : 'How it went… (optional)'}
         onChange={(event) => setText(event.target.value)}
         aria-label="Your answer"
       />
@@ -581,7 +583,7 @@ function CardInPlay({
               setPhoto(file ? { file, preview: URL.createObjectURL(file) } : null)
             }}
           />
-          {photo ? 'Change the photo' : 'Add a photo'}
+          {photo ? 'Change the photo' : 'Add a photo (optional)'}
         </label>
       )}
       {photo && <img className="td-photo" src={photo.preview} alt="The photo you are sending" />}
@@ -589,14 +591,16 @@ function CardInPlay({
       <button
         type="button"
         className="btn-primary"
-        disabled={!ready || working}
+        disabled={working}
         onClick={() => void answer()}
       >
         {working
           ? 'Sending…'
           : turn.mode === 'virtual'
-            ? `Answer and send to ${subjectName(partnerName)}`
-            : 'Answer'}
+            ? `${bare ? 'Mark as answered' : 'Answer'} and send to ${subjectName(partnerName)}`
+            : bare
+              ? 'Mark as answered'
+              : 'Answer'}
       </button>
       <button
         type="button"
@@ -624,9 +628,12 @@ function PlayingCard({ turn }: { turn: Turn }) {
   )
 }
 
-// How a finished turn was answered: words, a photo, or a pass.
+// How a finished turn was answered: words, a photo, neither, or a pass.
 function Answer({ turn }: { turn: Turn }) {
   if (turn.status === 'passed') return <p className="td-passed">Passed</p>
+  if (turn.status === 'answered' && !turn.answerText && !turn.answerPhoto) {
+    return <p className="td-passed">Answered</p>
+  }
   return (
     <>
       {turn.answerText && <p className="td-answer-text">{turn.answerText}</p>}
