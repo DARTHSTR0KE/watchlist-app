@@ -200,10 +200,11 @@ async function firstAcceptedRecommendation(userId: string): Promise<Occurrence |
 
 // Nudges replace each other in their own table, so only the event stream
 // remembers the first one.
-async function firstEvent(type: string): Promise<Occurrence | null> {
+async function firstEvent(type: string, userId: string): Promise<Occurrence | null> {
   const { data, error } = await supabase
     .from('events')
     .select('film_id, created_at')
+    .eq('user_id', userId)
     .eq('type', type)
     .order('created_at', { ascending: true })
     .limit(1)
@@ -230,7 +231,10 @@ async function earliestOf(table: 'spins' | 'imports' | 'events', userId: string)
  * found is history rather than news, so it goes in already seen.
  */
 export async function recordMilestones(userId: string, previousOpenAt: string | null): Promise<void> {
-  const { data: existingRows, error } = await supabase.from('milestones').select('key')
+  const { data: existingRows, error } = await supabase
+    .from('milestones')
+    .select('key')
+    .eq('user_id', userId)
   if (error) throw DbError.from(error)
   const existing = new Set((existingRows ?? []).map((row) => row.key))
 
@@ -245,8 +249,8 @@ export async function recordMilestones(userId: string, previousOpenAt: string | 
       settle(spinOccurrences(userId), []),
       settle(togetherOccurrences(), []),
       settle(firstAcceptedRecommendation(userId), null),
-      settle(firstEvent('nudge_sent'), null),
-      settle(firstEvent('secret_found'), null),
+      settle(firstEvent('nudge_sent', userId), null),
+      settle(firstEvent('secret_found', userId), null),
       settle(earliestOf('spins', userId), null),
       settle(earliestOf('imports', userId), null),
       settle(earliestOf('events', userId), null),
@@ -279,10 +283,11 @@ export async function recordMilestones(userId: string, previousOpenAt: string | 
 
 // One unseen milestone, the earliest reached, marked seen as it is taken.
 // Two reached at once surface on two opens rather than as a list.
-export async function takeUnseenMilestone(): Promise<MilestoneKey | null> {
+export async function takeUnseenMilestone(userId: string): Promise<MilestoneKey | null> {
   const { data, error } = await supabase
     .from('milestones')
     .select('key')
+    .eq('user_id', userId)
     .is('seen_at', null)
     .order('reached_at', { ascending: true })
     .limit(1)
@@ -292,6 +297,7 @@ export async function takeUnseenMilestone(): Promise<MilestoneKey | null> {
   const { error: seenError } = await supabase
     .from('milestones')
     .update({ seen_at: new Date().toISOString() })
+    .eq('user_id', userId)
     .eq('key', data.key)
     .is('seen_at', null)
   // Still shown; it just may come round once more.

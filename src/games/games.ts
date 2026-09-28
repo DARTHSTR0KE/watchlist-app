@@ -11,14 +11,17 @@ import type { GameId, GamePool, GameScore, PosterFilm, RecordNotice } from './ga
  * of us a notice when a record of theirs falls.
  */
 
-// Both watchlists for the safe posters, my watched films for the rest.
-export async function loadGamePool(userId: string, partnerId: string | null): Promise<GamePool> {
-  const [mine, theirs, watched] = await Promise.all([
+/**
+ * Everything from the player's own library, never the other person's: the
+ * game is recognising your own films, and a hook from someone else's
+ * history is one you could only guess at.
+ */
+export async function loadGamePool(userId: string): Promise<GamePool> {
+  const [watchlist, watched] = await Promise.all([
     loadWatchlistPicker(userId),
-    partnerId ? loadWatchlistPicker(partnerId) : Promise.resolve([]),
     loadWatchedPicker(userId),
   ])
-  return buildPool(mine, theirs, watched)
+  return buildPool(watchlist, watched)
 }
 
 // Fetched before play starts, so a poster never falls in blank.

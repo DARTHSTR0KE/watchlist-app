@@ -36,12 +36,13 @@ async function loadPartnerOpen(
 
 // Today's opens so far, by the device's own midnight. Read from the event
 // stream rather than kept on the phone, so either device counts the same.
-async function countOpensToday(now: Date): Promise<number> {
+async function countOpensToday(userId: string, now: Date): Promise<number> {
   const midnight = new Date(now)
   midnight.setHours(0, 0, 0, 0)
   const { count, error } = await supabase
     .from('events')
     .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
     .eq('type', 'app_open')
     .gte('created_at', midnight.toISOString())
   if (error) throw DbError.from(error)
@@ -78,7 +79,7 @@ export function loadOpenSignals(userId: string): Promise<OpenSignals> {
       reportQuietly('Stamping last_open_at', error)
       return undefined
     }),
-    countOpensToday(openedAt).catch((error: unknown) => {
+    countOpensToday(userId, openedAt).catch((error: unknown) => {
       reportQuietly("Counting today's opens", error)
       return null
     }),
@@ -133,7 +134,7 @@ export async function recordOpen(userId: string): Promise<OpenResult | null> {
       reportQuietly('Recording milestones', error),
     )
   }
-  const milestone = await takeUnseenMilestone().catch((error: unknown) => {
+  const milestone = await takeUnseenMilestone(userId).catch((error: unknown) => {
     reportQuietly('Reading milestones', error)
     return null
   })

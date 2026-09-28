@@ -13,7 +13,6 @@ import { BaitGame } from './BaitGame'
 interface GameScreenProps {
   game: GameId
   userId: string
-  partnerId: string | null
   partnerName: string | null
   onBack: () => void
   onGoToImport: () => void
@@ -48,7 +47,6 @@ const PRELOAD = 36
 export function GameScreen({
   game,
   userId,
-  partnerId,
   partnerName,
   onBack,
   onGoToImport,
@@ -59,7 +57,7 @@ export function GameScreen({
 
   useEffect(() => {
     let cancelled = false
-    void Promise.all([loadGamePool(userId, partnerId), loadScores().catch(() => [] as GameScore[])])
+    void Promise.all([loadGamePool(userId), loadScores().catch(() => [] as GameScore[])])
       .then(async ([loaded, rows]) => {
         if (cancelled) return
         setScores(rows)
@@ -83,7 +81,7 @@ export function GameScreen({
     return () => {
       cancelled = true
     }
-  }, [userId, partnerId])
+  }, [userId])
 
   const finish = (score: number) => {
     setPhase({ kind: 'over', score, result: 'saving' })
@@ -127,7 +125,7 @@ export function GameScreen({
         <div className="game-panel">
           <EmptyArt kind={game === 'catch' ? 'raccoon' : 'goldfish'} />
           <p className="game-message">
-            Nothing to play with yet. This needs at least {MIN_SAFE} films on a watchlist and{' '}
+            Nothing to play with yet. This needs at least {MIN_SAFE} films on your watchlist and{' '}
             {MIN_WATCHED} you've watched, with posters.
           </p>
           <button type="button" className="btn-field btn-primary" onClick={onGoToImport}>

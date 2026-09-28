@@ -1389,7 +1389,6 @@ function AuthenticatedApp() {
             <GameScreen
               game={playingGame}
               userId={userId}
-              partnerId={partnerId}
               partnerName={partnerName}
               onBack={() => setPlayingGame(null)}
               onGoToImport={() => {

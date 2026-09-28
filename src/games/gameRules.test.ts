@@ -27,22 +27,22 @@ import type { GameScore } from './gameRules'
 const film = (id: string, posterPath: string | null = `/${id}.jpg`) => ({ id, title: id, posterPath })
 
 describe('buildPool', () => {
-  it('takes safe posters from both watchlists, minus anything I have watched', () => {
-    const pool = buildPool([film('a'), film('b')], [film('b'), film('c')], [film('c'), film('w')])
+  it("takes safe posters from the player's own watchlist, minus anything they have watched", () => {
+    const pool = buildPool([film('a'), film('b'), film('c')], [film('c'), film('w')])
     expect(pool.safe.map((f) => f.id).sort()).toEqual(['a', 'b'])
     expect(pool.watched.map((f) => f.id).sort()).toEqual(['c', 'w'])
   })
 
   it('leaves out films without a poster', () => {
-    const pool = buildPool([film('a', null)], [], [film('w', null)])
+    const pool = buildPool([film('a', null)], [film('w', null)])
     expect(pool).toEqual({ safe: [], watched: [] })
   })
 
   it('is not ready on a fresh account', () => {
-    expect(poolReady(buildPool([], [], []))).toBe(false)
-    const lots = Array.from({ length: 6 }, (_, i) => film(`s${i}`))
-    expect(poolReady(buildPool(lots, [], []))).toBe(false)
-    expect(poolReady(buildPool(lots, [], [film('w1'), film('w2'), film('w3')]))).toBe(true)
+    expect(poolReady(buildPool([], []))).toBe(false)
+    const lots = Array.from({ length: 8 }, (_, i) => film(`s${i}`))
+    expect(poolReady(buildPool(lots, []))).toBe(false)
+    expect(poolReady(buildPool(lots, [film('w1'), film('w2'), film('w3')]))).toBe(true)
   })
 })
 

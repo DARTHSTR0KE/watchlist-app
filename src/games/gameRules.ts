@@ -28,25 +28,21 @@ export interface PosterFilm {
 /* ------------------------------------------------------------------ */
 
 export interface GamePool {
-  // From either watchlist, and not something I have watched.
+  // From the player's own watchlist, and not something they have watched.
   safe: PosterFilm[]
-  // From my own watched table: the ones that cost a life.
+  // From the player's own watched films: the ones that cost a life.
   watched: PosterFilm[]
 }
 
 type Listed = { id: string; title: string; posterPath: string | null }
 
 // Only films with a poster: a game played at speed can't use a title card.
-export function buildPool(
-  myWatchlist: readonly Listed[],
-  theirWatchlist: readonly Listed[],
-  myWatched: readonly Listed[],
-): GamePool {
+export function buildPool(myWatchlist: readonly Listed[], myWatched: readonly Listed[]): GamePool {
   const withPoster = (film: Listed): film is PosterFilm => film.posterPath !== null
   const watched = new Map<string, PosterFilm>()
   for (const film of myWatched.filter(withPoster)) watched.set(film.id, film)
   const safe = new Map<string, PosterFilm>()
-  for (const film of [...myWatchlist, ...theirWatchlist].filter(withPoster)) {
+  for (const film of myWatchlist.filter(withPoster)) {
     if (!watched.has(film.id)) safe.set(film.id, film)
   }
   return { safe: [...safe.values()], watched: [...watched.values()] }
