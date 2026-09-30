@@ -53,7 +53,7 @@ describe('Clear all data', () => {
     expect(NEVER_CLEARED).toEqual(expect.arrayContaining(['films', 'profiles', 'td_cards', 'auth.users']))
   })
 
-  it('resets the reunion date on the profiles it keeps, and nothing else', () => {
+  it('resets the reunion date on the profiles it keeps, and never the walkthrough', () => {
     expect([...PROFILE_FIELDS_RESET]).toEqual(['reunion_date'])
   })
 
@@ -93,7 +93,7 @@ describe('the wipe in the database', () => {
     expect(deleted.sort()).toEqual(clearedTables().sort())
   })
 
-  it('never touches onboarded_at or anything it must keep', () => {
+  it('never touches the walkthrough record or anything it must keep', () => {
     expect(clear).not.toMatch(/onboarded_at/)
     const updates = [...clear.matchAll(/update (\w+) set (\w+)/g)].map((match) => `${match[1]}.${match[2]}`)
     expect(updates).toEqual(['profiles.reunion_date'])

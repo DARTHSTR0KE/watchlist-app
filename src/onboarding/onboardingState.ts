@@ -4,6 +4,8 @@ import type { Mascot } from '../brand/mascots'
 
 export interface MyProfile {
   displayName: string | null
+  // Null means the walkthrough has never been finished or skipped.
+  onboardedAt: string | null
   // Mine, for anywhere the app refers to me rather than to them.
   mascot: Mascot | null
 }
@@ -21,19 +23,34 @@ export class NoRowsAffected extends Error {
   }
 }
 
-// My own profile row: the name and animal the app refers to me by.
+// Against the user id rather than this device, so signing in on a phone
+// after a laptop doesn't start the walkthrough again.
 export async function loadMyProfile(userId: string): Promise<MyProfile | null> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('display_name, mascot')
+    .select('display_name, onboarded_at, mascot')
     .eq('id', userId)
     .maybeSingle()
   if (error) throw error
   if (!data) return null
   return {
     displayName: data.display_name,
+    onboardedAt: data.onboarded_at,
     mascot: parseMascot(data.mascot),
   }
+}
+
+// Skipping counts as done: being asked again after saying no is worse than
+// never asking. Clearing all data is the only way back to it.
+export async function markOnboarded(userId: string): Promise<void> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ onboarded_at: new Date().toISOString() })
+    .eq('id', userId)
+    .select('id')
+  if (error) throw error
+  // Without this the walkthrough silently returns on every open.
+  if (!data || data.length === 0) throw new NoRowsAffected('Recording the walkthrough')
 }
 
 export async function saveDisplayName(userId: string, displayName: string): Promise<void> {

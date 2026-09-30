@@ -11,3 +11,17 @@ export async function loadIsMaster(): Promise<boolean> {
   if (error) return false
   return data === true
 }
+
+export interface WalkthroughReset {
+  // When the partner had finished it, or null if it was already reset.
+  was: string | null
+}
+
+// The partner's walkthrough only. The database refuses anyone but the
+// master, and never touches the master's own onboarded_at.
+export async function resetPartnerWalkthrough(): Promise<WalkthroughReset> {
+  const { data, error } = await supabase.rpc('reset_partner_walkthrough')
+  if (error) throw error
+  const result = (data ?? {}) as { was?: string | null }
+  return { was: result.was ?? null }
+}

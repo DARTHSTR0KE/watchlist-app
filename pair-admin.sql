@@ -1,6 +1,6 @@
--- Clear all data for both accounts, and the master account. Safe to run
--- more than once. Replace the email on the first line of the do block with
--- the one you sign in with, if it differs.
+-- Clear all data for both accounts, the master account, and resetting ac's
+-- walkthrough. Safe to run more than once. Replace the email on the first
+-- line of the do block with the one you sign in with, if it differs.
 
 -- The master account, fixed by its id. Looked up once here from the email
 -- and written into the function, so no table holds it and nothing in the
@@ -96,13 +96,32 @@ as $$
   )
 $$;
 
+-- The master account only: ac's walkthrough runs again on her next open.
+-- Her onboarded_at alone; never the master's own.
+create or replace function public.reset_partner_walkthrough() returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  partner uuid := (public.pair_ids())[2];
+  was timestamptz;
+begin
+  if not public.is_master() then raise exception 'only the master account can do this'; end if;
+  if partner is null or partner = auth.uid() then raise exception 'no partner linked'; end if;
+  select onboarded_at into was from profiles where id = partner;
+  update profiles set onboarded_at = null where id = partner;
+  return jsonb_build_object('partner', partner, 'was', was);
+end;
+$$;
+
 revoke all on function public.is_master() from public, anon;
 revoke all on function public.pair_ids() from public, anon;
 revoke all on function public.clear_pair_data() from public, anon;
 revoke all on function public.pair_data_counts() from public, anon;
+revoke all on function public.reset_partner_walkthrough() from public, anon;
 grant execute on function public.is_master() to authenticated;
 grant execute on function public.pair_ids() to authenticated;
 grant execute on function public.clear_pair_data() to authenticated;
 grant execute on function public.pair_data_counts() to authenticated;
+grant execute on function public.reset_partner_walkthrough() to authenticated;
 
 notify pgrst, 'reload schema';

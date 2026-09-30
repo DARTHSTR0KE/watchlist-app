@@ -687,6 +687,11 @@ export interface Database {
         Args: Record<never, never>
         Returns: Json
       }
+      /** Master only: clears the partner's onboarded_at. */
+      reset_partner_walkthrough: {
+        Args: Record<never, never>
+        Returns: Json
+      }
       td_clear_ours: {
         Args: Record<never, never>
         Returns: undefined

@@ -105,7 +105,7 @@ export function ClearAllData({ partnerName, onCleared }: ClearAllDataProps) {
       )}
 
       <p className="screen-empty">
-        Kept: both names, the link between you, and the film catalogue.
+        Kept: both names, the link between you, the film catalogue and the walkthrough record.
         Neither account is deleted.
       </p>
 
