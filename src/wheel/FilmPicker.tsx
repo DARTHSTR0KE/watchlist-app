@@ -17,6 +17,7 @@ import type {
 } from '../import/tmdbSearch'
 import { ensureFilmStored, loadWatchlistFilmIds } from '../import/watchlistWrites'
 import { buildFilmId } from '../lib/tmdbClient'
+import { explainTmdbFailure } from '../lib/tmdbErrors'
 
 type AddSource = 'search' | 'people' | 'watchlist' | 'watched' | 'partner'
 
@@ -149,7 +150,16 @@ export function FilmPicker({
     if (!query.trim()) return
     setSearching(true)
     setMessage(null)
-    setResults(await searchTmdb(query).catch(() => [] as ManualResult[]))
+    // A failure says what failed. Swallowed into an empty list, a refused
+    // key or a blocked network looked exactly like "no such film".
+    try {
+      const found = await searchTmdb(query)
+      setResults(found)
+      if (found.length === 0) setMessage(`Nothing on TMDB for "${query.trim()}".`)
+    } catch (error) {
+      setResults([])
+      setMessage(explainTmdbFailure(error))
+    }
     setSearching(false)
   }
 
@@ -217,7 +227,14 @@ export function FilmPicker({
     setMessage(null)
     setPerson(null)
     setFilmography(null)
-    setPeople(await searchPeopleByName(query).catch(() => [] as PersonResult[]))
+    try {
+      const found = await searchPeopleByName(query)
+      setPeople(found)
+      if (found.length === 0) setMessage(`Nobody on TMDB called "${query.trim()}".`)
+    } catch (error) {
+      setPeople([])
+      setMessage(explainTmdbFailure(error))
+    }
     setSearching(false)
   }
 

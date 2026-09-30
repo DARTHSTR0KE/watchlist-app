@@ -121,6 +121,7 @@ import {
   watchFilmNow,
 } from './import/watchlistWrites'
 import { Footer } from './Footer'
+import { WatchlistScreen } from './watchlist/WatchlistScreen'
 import { BirthdayGate } from './birthday/BirthdayGate'
 
 const MAX_REROLLS = 2
@@ -1381,6 +1382,13 @@ function AuthenticatedApp() {
               <StatsScreen userId={userId} partnerId={partnerId} partnerName={partnerName} />
             </Suspense>
           )}
+          {screen === 'watchlist' && (
+            <WatchlistScreen
+              userId={userId}
+              partnerId={partnerId}
+              onGoToImport={() => setScreen('import')}
+            />
+          )}
           {screen === 'watched-together' && (
             <WatchedTogetherScreen userId={userId} partnerName={partnerName} />
           )}
@@ -1456,6 +1464,7 @@ function AuthenticatedApp() {
               profileStatus={profileStatus}
               onDisplayNameChange={setMyName}
               onGoToImport={() => setScreen('import')}
+              onOpenStats={() => setScreen('stats')}
               onDataCleared={() => {
                 // Nothing the shell is holding survived the wipe: the queue
                 // is empty, the shared list is empty, and an account with no

@@ -42,6 +42,8 @@ interface SettingsScreenProps {
   // once, rather than each waiting for its own reload.
   onDisplayNameChange: (name: string) => void
   onGoToImport: () => void
+  // Stats lives here rather than in the nav: occasional, but it grows.
+  onOpenStats: () => void
   // Everything the shell is holding describes data that no longer exists.
   onDataCleared: () => void
 }
@@ -56,6 +58,7 @@ export function SettingsScreen({
   onDisplayNameChange,
   onGoToImport,
   onDataCleared,
+  onOpenStats,
 }: SettingsScreenProps) {
   const { signOut } = useAuth()
   const [muted, toggleMuted] = useMuted()
@@ -181,6 +184,15 @@ export function SettingsScreen({
         }
         perforation={spins === null ? undefined : `${plural(spins, 'spin').toUpperCase()} SO FAR`}
       />
+
+      {/* Near the top, not buried: the screen that gets more interesting
+          the longer the two of you use this. */}
+      <section>
+        <SectionLabel>Stats</SectionLabel>
+        <button type="button" className="btn-field" onClick={onOpenStats}>
+          See your stats ›
+        </button>
+      </section>
 
       <section>
         <SectionLabel>Your name</SectionLabel>

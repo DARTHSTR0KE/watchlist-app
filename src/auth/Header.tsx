@@ -6,6 +6,7 @@ export type Screen =
   | 'together'
   | 'watched-together'
   | 'stats'
+  | 'watchlist'
   | 'import'
   | 'settings'
 
@@ -23,8 +24,11 @@ const NAV: { value: Screen; label: string }[] = [
   { value: 'recommended', label: 'For me' },
   { value: 'together', label: 'Together' },
   { value: 'watched-together', label: 'Watched' },
-  { value: 'stats', label: 'Stats' },
+  { value: 'watchlist', label: 'Watchlist' },
 ]
+
+// Stats opens from Settings, so Settings stays lit while it is open.
+const IN_SETTINGS: readonly Screen[] = ['settings', 'stats']
 
 export function Header({ screen, displayName, unseenRecommendations, onNavigate }: HeaderProps) {
   // Set while Filters is open: the way back to the wheel, leaving the
@@ -43,8 +47,8 @@ export function Header({ screen, displayName, unseenRecommendations, onNavigate 
         )}
         <button
           type="button"
-          className={`app-header-signout${screen === 'settings' ? ' app-nav-item-on' : ''}`}
-          aria-current={screen === 'settings' ? 'page' : undefined}
+          className={`app-header-signout${IN_SETTINGS.includes(screen) ? ' app-nav-item-on' : ''}`}
+          aria-current={IN_SETTINGS.includes(screen) ? 'page' : undefined}
           onClick={() => onNavigate('settings')}
         >
           Settings

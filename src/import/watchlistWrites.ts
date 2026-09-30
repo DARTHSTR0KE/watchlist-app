@@ -290,6 +290,19 @@ export async function watchFilmNow(userId: string, filmId: string): Promise<void
   logEvent('watch_started', { filmId })
 }
 
+// Off my own watchlist. Asks for the removed row back: a delete matching
+// nothing succeeds in PostgREST, and that must not look like a removal.
+export async function removeFromWatchlist(userId: string, filmId: string): Promise<void> {
+  const { data, error } = await supabase
+    .from('watchlist_items')
+    .delete()
+    .eq('user_id', userId)
+    .eq('film_id', filmId)
+    .select('id')
+  if (error) throw error
+  if (!data || data.length === 0) throw new Error('Nothing was removed.')
+}
+
 export async function markMissingAsWatched(userId: string, watchlistItemIds: string[], filmIds: string[]): Promise<void> {
   if (filmIds.length === 0) return
   const watchedRows = filmIds.map((filmId) => ({
@@ -427,7 +440,8 @@ export async function getWatchlistGrid(userId: string): Promise<WatchlistGridIte
     .from('watchlist_items')
     .select('id, film_id, added_at, films(title, poster_path)')
     .eq('user_id', userId)
-    .order('added_at', { ascending: false })
+    // Newest first; a film with no added date goes last, not first.
+    .order('added_at', { ascending: false, nullsFirst: false })
   if (error) throw error
   return (data ?? []).map((row) => ({
     itemId: row.id,

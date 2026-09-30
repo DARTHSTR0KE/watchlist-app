@@ -1727,6 +1727,20 @@
   white-space: nowrap;
 }
 
+/* Five tabs have to fit a phone without the last one sliding off the edge. */
+@media (max-width: 420px) {
+  .app-nav-item {
+    padding: 0.32rem 0.5rem;
+  }
+}
+
+@media (max-width: 374px) {
+  .app-nav-item {
+    padding: 0.32rem 0.4rem;
+    font-size: 0.72rem;
+  }
+}
+
 .app-nav-item-on {
   background-color: rgba(239, 230, 214, 0.92);
   color: var(--on-accent);
@@ -3034,6 +3048,11 @@ a.pending-action {
 .btn-primary + .btn-field,
 .btn-field + .btn-field,
 .btn-field + .btn-primary {
+  margin-top: 0.75rem;
+}
+
+/* A grid of posters under the section that adds to it: the same gap. */
+section + .poster-grid-3 {
   margin-top: 0.75rem;
 }
 
