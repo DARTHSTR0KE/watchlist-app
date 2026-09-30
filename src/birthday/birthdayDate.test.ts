@@ -21,9 +21,17 @@ describe('30 September', () => {
     expect(isBirthday(new Date(2026, 8, 30, 23, 59, 59))).toBe(true)
   })
 
-  it('is false on the 29th and on 1 October', () => {
+  it('is false on the 29th, and from 05:00 on 1 October', () => {
     expect(isBirthday(new Date(2026, 8, 29, 23, 59, 59))).toBe(false)
-    expect(isBirthday(new Date(2026, 9, 1, 0, 0, 0))).toBe(false)
+    expect(isBirthday(new Date(2026, 9, 1, 5, 0, 0))).toBe(false)
+    expect(isBirthday(new Date(2026, 9, 1, 12, 0, 0))).toBe(false)
+    expect(isBirthday(new Date(2026, 9, 2, 1, 0, 0))).toBe(false)
+  })
+
+  it('runs on through the small hours of 1 October, until 05:00', () => {
+    expect(isBirthday(new Date(2026, 9, 1, 0, 0, 0))).toBe(true)
+    expect(isBirthday(new Date(2026, 9, 1, 2, 30, 0))).toBe(true)
+    expect(isBirthday(new Date(2026, 9, 1, 4, 59, 59))).toBe(true)
   })
 
   it('is true in any year', () => {
@@ -39,10 +47,12 @@ describe('30 September', () => {
     expect(isBirthday(instant)).toBe(true)
   })
 
-  it('is false just after local midnight on 1 October, when UTC still says the 30th', () => {
-    const instant = new Date('2026-10-01T02:00:00+05:30')
+  it('ends at 05:00 local on 1 October, not at 05:00 UTC', () => {
+    // 05:00 in Kolkata is still the 30th in UTC.
+    const instant = new Date('2026-10-01T05:00:00+05:30')
     expect(instant.getUTCDate()).toBe(30)
     expect(isBirthday(instant)).toBe(false)
+    expect(isBirthday(new Date('2026-10-01T04:59:00+05:30'))).toBe(true)
   })
 
   it('is false late on the 29th, when UTC has not reached the 30th either', () => {
@@ -110,6 +120,33 @@ describe('clearing the played record', () => {
     expect(clearPlayedRecord()).toBe(true)
     expect(stored.has('spin-birthday-played')).toBe(false)
     expect(writes).toEqual([])
+    vi.unstubAllGlobals()
+  })
+})
+
+describe('one play for the whole celebration', () => {
+  it('counts the small hours of 1 October as the 30th', async () => {
+    const { birthdayKey } = await import('./birthdayDate')
+    expect(birthdayKey(new Date(2026, 8, 30, 23, 0))).toBe('2026-09-30')
+    expect(birthdayKey(new Date(2026, 9, 1, 0, 30))).toBe('2026-09-30')
+    expect(birthdayKey(new Date(2026, 9, 1, 4, 59))).toBe('2026-09-30')
+    expect(birthdayKey(new Date(2026, 9, 1, 5, 0))).toBe('2026-10-01')
+  })
+
+  it('does not play again after midnight once played on the 30th', async () => {
+    const { vi } = await import('vitest')
+    const { markPlayedToday, alreadyPlayedToday } = await import('./birthdayDate')
+    const stored = new Map<string, string>()
+    vi.stubGlobal('window', {
+      localStorage: {
+        getItem: (key: string) => stored.get(key) ?? null,
+        setItem: (key: string, value: string) => void stored.set(key, value),
+        removeItem: (key: string) => void stored.delete(key),
+      },
+    })
+    expect(alreadyPlayedToday(new Date(2026, 8, 30, 22, 0))).toBe(false)
+    markPlayedToday(new Date(2026, 8, 30, 22, 0))
+    expect(alreadyPlayedToday(new Date(2026, 9, 1, 1, 0))).toBe(true)
     vi.unstubAllGlobals()
   })
 })

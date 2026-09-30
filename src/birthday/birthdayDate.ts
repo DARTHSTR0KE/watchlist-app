@@ -10,11 +10,28 @@
 // thing that makes a date check wrong by one.
 const BIRTHDAY_MONTH_INDEX = 8
 const BIRTHDAY_DATE = 30
+// The celebration runs on past midnight into the small hours of 1 October,
+// and ends at this hour, local time.
+const RUNS_UNTIL_HOUR = 5
 
 export const PLAYED_KEY = 'spin-birthday-played'
 
+// From midnight on 30 September to 05:00 on 1 October, device time.
 export function isBirthday(now: Date = new Date()): boolean {
-  return now.getMonth() === BIRTHDAY_MONTH_INDEX && now.getDate() === BIRTHDAY_DATE
+  if (now.getMonth() === BIRTHDAY_MONTH_INDEX && now.getDate() === BIRTHDAY_DATE) return true
+  return now.getMonth() === BIRTHDAY_MONTH_INDEX + 1 && now.getDate() === 1 && now.getHours() < RUNS_UNTIL_HOUR
+}
+
+/**
+ * The day a play counts against. The small hours of 1 October still belong
+ * to the 30th, so a play at 23:00 isn't repeated at 00:30 just because the
+ * calendar turned over.
+ */
+export function birthdayKey(now: Date = new Date()): string {
+  if (now.getMonth() === BIRTHDAY_MONTH_INDEX + 1 && now.getDate() === 1 && now.getHours() < RUNS_UNTIL_HOUR) {
+    return localDateKey(new Date(now.getFullYear(), BIRTHDAY_MONTH_INDEX, BIRTHDAY_DATE))
+  }
+  return localDateKey(now)
 }
 
 // Built from local parts. toISOString() would be the same bug as above.
@@ -32,7 +49,7 @@ export function localDateKey(now: Date = new Date()): string {
  */
 export function alreadyPlayedToday(now: Date = new Date()): boolean {
   try {
-    return window.localStorage.getItem(PLAYED_KEY) === localDateKey(now)
+    return window.localStorage.getItem(PLAYED_KEY) === birthdayKey(now)
   } catch {
     return true
   }
@@ -84,7 +101,7 @@ export function unburnTestDay(): void {
 
 export function markPlayedToday(now: Date = new Date()): void {
   try {
-    window.localStorage.setItem(PLAYED_KEY, localDateKey(now))
+    window.localStorage.setItem(PLAYED_KEY, birthdayKey(now))
   } catch {
     // Nothing to do. The next open treats an unreadable store as played.
   }
