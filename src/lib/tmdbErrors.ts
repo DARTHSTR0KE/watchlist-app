@@ -9,10 +9,14 @@ export function explainTmdbFailure(error: unknown): string {
   if (status === '401') return "TMDB refused the app's key (401). The key set in Vercel may be wrong or expired."
   if (status === '429') return 'TMDB says too many searches at once (429). Wait a moment and try again.'
   if (status) return `TMDB answered with an error (${status}). Try again in a moment.`
-  // fetch() rejects without a status when the request never got an answer:
-  // no connection, or the network blocking api.themoviedb.org outright.
+  if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
+    return 'TMDB took too long to answer. The connection may be slow; try again.'
+  }
+  // fetch() rejects without a status when the request never got an answer.
+  // Search goes through our own domain, so this is the phone's connection,
+  // not a network blocking TMDB.
   if (error instanceof TypeError || /failed to fetch|load failed|networkerror/i.test(text)) {
-    return "Couldn't reach TMDB. The connection may be down, or this network may be blocking api.themoviedb.org. Some mobile networks do; try Wi-Fi."
+    return "Couldn't reach TMDB search. Check the connection and try again."
   }
   return `Search failed: ${text}`
 }

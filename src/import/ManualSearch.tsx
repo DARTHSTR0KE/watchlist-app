@@ -5,6 +5,7 @@ import type { ManualResult } from './tmdbSearch'
 import { resolveCandidate } from './matching'
 import { addManualWatchlistItem } from './watchlistWrites'
 import { buildPosterUrl } from '../wheel/posters'
+import { explainTmdbFailure } from '../lib/tmdbErrors'
 
 interface ManualSearchProps {
   userId: string
@@ -24,15 +25,29 @@ export function ManualSearch({ userId, onAdded }: ManualSearchProps) {
     setSearching(true)
     setMessage(null)
 
-    setResults(await searchTmdb(query))
+    // Caught, so a failure says what failed instead of leaving the button
+    // stuck on "Searching…" with nothing to show.
+    try {
+      const found = await searchTmdb(query)
+      setResults(found)
+      if (found.length === 0) setMessage(`Nothing on TMDB for "${query.trim()}".`)
+    } catch (error) {
+      setResults([])
+      setMessage(explainTmdbFailure(error))
+    }
     setSearching(false)
   }
 
   const handleAdd = async (result: ManualResult) => {
     setAddingId(result.id)
     setMessage(null)
-    const film = await resolveCandidate(result.mediaType, result.id)
-    const { error } = await addManualWatchlistItem(userId, film)
+    let error: string | null
+    try {
+      const film = await resolveCandidate(result.mediaType, result.id)
+      error = (await addManualWatchlistItem(userId, film)).error
+    } catch (failure) {
+      error = explainTmdbFailure(failure)
+    }
     setAddingId(null)
     if (error) {
       setMessage(error)

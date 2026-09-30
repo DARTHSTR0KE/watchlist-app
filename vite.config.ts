@@ -3,7 +3,19 @@ import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
+// The same /tmdb forwarding vercel.json does in production, so search
+// works locally too. The browser never calls api.themoviedb.org itself.
+const tmdbProxy = {
+  '/tmdb': {
+    target: 'https://api.themoviedb.org',
+    changeOrigin: true,
+    rewrite: (path: string) => path.replace(/^\/tmdb/, '/3'),
+  },
+}
+
 export default defineConfig({
+  server: { proxy: tmdbProxy },
+  preview: { proxy: tmdbProxy },
   plugins: [
     react(),
     VitePWA({

@@ -2,20 +2,30 @@ import { extractCountries, extractDirectors } from './filmCredits'
 import type { CreditPerson, TmdbCountry, TmdbCreator, TmdbCrewMember } from './filmCredits'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3'
+/**
+ * TMDB through the app's own address, never directly. Some networks (Jio,
+ * for one) block api.themoviedb.org outright, and a phone on one of them
+ * could search nothing. /tmdb is forwarded to TMDB by Vercel in production
+ * (vercel.json) and by Vite in development (vite.config.ts), so the phone
+ * only ever talks to our domain.
+ */
+const TMDB_BASE_URL = '/tmdb'
+// Long enough for a slow connection; short enough that a dead one says so
+// rather than spinning for the browser's full minute.
+const TMDB_TIMEOUT_MS = 12_000
 
 if (!TMDB_API_KEY) {
   throw new Error('Missing VITE_TMDB_API_KEY in .env')
 }
 
 async function tmdbFetch<T>(path: string, params: Record<string, string | number | undefined>): Promise<T> {
-  const url = new URL(`${TMDB_BASE_URL}${path}`)
+  const url = new URL(`${TMDB_BASE_URL}${path}`, window.location.origin)
   url.searchParams.set('api_key', TMDB_API_KEY)
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined) url.searchParams.set(key, String(value))
   }
 
-  const res = await fetch(url.toString())
+  const res = await fetch(url.toString(), { signal: AbortSignal.timeout(TMDB_TIMEOUT_MS) })
   if (!res.ok) {
     throw new Error(`TMDB request failed (${res.status}): ${path}`)
   }
