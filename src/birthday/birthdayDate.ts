@@ -14,10 +14,27 @@ const BIRTHDAY_DATE = 30
 // and ends at this hour, local time.
 const RUNS_UNTIL_HOUR = 5
 
+/**
+ * One extra day, asked for on the day itself: all of 1 October 2026 is part
+ * of the celebration, and it counts as its own day for the played record,
+ * so the video plays once more on each phone's next open. Every other year
+ * keeps the usual window.
+ */
+const ENCORE = { year: 2026, monthIndex: 9, date: 1 }
+
+function isEncore(now: Date): boolean {
+  return (
+    now.getFullYear() === ENCORE.year &&
+    now.getMonth() === ENCORE.monthIndex &&
+    now.getDate() === ENCORE.date
+  )
+}
+
 export const PLAYED_KEY = 'spin-birthday-played'
 
 // From midnight on 30 September to 05:00 on 1 October, device time.
 export function isBirthday(now: Date = new Date()): boolean {
+  if (isEncore(now)) return true
   if (now.getMonth() === BIRTHDAY_MONTH_INDEX && now.getDate() === BIRTHDAY_DATE) return true
   return now.getMonth() === BIRTHDAY_MONTH_INDEX + 1 && now.getDate() === 1 && now.getHours() < RUNS_UNTIL_HOUR
 }
@@ -28,6 +45,8 @@ export function isBirthday(now: Date = new Date()): boolean {
  * calendar turned over.
  */
 export function birthdayKey(now: Date = new Date()): string {
+  // The encore is its own day, so yesterday's play doesn't use it up.
+  if (isEncore(now)) return localDateKey(now)
   if (now.getMonth() === BIRTHDAY_MONTH_INDEX + 1 && now.getDate() === 1 && now.getHours() < RUNS_UNTIL_HOUR) {
     return localDateKey(new Date(now.getFullYear(), BIRTHDAY_MONTH_INDEX, BIRTHDAY_DATE))
   }
