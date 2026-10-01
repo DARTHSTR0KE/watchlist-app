@@ -8,6 +8,7 @@ import { SectionLabel } from '../ui/Screen'
 import { buildPosterUrl, buildProfileUrl } from '../wheel/posters'
 import { starLabel } from '../wheel/filters'
 import { initialsOf } from '../utils/initials'
+import { FilmDetailModal } from '../film/FilmDetailModal'
 
 // A number you can read at arm's length, with a label that doesn't compete
 // with it.
@@ -120,22 +121,34 @@ export function PeopleRow({ people }: { people: PersonTally[] }) {
 
 // Three posters with their rating, framed in the section's colour.
 export function PosterTrio({ films, tone }: { films: RatedFilm[]; tone: 'sage' | 'rust' }) {
+  const [open, setOpen] = useState<RatedFilm | null>(null)
   return (
-    <ul className={`poster-trio poster-trio-${tone}`}>
-      {films.map((film) => {
-        const url = buildPosterUrl(film.posterPath)
-        return (
-          <li className="poster-trio-cell" key={film.filmId}>
-            {url ? (
-              <img className="poster-trio-image" src={url} alt={film.title} loading="lazy" />
-            ) : (
-              <span className="poster-trio-image poster-trio-empty">{film.title}</span>
-            )}
-            <span className="poster-trio-rating">★ {starLabel(film.rating)}</span>
-          </li>
-        )
-      })}
-    </ul>
+    <>
+      <ul className={`poster-trio poster-trio-${tone}`}>
+        {films.map((film) => {
+          const url = buildPosterUrl(film.posterPath)
+          return (
+            <li className="poster-trio-cell" key={film.filmId}>
+              <button
+                type="button"
+                className="poster-cell-3-open"
+                onClick={() => setOpen(film)}
+                aria-label={`Open ${film.title}`}
+              >
+                {url ? (
+                  <img className="poster-trio-image" src={url} alt={film.title} loading="lazy" />
+                ) : (
+                  <span className="poster-trio-image poster-trio-empty">{film.title}</span>
+                )}
+              </button>
+              <span className="poster-trio-rating">★ {starLabel(film.rating)}</span>
+            </li>
+          )
+        })}
+      </ul>
+      {/* Watched and rated already: there to look at, and rate again. */}
+      {open && <FilmDetailModal film={open} context="watched" onClose={() => setOpen(null)} />}
+    </>
   )
 }
 

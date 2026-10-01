@@ -20,6 +20,8 @@ import {
   sendRecommendation,
 } from './recommendations'
 import type { Recommendation } from './recommendations'
+import { FilmDetailModal } from '../film/FilmDetailModal'
+import type { FilmContext } from '../film/filmActions'
 import { addExistingFilmToWatchlist, ensureFilmStored } from '../import/watchlistWrites'
 import { NUDGE_MAX, NUDGE_SPOKEN_MAX, NudgeSendError, sendNudge } from './nudges'
 import { Mascot } from '../brand/Mascot'
@@ -62,6 +64,8 @@ export function RecommendedScreen({
   // failing, which must not be mistaken for "they haven't seen it".
   const [seenByThem, setSeenByThem] = useState<'unknown' | 'yes' | 'no'>('unknown')
   const [sending, setSending] = useState(false)
+  // A recommendation opened, and whether it still wants an answer.
+  const [open, setOpen] = useState<{ item: Recommendation; context: FilmContext } | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
 
@@ -251,6 +255,7 @@ export function RecommendedScreen({
               key={item.id}
               art={<PosterThumb posterPath={item.posterPath} title={item.title} />}
               name={item.title}
+              onOpen={() => setOpen({ item, context: 'for-me' })}
               meta={
                 <>
                   <Mascot who={partnerMascot} size={18} bowl className="mascot-inline" /> {them}
@@ -293,6 +298,7 @@ export function RecommendedScreen({
               key={item.id}
               art={<PosterThumb posterPath={item.posterPath} title={item.title} />}
               name={item.title}
+              onOpen={() => setOpen({ item, context: 'look' })}
               meta={item.status === 'passed' ? 'Passed' : 'On your watchlist'}
             />
           ))}
@@ -313,6 +319,7 @@ export function RecommendedScreen({
               key={item.id}
               art={<PosterThumb posterPath={item.posterPath} title={item.title} />}
               name={item.title}
+              onOpen={() => setOpen({ item, context: 'look' })}
               meta={item.note ? `“${item.note}”` : `Waiting${yearSuffix(item.year)}`}
             />
           ))}
@@ -450,6 +457,19 @@ export function RecommendedScreen({
       {/* One at a time, in each direction. */}
       {nudgeState === 'idle' && nudge.trim().length > 0 && (
         <Empty>Sending this replaces any nudge of yours they haven't seen yet.</Empty>
+      )}
+
+      {open && (
+        <FilmDetailModal
+          film={open.item}
+          context={open.context}
+          // The same answers as the buttons on its row.
+          handlers={{
+            'add-watchlist': () => handleAdd(open.item),
+            pass: () => handlePass(open.item),
+          }}
+          onClose={() => setOpen(null)}
+        />
       )}
     </Screen>
   )

@@ -4,6 +4,8 @@ import { CUSTOM_WHEEL_MAX } from './customWheels'
 import type { CustomWheel } from './customWheels'
 import { FilmPicker } from './FilmPicker'
 import type { WheelItem } from './titles'
+import { watchFilmNow } from '../import/watchlistWrites'
+import { FilmDetailModal } from '../film/FilmDetailModal'
 
 interface CustomWheelEditorProps {
   wheel: CustomWheel
@@ -29,6 +31,7 @@ export function CustomWheelEditor({
   onBack,
 }: CustomWheelEditorProps) {
   const [editingName, setEditingName] = useState(false)
+  const [open, setOpen] = useState<WheelItem | null>(null)
   const [draft, setDraft] = useState(wheel.name)
 
   const commitName = () => {
@@ -87,15 +90,23 @@ export function CustomWheelEditor({
               const posterUrl = buildPosterUrl(film.posterPath)
               return (
                 <li className="picker-row" key={film.id}>
-                  {posterUrl ? (
-                    <img className="picker-poster" src={posterUrl} alt="" aria-hidden="true" />
-                  ) : (
-                    <span className="picker-poster picker-poster-fallback" aria-hidden="true" />
-                  )}
-                  <span className="picker-title">
-                    {film.title}
-                    <span className="picker-year">{film.year > 0 ? ` ${film.year}` : ''}</span>
-                  </span>
+                  {/* Poster and title open the film; Remove stays its own tap. */}
+                  <button
+                    type="button"
+                    className="picker-row-open"
+                    onClick={() => setOpen(film)}
+                    aria-label={`Open ${film.title}`}
+                  >
+                    {posterUrl ? (
+                      <img className="picker-poster" src={posterUrl} alt="" aria-hidden="true" />
+                    ) : (
+                      <span className="picker-poster picker-poster-fallback" aria-hidden="true" />
+                    )}
+                    <span className="picker-title">
+                      {film.title}
+                      <span className="picker-year">{film.year > 0 ? ` ${film.year}` : ''}</span>
+                    </span>
+                  </button>
                   {/* Permanent, unlike "Not tonight". */}
                   <button
                     type="button"
@@ -126,6 +137,19 @@ export function CustomWheelEditor({
         Done
       </button>
       </div>
+
+      {open && (
+        <FilmDetailModal
+          film={{ filmId: open.id, title: open.title, posterPath: open.posterPath }}
+          context="list"
+          handlers={{
+            // The wheel's Watch this; it stays on this wheel, as when spun.
+            watch: () => watchFilmNow(userId, open.id),
+            'remove-list': async () => onRemoveFilmId(open.id),
+          }}
+          onClose={() => setOpen(null)}
+        />
+      )}
     </div>
   )
 }

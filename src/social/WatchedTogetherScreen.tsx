@@ -9,6 +9,8 @@ import { yearOf } from './ticketFacts'
 import { MascotPair } from '../brand/Mascot'
 import { loadWatchedSplit } from './pendingWatches'
 import type { WatchedSplit } from './pendingWatches'
+import { FilmDetailModal } from '../film/FilmDetailModal'
+import type { FilmPreview } from '../film/FilmDetailModal'
 
 interface WatchedScreenProps {
   userId: string
@@ -18,6 +20,7 @@ interface WatchedScreenProps {
 export function WatchedTogetherScreen({ userId, partnerName }: WatchedScreenProps) {
   const [split, setSplit] = useState<WatchedSplit | null>(null)
   const [aloneOpen, setAloneOpen] = useState(false)
+  const [open, setOpen] = useState<FilmPreview | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -91,6 +94,7 @@ export function WatchedTogetherScreen({ userId, partnerName }: WatchedScreenProp
                   title={film.title}
                   marked
                   markLabel={`Watched with ${them}`}
+                  onOpen={() => setOpen(film)}
                 />
               ))}
             </PosterGrid>
@@ -115,7 +119,12 @@ export function WatchedTogetherScreen({ userId, partnerName }: WatchedScreenProp
               <>
                 <PosterGrid>
                   {split.alone.map((film) => (
-                    <PosterCell key={film.filmId} posterPath={film.posterPath} title={film.title} />
+                    <PosterCell
+                      key={film.filmId}
+                      posterPath={film.posterPath}
+                      title={film.title}
+                      onOpen={() => setOpen(film)}
+                    />
                   ))}
                 </PosterGrid>
                 {/* Said out loud rather than quietly showing a shorter list. */}
@@ -126,6 +135,9 @@ export function WatchedTogetherScreen({ userId, partnerName }: WatchedScreenProp
             ))}
         </>
       )}
+
+      {/* Already watched: nothing to do here but look, and rate it. */}
+      {open && <FilmDetailModal film={open} context="watched" onClose={() => setOpen(null)} />}
     </Screen>
   )
 }

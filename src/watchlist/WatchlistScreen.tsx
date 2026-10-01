@@ -11,7 +11,9 @@ import {
   getLastImportDate,
   getWatchlistGrid,
   removeFromWatchlist,
+  watchFilmNow,
 } from '../import/watchlistWrites'
+import { FilmDetailModal } from '../film/FilmDetailModal'
 import type { WatchlistGridItem } from '../import/watchlistWrites'
 
 interface WatchlistScreenProps {
@@ -33,6 +35,7 @@ export function WatchlistScreen({ userId, partnerId, onGoToImport }: WatchlistSc
   const [failed, setFailed] = useState(false)
   const [adding, setAdding] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [open, setOpen] = useState<WatchlistGridItem | null>(null)
 
   const refresh = async () => {
     setItems(await getWatchlistGrid(userId))
@@ -150,9 +153,29 @@ export function WatchlistScreen({ userId, partnerId, onGoToImport }: WatchlistSc
               title={item.title}
               onRemove={() => void handleRemove(item)}
               removeLabel={`Remove ${item.title} from your watchlist`}
+              onOpen={() => setOpen(item)}
             />
           ))}
         </PosterGrid>
+      )}
+
+      {open && (
+        <FilmDetailModal
+          film={open}
+          context="watchlist"
+          handlers={{
+            // The wheel's Watch this: off the watchlist and into watched.
+            watch: async () => {
+              await watchFilmNow(userId, open.filmId)
+              setItems((current) => (current ?? []).filter((row) => row.filmId !== open.filmId))
+            },
+            'remove-watchlist': async () => {
+              await removeFromWatchlist(userId, open.filmId)
+              setItems((current) => (current ?? []).filter((row) => row.filmId !== open.filmId))
+            },
+          }}
+          onClose={() => setOpen(null)}
+        />
       )}
     </Screen>
   )

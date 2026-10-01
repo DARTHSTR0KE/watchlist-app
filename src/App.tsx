@@ -1438,6 +1438,7 @@ function AuthenticatedApp() {
               />
             ) : (
               <TogetherChooser
+                userId={userId}
                 partnerId={partnerId}
                 partnerName={partnerName}
                 sharedCount={sharedCount}

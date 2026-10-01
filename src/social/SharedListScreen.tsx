@@ -6,6 +6,8 @@ import { TINT } from '../ui/posterColor'
 import { FilmPicker } from '../wheel/FilmPicker'
 import { addToSharedList, loadSharedList, removeFromSharedList } from './sharedList'
 import type { SharedListEntry } from './sharedList'
+import { watchFilmNow } from '../import/watchlistWrites'
+import { FilmDetailModal } from '../film/FilmDetailModal'
 
 // Two films is the least the wheel can decide between.
 const MIN_TO_SPIN = 2
@@ -25,6 +27,7 @@ export function SharedListScreen({
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [open, setOpen] = useState<SharedListEntry | null>(null)
 
   const refresh = async () => {
     setEntries(await loadSharedList().catch(() => [] as SharedListEntry[]))
@@ -91,6 +94,7 @@ export function SharedListScreen({
               title={entry.title}
               onRemove={() => void handleRemove(entry)}
               removeLabel={`Remove ${entry.title} from the shared list`}
+              onOpen={() => setOpen(entry)}
             />
           ))}
         </PosterGrid>
@@ -127,6 +131,23 @@ export function SharedListScreen({
         <button type="button" className="btn-field" onClick={() => setAdding(true)}>
           Add a film
         </button>
+      )}
+
+      {open && (
+        <FilmDetailModal
+          film={open}
+          context="list"
+          handlers={{
+            // The wheel's Watch this. It stays on the shared list, as it
+            // does when the shared list is spun.
+            watch: () => watchFilmNow(userId, open.filmId),
+            'remove-list': async () => {
+              await removeFromSharedList(open.filmId)
+              setEntries((current) => current.filter((row) => row.filmId !== open.filmId))
+            },
+          }}
+          onClose={() => setOpen(null)}
+        />
       )}
     </Screen>
   )

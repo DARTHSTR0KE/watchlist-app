@@ -1,9 +1,6 @@
-import { useRef, useState } from 'react'
-import { initialsOf } from '../utils/initials'
-import type { PointerEvent } from 'react'
+import { useState } from 'react'
 import type { WheelItem } from './titles'
-import { buildBackdropUrl, buildPosterUrl, buildProfileUrl } from './posters'
-import { useTopCast } from './useTopCast'
+import { FilmSheet } from './FilmSheet'
 import { ShrugMoment } from '../brand/Moments'
 import { ReactionMoment } from '../brand/Ambient'
 import type { Reaction } from '../ambient/ambient'
@@ -29,21 +26,14 @@ interface ResultModalProps {
   onDismiss: () => void
 }
 
-const DISMISS_DRAG_THRESHOLD = 120
-const SYNOPSIS_CLAMP_THRESHOLD = 200
-
-function formatRuntime(minutes: number): string {
-  const hours = Math.floor(minutes / 60)
-  const mins = minutes % 60
-  return `${hours}h ${mins}m`
-}
-
 // 6pm–4am local -> "Not tonight", 4am–6pm -> "Not today".
 function getTakeOffLabel(): string {
   const hour = new Date().getHours()
   return hour >= 18 || hour < 4 ? 'Not tonight' : 'Not today'
 }
 
+// The wheel's own result: the shared film sheet with the three actions that
+// only make sense after a spin.
 export function ResultModal({
   item,
   reaction,
@@ -59,219 +49,67 @@ export function ResultModal({
   onReshuffle,
   onDismiss,
 }: ResultModalProps) {
-  const [expanded, setExpanded] = useState(false)
-  const [dragY, setDragY] = useState(0)
-  const [dragging, setDragging] = useState(false)
-  const dragStartRef = useRef<number | null>(null)
   // Computed once per mount — the modal re-mounts fresh each time it opens
   // (result goes null then non-null again), so this re-evaluates every open
   // rather than staying fixed from whenever the app first started.
   const [takeOffLabel] = useState(getTakeOffLabel)
-  // The YouTube player is only loaded once someone actually asks for it —
-  // an embed per spin result would be a lot of weight on a phone.
-  const [trailerPlaying, setTrailerPlaying] = useState(false)
-  // A profile_path can go stale on TMDB's side; a 404 should read as "no
-  // portrait" rather than a broken-image glyph in a row of eight.
-  const [failedPhotos, setFailedPhotos] = useState<ReadonlySet<string>>(new Set())
-  const cast = useTopCast(item.id, item.topCast)
-
-  const backdropUrl = buildBackdropUrl(item.backdropPath)
-  const posterUrl = buildPosterUrl(item.posterPath)
-  const needsClampToggle = item.synopsis.length > SYNOPSIS_CLAMP_THRESHOLD
-
-  const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    dragStartRef.current = event.clientY
-    setDragging(true)
-    event.currentTarget.setPointerCapture(event.pointerId)
-  }
-
-  const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
-    if (dragStartRef.current === null) return
-    const delta = event.clientY - dragStartRef.current
-    if (delta > 0) setDragY(delta)
-  }
-
-  const handlePointerUp = () => {
-    if (dragStartRef.current === null) return
-    dragStartRef.current = null
-    setDragging(false)
-    if (dragY > DISMISS_DRAG_THRESHOLD) {
-      onDismiss()
-    }
-    setDragY(0)
-  }
 
   return (
-    <div className="modal-overlay" onClick={onDismiss}>
-      <div
-        className="modal-sheet"
-        onClick={(event) => event.stopPropagation()}
-        style={{
-          transform: `translateY(${dragY}px)`,
-          transition: dragging || reduceMotion ? 'none' : 'transform 300ms ease-out',
-        }}
+    <FilmSheet
+      item={item}
+      reduceMotion={reduceMotion}
+      onDismiss={onDismiss}
+      // In the corner of the result. Most films get the bowl and no more; a
+      // few earn a reaction. Nothing waits on it.
+      corner={<ReactionMoment reaction={reaction} />}
+    >
+      <button type="button" className="action-button primary" onClick={onWatch}>
+        Watch this
+      </button>
+      <button
+        type="button"
+        className="action-button"
+        onClick={onSpinAgain}
+        disabled={!canReroll}
       >
-        <div
-          className="modal-drag-region"
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-        >
-          <div className="modal-grabber" />
-          <div className="modal-header">
-            {backdropUrl && <img className="modal-backdrop" src={backdropUrl} alt="" aria-hidden="true" />}
-            <div className="modal-header-fade" />
-          {/* In the corner of the result. Most films get the bowl and no
-              more; a few earn a reaction. Nothing waits on it. */}
-          <ReactionMoment reaction={reaction} />
-            {posterUrl ? (
-              <img className="modal-poster" src={posterUrl} alt={`${item.title} poster`} />
-            ) : (
-              <div className="modal-poster modal-poster-fallback" aria-hidden="true" />
-            )}
-          </div>
-        </div>
-
-        <div className="modal-body">
-          <div className="modal-meta">
-            <h2 className="modal-title">{item.title}</h2>
-            <p className="modal-subline">
-              {item.year} · {formatRuntime(item.runtimeMinutes)}
-            </p>
-            <div className="modal-genres">
-              {item.genres.map((genre) => (
-                <span className="genre-tag" key={genre}>
-                  {genre}
-                </span>
-              ))}
-            </div>
-            <p className="modal-rating">★ {item.rating.toFixed(1)} / 10</p>
-          </div>
-
-          <div className="modal-synopsis">
-            <p className={needsClampToggle && !expanded ? 'synopsis-clamped' : ''}>{item.synopsis}</p>
-            {needsClampToggle && (
-              <button
-                type="button"
-                className="synopsis-toggle"
-                onClick={() => setExpanded((value) => !value)}
-              >
-                {expanded ? 'less' : 'more'}
-              </button>
-            )}
-          </div>
-
-          {item.trailerKey && (
-            <div className="modal-trailer">
-              {trailerPlaying ? (
-                <iframe
-                  className="modal-trailer-frame"
-                  src={`https://www.youtube-nocookie.com/embed/${item.trailerKey}?autoplay=1&rel=0`}
-                  title={`${item.title} trailer`}
-                  allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              ) : (
-                <button
-                  type="button"
-                  className="modal-trailer-facade"
-                  onClick={() => setTrailerPlaying(true)}
-                  aria-label={`Play the ${item.title} trailer`}
-                >
-                  {backdropUrl && <img src={backdropUrl} alt="" aria-hidden="true" />}
-                  <span className="modal-trailer-play" aria-hidden="true" />
-                  <span className="modal-trailer-label">Trailer</span>
-                </button>
-              )}
-            </div>
-          )}
-
-          {cast !== null && cast.length > 0 && (
-            <div className="modal-cast">
-              <h3 className="modal-section-title">Cast</h3>
-              <ul className="cast-row">
-                {cast.map((member, index) => {
-                  const key = `${member.name}-${index}`
-                  const profileUrl = failedPhotos.has(key)
-                    ? null
-                    : buildProfileUrl(member.profile_path)
-                  return (
-                    <li className="cast-member" key={key}>
-                      {profileUrl ? (
-                        <img
-                          className="cast-photo"
-                          src={profileUrl}
-                          alt=""
-                          aria-hidden="true"
-                          onError={() =>
-                            setFailedPhotos((current) => new Set(current).add(key))
-                          }
-                        />
-                      ) : (
-                        <span className="cast-photo cast-photo-fallback" aria-hidden="true">
-                          {initialsOf(member.name)}
-                        </span>
-                      )}
-                      <span className="cast-name">{member.name}</span>
-                    </li>
-                  )
-                })}
-              </ul>
-            </div>
-          )}
-        </div>
-
-        <div className="modal-actions">
-          <button type="button" className="action-button primary" onClick={onWatch}>
-            Watch this
-          </button>
-          <button
-            type="button"
-            className="action-button"
-            onClick={onSpinAgain}
-            disabled={!canReroll}
-          >
-            Spin again
-          </button>
-          {canRemoveFromWheel ? (
-            <button type="button" className="action-button" onClick={onTakeOff}>
-              {takeOffLabel}
+        Spin again
+      </button>
+      {canRemoveFromWheel ? (
+        <button type="button" className="action-button" onClick={onTakeOff}>
+          {takeOffLabel}
+        </button>
+      ) : (
+        <button type="button" className="action-button" onClick={onReshuffle}>
+          Reshuffle
+        </button>
+      )}
+      {vetoes.length > 0 && (
+        <div className="veto-row">
+          {vetoes.map((veto) => (
+            <button
+              key={veto.key}
+              type="button"
+              className="action-button veto-button"
+              disabled={veto.used}
+              onClick={() => onVeto(veto.key)}
+            >
+              {veto.label}
             </button>
-          ) : (
-            <button type="button" className="action-button" onClick={onReshuffle}>
-              Reshuffle
-            </button>
-          )}
-          {vetoes.length > 0 && (
-            <div className="veto-row">
-              {vetoes.map((veto) => (
-                <button
-                  key={veto.key}
-                  type="button"
-                  className="action-button veto-button"
-                  disabled={veto.used}
-                  onClick={() => onVeto(veto.key)}
-                >
-                  {veto.label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {canReroll ? (
-            <p className="reroll-status">
-              {rerollsRemaining} reroll{rerollsRemaining === 1 ? '' : 's'} remaining
-            </p>
-          ) : (
-            /* Out of rerolls: a shrug, and the line it goes with. */
-            <p className="reroll-status reroll-status-done">
-              <ShrugMoment />
-              <span>That's the one.</span>
-            </p>
-          )}
+          ))}
         </div>
-      </div>
-    </div>
+      )}
+
+      {canReroll ? (
+        <p className="reroll-status">
+          {rerollsRemaining} reroll{rerollsRemaining === 1 ? '' : 's'} remaining
+        </p>
+      ) : (
+        /* Out of rerolls: a shrug, and the line it goes with. */
+        <p className="reroll-status reroll-status-done">
+          <ShrugMoment />
+          <span>That's the one.</span>
+        </p>
+      )}
+    </FilmSheet>
   )
 }

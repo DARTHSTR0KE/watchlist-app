@@ -17,38 +17,56 @@ function toTopCast(value: unknown): TopCastMember[] | null {
   })
 }
 
+// What the result modal shows, read the same way wherever a film is opened.
+export const FILM_DETAIL_COLUMNS =
+  'title, poster_path, backdrop_path, year, runtime, genres, vote_average, overview, media_type, original_language, trailer_key, top_cast'
+
+interface FilmDetailRow {
+  title: string
+  poster_path: string | null
+  backdrop_path: string | null
+  year: number | null
+  runtime: number | null
+  genres: string[] | null
+  vote_average: number | null
+  overview: string | null
+  media_type: 'movie' | 'tv'
+  original_language: string | null
+  trailer_key: string | null
+  top_cast: unknown
+}
+
+export function toWheelItem(filmId: string, film: FilmDetailRow, addedAt: string | null): WheelItem {
+  return {
+    id: filmId,
+    title: film.title,
+    posterPath: film.poster_path,
+    backdropPath: film.backdrop_path,
+    year: film.year ?? 0,
+    runtimeMinutes: film.runtime ?? 0,
+    genres: film.genres ?? [],
+    rating: film.vote_average ?? 0,
+    synopsis: film.overview ?? '',
+    trailerKey: film.trailer_key,
+    topCast: toTopCast(film.top_cast),
+    mediaType: film.media_type,
+    originalLanguage: film.original_language,
+    addedAt,
+  }
+}
+
 // Loads every watchlist item for the wheel — no on_wheel filter, since
 // removal is now session-only (in-memory) and never persisted.
 export async function loadWheelItems(userId: string): Promise<WheelItem[]> {
   const { data, error } = await supabase
     .from('watchlist_items')
-    .select(
-      'film_id, added_at, films(title, poster_path, backdrop_path, year, runtime, genres, vote_average, overview, media_type, original_language, trailer_key, top_cast)',
-    )
+    .select(`film_id, added_at, films(${FILM_DETAIL_COLUMNS})`)
     .eq('user_id', userId)
   if (error) throw error
 
   return (data ?? [])
     .filter((row) => row.films !== null)
-    .map((row) => {
-      const film = row.films!
-      return {
-        id: row.film_id,
-        title: film.title,
-        posterPath: film.poster_path,
-        backdropPath: film.backdrop_path,
-        year: film.year ?? 0,
-        runtimeMinutes: film.runtime ?? 0,
-        genres: film.genres ?? [],
-        rating: film.vote_average ?? 0,
-        synopsis: film.overview ?? '',
-        trailerKey: film.trailer_key,
-        topCast: toTopCast(film.top_cast),
-        mediaType: film.media_type,
-        originalLanguage: film.original_language,
-        addedAt: row.added_at,
-      } satisfies WheelItem
-    })
+    .map((row) => toWheelItem(row.film_id, row.films!, row.added_at))
 }
 
 /**

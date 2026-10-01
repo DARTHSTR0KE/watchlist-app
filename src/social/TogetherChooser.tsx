@@ -8,11 +8,14 @@ import { ScreenCharacter } from '../brand/Ambient'
 import { reportQuietly } from '../lib/dbError'
 import { possessiveName, subjectName } from '../utils/names'
 import type { TogetherMode } from '../wheel/filters'
-import { loadSharedList } from './sharedList'
+import { loadSharedList, removeFromSharedList } from './sharedList'
+import { watchFilmNow } from '../import/watchlistWrites'
+import { FilmDetailModal } from '../film/FilmDetailModal'
 import type { SharedListEntry } from './sharedList'
 import { comparedToLastYear, loadTogetherWatched, plural, togetherByYear } from './ticketFacts'
 
 interface TogetherChooserProps {
+  userId: string
   partnerId: string | null
   partnerName: string | null
   sharedCount: number | null
@@ -32,6 +35,7 @@ interface TogetherChooserProps {
  * sits underneath as posters, to look at rather than manage.
  */
 export function TogetherChooser({
+  userId,
   partnerId,
   partnerName,
   sharedCount,
@@ -42,6 +46,7 @@ export function TogetherChooser({
 }: TogetherChooserProps) {
   const [entries, setEntries] = useState<SharedListEntry[] | null>(null)
   const [byYear, setByYear] = useState<Map<number, number> | null>(null)
+  const [open, setOpen] = useState<SharedListEntry | null>(null)
 
   useEffect(() => {
     if (!partnerId) return
@@ -146,9 +151,30 @@ export function TogetherChooser({
       {entries && entries.length > 0 && (
         <PosterGrid>
           {entries.map((entry) => (
-            <PosterCell key={entry.filmId} posterPath={entry.posterPath} title={entry.title} />
+            <PosterCell
+              key={entry.filmId}
+              posterPath={entry.posterPath}
+              title={entry.title}
+              onOpen={() => setOpen(entry)}
+            />
           ))}
         </PosterGrid>
+      )}
+
+      {/* The shared list, opened: the same as from its own screen. */}
+      {open && (
+        <FilmDetailModal
+          film={open}
+          context="list"
+          handlers={{
+            watch: () => watchFilmNow(userId, open.filmId),
+            'remove-list': async () => {
+              await removeFromSharedList(open.filmId)
+              setEntries((current) => (current ?? []).filter((row) => row.filmId !== open.filmId))
+            },
+          }}
+          onClose={() => setOpen(null)}
+        />
       )}
     </Screen>
   )

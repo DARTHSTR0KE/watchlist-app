@@ -208,9 +208,13 @@ export function PosterCell({
   markLabel,
   onRemove,
   removeLabel,
+  onOpen,
 }: {
   posterPath: string | null
   title: string
+  // Tapping the poster opens the film. The × stays separate: it is for
+  // getting rid of one quickly without opening it.
+  onOpen?: () => void
   // A small sage star in the corner — one list with a marker beats two.
   marked?: boolean
   markLabel?: string
@@ -218,12 +222,19 @@ export function PosterCell({
   removeLabel?: string
 }) {
   const url = buildPosterUrl(posterPath)
+  const poster = url ? (
+    <img className="poster-cell-3-image" src={url} alt={title} />
+  ) : (
+    <span className="poster-cell-3-image poster-cell-3-empty">{title}</span>
+  )
   return (
     <li className="poster-cell-3">
-      {url ? (
-        <img className="poster-cell-3-image" src={url} alt={title} />
+      {onOpen ? (
+        <button type="button" className="poster-cell-3-open" onClick={onOpen} aria-label={`Open ${title}`}>
+          {poster}
+        </button>
       ) : (
-        <span className="poster-cell-3-image poster-cell-3-empty">{title}</span>
+        poster
       )}
       {marked && (
         <span className="poster-mark" title={markLabel} aria-label={markLabel}>

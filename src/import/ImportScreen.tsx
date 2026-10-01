@@ -232,7 +232,11 @@ export function ImportScreen({ onGoToWheel }: ImportScreenProps) {
       <ManualSearch userId={userId} onAdded={refreshGrid} />
 
       {gridItems.length > 0 ? (
-        <WatchlistGrid items={gridItems} />
+        <WatchlistGrid
+          userId={userId}
+          items={gridItems}
+          onGone={(filmId) => setGridItems((current) => current.filter((item) => item.filmId !== filmId))}
+        />
       ) : (
         phase === 'idle' && <p className="import-empty">No titles yet — import your Letterboxd export above.</p>
       )}

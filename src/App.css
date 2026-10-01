@@ -1144,6 +1144,20 @@
   padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
 }
 
+/* The Letterboxd link sits among the buttons and looks like one. */
+a.action-button {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+}
+
+/* "Loading the details…", or why an action didn't go through. */
+.modal-status {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
 /* Import screen */
 
 .import-screen {
@@ -1674,6 +1688,22 @@
 
 .picker-poster-fallback {
   display: block;
+}
+
+/* A film already on the list: poster and title open it. */
+.picker-row-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .picker-title {
@@ -3232,6 +3262,29 @@ section + .poster-grid-3 {
   border-radius: 8px;
   object-fit: cover;
   background-color: var(--raised);
+}
+
+/* The whole poster opens the film; the remove × sits on top of it. */
+.watchlist-grid-open {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.poster-cell-3-open {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
 }
 
 .poster-cell-3-empty {
